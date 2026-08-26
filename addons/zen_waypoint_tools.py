@@ -9,7 +9,6 @@ bl_info = {
 }
 
 import bpy
-import bmesh
 import gpu
 
 from gpu_extras.batch import batch_for_shader
@@ -304,13 +303,9 @@ class ZEN_OT_add_waypoint(bpy.types.Operator):
         cursor_loc = context.scene.cursor.location.copy()
         name = find_next_waypoint_name()
 
-        mesh = bpy.data.meshes.new(name + "_mesh")
-        bm = bmesh.new()
-        bmesh.ops.create_cube(bm, size=0.15)
-        bm.to_mesh(mesh)
-        bm.free()
-
-        obj = bpy.data.objects.new(name, mesh)
+        obj = bpy.data.objects.new(name, None)
+        obj.empty_display_type = 'PLAIN_AXES'
+        obj.empty_display_size = 0.15
         obj.location = cursor_loc
         obj.rotation_mode = 'QUATERNION'
 
