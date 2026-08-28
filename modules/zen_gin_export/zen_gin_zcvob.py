@@ -38,6 +38,12 @@ class ZCVob:
     def _print_additional_data(self):
         pass
 
+    def _blender_object(self):
+        """Protected accessor so subclasses can read custom Blender
+        properties (e.g. per-instance light settings) without needing
+        direct access to the name-mangled __blender_object."""
+        return self.__blender_object
+
     def __print_visual_block(self, object_index):
         self._data_printer.start_object_block(
             type_1="visual",
@@ -67,8 +73,16 @@ class ZCVob:
         )
 
     def __location(self):
+        # Blender (right-handed, Z-up) -> ZenGin (Y-up). This is a single
+        # axis swap (Y<->Z) with exactly one sign flip on the resulting
+        # depth axis - matches the standard Blender->Y-up-engine formula
+        # (X->X, Z->Y, Y->-Z). Two sign flips (the previous version negated
+        # both X and Y) made the transform a mirror reflection instead of
+        # a proper rotation - confirmed by determinant=-1 on the old
+        # formula, and by the "whole scene mirrored" symptom reported after
+        # a real Spacer test.
         return "{x} {z} {y}".format(
-            x=self.__blender_object.location.x * -100,
+            x=self.__blender_object.location.x * 100,
             y=self.__blender_object.location.y * -100,
             z=self.__blender_object.location.z * 100,
         )
@@ -91,8 +105,15 @@ class ZCVob:
         ])
 
     def __rotation(self):
+        # Consistent with __location()'s fixed coordinate transform:
+        # X->X, Y(new)->Z(old), Z(new)->-Y(old). For a proper (det=+1)
+        # change of basis, a rotation quaternion's scalar part (w) is
+        # basis-independent and must stay untouched; only the vector part
+        # (x,y,z) transforms like a regular point. The previous version
+        # mixed w into a spatial slot, which is not valid for any
+        # coordinate change - this replaces it with the correct remap.
         qt: Quaternion = self.__blender_object.rotation_quaternion
-        new_qt = Quaternion((-qt[3], qt[2], -qt[0], -qt[1]))
+        new_qt = Quaternion((qt[0], qt[1], qt[3], -qt[2]))
         return "".join(map(ZCVob.convert_vector, new_qt.to_matrix()))
 
     def __print_vob_data(self):

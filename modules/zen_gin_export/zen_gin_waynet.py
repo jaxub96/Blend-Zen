@@ -49,16 +49,24 @@ class WayNet:
 
     @staticmethod
     def __waypoint_location(waypoint):
+        # Same fixed transform as ZCVob.__location() - see that method's
+        # comment for the full explanation. Kept duplicated here rather
+        # than refactored to share code, matching the existing structure.
         return "{x} {z} {y}".format(
-            x=waypoint.location.x * -100,
+            x=waypoint.location.x * 100,
             y=waypoint.location.y * -100,
             z=waypoint.location.z * 100,
         )
 
     @staticmethod
     def __waypoint_rotation_vec3(waypoint):
+        # Same fixed quaternion remap as ZCVob.__rotation() - see that
+        # method's comment. The downstream "which local axis counts as
+        # facing direction" choice (matrix column 2, x negated) is left
+        # unchanged since that's a separate design decision, not part of
+        # the coordinate-frame bug.
         qt: Quaternion = waypoint.rotation_quaternion
-        new_qt = Quaternion((-qt[3], qt[2], -qt[0], -qt[1]))
+        new_qt = Quaternion((qt[0], qt[1], qt[3], -qt[2]))
         vector = new_qt.to_matrix()[2]
         return "{x} {y} {z}".format(x=-vector.x, y=vector.y, z=vector.z)
 

@@ -12,6 +12,7 @@ import bpy
 import gpu
 
 from gpu_extras.batch import batch_for_shader
+from bpy_extras.io_utils import ExportHelper
 
 
 WAYPOINT_PREFIX = "zCWaypoint:"
@@ -401,6 +402,114 @@ class ZEN_OT_unlink_waypoints(bpy.types.Operator):
         return {'FINISHED'}
 
 
+VOB_TYPE_ITEMS = (
+    ('zCVobLevelCompo', "Level Compo (World Mesh Ref)",
+     "Reference to the compiled level mesh - name must match the .3ds filename, without extension"),
+    ('zCVobStartpoint', "Startpoint",
+     "Player/NPC start position"),
+    ('zCVob', "Vob (Mesh Prop)",
+     "Generic static prop - name must match its .3ds mesh filename, without extension"),
+    ('zCVobSpot', "Vob Spot (Freepoint)",
+     "Freepoint used by NPCs during TA_Stand_* routines"),
+    ('oCItem', "Item",
+     "Pickupable item - name must match the item's script instance name"),
+    ('zCVobLight', "Light",
+     "Point or spot light source. Tune range/color/type via Custom Properties on the created empty"),
+)
+
+VOB_DISPLAY = {
+    'zCVobLevelCompo': ('CUBE', 1.0),
+    'zCVobStartpoint': ('PLAIN_AXES', 0.5),
+    'zCVob': ('SPHERE', 0.2),
+    'zCVobSpot': ('ARROWS', 0.25),
+    'oCItem': ('CIRCLE', 0.2),
+    'zCVobLight': ('CONE', 0.3),
+}
+
+VOB_DEFAULT_LABEL = {
+    'zCVobLevelCompo': "LEVEL",
+    'zCVobStartpoint': "START",
+    'zCVob': "PROP",
+    'zCVobSpot': "FREEPOINT",
+    'oCItem': "ITEM",
+    'zCVobLight': "LIGHT",
+}
+
+
+def find_next_vob_name(vob_type):
+    """Generic name generator, mirrors find_next_waypoint_name() above."""
+    label = VOB_DEFAULT_LABEL.get(vob_type, "VOB")
+    prefix = f"{vob_type}:{label}_"
+
+    existing_numbers = set()
+    for obj in bpy.data.objects:
+        if not obj.name.startswith(prefix):
+            continue
+        suffix = obj.name[len(prefix):].split(".")[0]
+        if suffix.isdigit():
+            existing_numbers.add(int(suffix))
+
+    next_num = 1
+    while next_num in existing_numbers:
+        next_num += 1
+
+    return f"{label}_{next_num:03d}"
+
+
+def _update_vob_type_name(self, context):
+    """Live-refresh the suggested name when the Type dropdown changes,
+    while the Add VOB dialog is still open."""
+    self.vob_name = find_next_vob_name(self.vob_type)
+
+
+class ZEN_OT_add_vob(bpy.types.Operator):
+    bl_idname = "zen.add_vob"
+    bl_label = "Add ZenGin VOB"
+    bl_description = "Add a new empty representing a ZenGin VOB, at the 3D cursor"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    vob_type: bpy.props.EnumProperty(
+        items=VOB_TYPE_ITEMS, name="Type", default='zCVob',
+        update=_update_vob_type_name,
+    )
+    vob_name: bpy.props.StringProperty(name="Name", default="", options={'SKIP_SAVE'})
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
+
+    def invoke(self, context, event):
+        # operator properties persist across invocations in Blender, so always
+        # recompute the suggestion here rather than only filling when empty
+        self.vob_name = find_next_vob_name(self.vob_type)
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        name = self.vob_name.strip()
+        if not name:
+            name = find_next_vob_name(self.vob_type)
+
+        full_name = f"{self.vob_type}:{name}"
+        display_type, display_size = VOB_DISPLAY.get(self.vob_type, ('PLAIN_AXES', 0.3))
+
+        obj = bpy.data.objects.new(full_name, None)
+        obj.empty_display_type = display_type
+        obj.empty_display_size = display_size
+        obj.location = context.scene.cursor.location.copy()
+        obj.rotation_mode = 'QUATERNION'
+
+        target_collection = context.collection or context.scene.collection
+        target_collection.objects.link(obj)
+
+        for selected_obj in context.view_layer.objects:
+            selected_obj.select_set(False)
+        obj.select_set(True)
+        context.view_layer.objects.active = obj
+
+        self.report({'INFO'}, f"Added {full_name}")
+        return {'FINISHED'}
+
+
 class ZEN_OT_toggle_waypoint_links(bpy.types.Operator):
     bl_idname = "zen.toggle_waypoint_links"
     bl_label = "Toggle Link Display"
@@ -416,6 +525,47 @@ class ZEN_OT_toggle_waypoint_links(bpy.types.Operator):
             stop_draw_handler()
 
         tag_viewports_redraw()
+        return {'FINISHED'}
+
+
+class ZEN_OT_export_zen(bpy.types.Operator, ExportHelper):
+    bl_idname = "zen.export_zen"
+    bl_label = "Export Uncompiled ZEN"
+    bl_description = (
+        "Export the current scene's vobs, waypoints and startpoint as an "
+        "uncompiled .ZEN file (open it in Spacer, compile world/light, "
+        "then save as compiled to get a playable world)"
+    )
+    bl_options = {'REGISTER'}
+
+    filename_ext = ".ZEN"
+    filter_glob: bpy.props.StringProperty(
+        default="*.ZEN;*.zen",
+        options={'HIDDEN'},
+    )
+    filepath: bpy.props.StringProperty(
+        default="UNCOMPILED_EXPORT.ZEN",
+        subtype='FILE_PATH',
+    )
+
+    def execute(self, context):
+        try:
+            from zen_gin_export import ZenArchive, FilePrinter
+        except ImportError as e:
+            self.report(
+                {'ERROR'},
+                f"Could not import zen_gin_export ({e}). Check that its "
+                f"Script Directory is set up and Blender has been restarted "
+                f"since it was added.",
+            )
+            return {'CANCELLED'}
+
+        printer = FilePrinter(self.filepath)
+        archive = ZenArchive(bpy.data.objects, printer)
+        archive.print()
+        printer.close()
+
+        self.report({'INFO'}, f"Exported uncompiled ZEN to {self.filepath}")
         return {'FINISHED'}
 
 
@@ -468,6 +618,13 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
             for target in neighbors:
                 layout.label(text=f"- {get_waypoint_display_name(target)}", icon='FORWARD')
 
+        layout.separator()
+        layout.label(text="Add Other VOBs:")
+        layout.operator("zen.add_vob", icon='ADD')
+
+        layout.separator()
+        layout.operator("zen.export_zen", icon='EXPORT')
+
 
 classes = (
     ZenWaypointLinks,
@@ -475,6 +632,8 @@ classes = (
     ZEN_OT_link_waypoints,
     ZEN_OT_unlink_waypoints,
     ZEN_OT_toggle_waypoint_links,
+    ZEN_OT_add_vob,
+    ZEN_OT_export_zen,
     ZEN_PT_waypoint_tools,
 )
 
