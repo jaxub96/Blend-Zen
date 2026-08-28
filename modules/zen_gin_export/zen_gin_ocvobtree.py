@@ -5,7 +5,7 @@ from .zen_gin_zcvob_light import ZCVobLight
 from .zen_gin_zcvob import ZCVob
 from .zen_gin_zcvob_level_compo import ZCVobLevelCompo
 from .printer import Printer
-
+from .zen_gin_zcvob_sound import ZCVobSound
 
 class OCVobTree:
 
@@ -19,7 +19,8 @@ class OCVobTree:
             return 2
         elif isinstance(vob, ZCVobSpot):
             return 3
-
+        elif isinstance(vob, ZCVobSound):
+            return 4
     def __create_vob(self, blender_object):
         if blender_object.name.startswith("zCVob:"):
             return ZCVob(blender_object, self.__printer, self.__data_printer)
@@ -33,6 +34,8 @@ class OCVobTree:
             return ZCVobLevelCompo(blender_object, self.__printer, self.__data_printer)
         elif blender_object.name.startswith("zCVobLight:"):
             return ZCVobLight(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("zCVobSound:"):
+            return ZCVobSound(blender_object, self.__printer, self.__data_printer)
 
     def __init__(self, blender_objects, printer: Printer, data_printer):
         self.__printer = printer

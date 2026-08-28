@@ -415,15 +415,18 @@ VOB_TYPE_ITEMS = (
      "Pickupable item - name must match the item's script instance name"),
     ('zCVobLight', "Light",
      "Point or spot light source. Tune range/color/type via Custom Properties on the created empty"),
+    ('zCVobSound', "Sound",
+     "Sound source - name must match the sound's script instance name"),
 )
 
 VOB_DISPLAY = {
-    'zCVobLevelCompo': ('CUBE', 1.0),
+    'zCVobLevelCompo': ('PLAIN_AXES', 1.0),
     'zCVobStartpoint': ('PLAIN_AXES', 0.5),
     'zCVob': ('SPHERE', 0.2),
     'zCVobSpot': ('ARROWS', 0.25),
-    'oCItem': ('CIRCLE', 0.2),
+    'oCItem': ('CUBE', 0.2),
     'zCVobLight': ('CONE', 0.3),
+    'zCVobSound': ('SPHERE', 1.0),
 }
 
 VOB_DEFAULT_LABEL = {
@@ -433,6 +436,7 @@ VOB_DEFAULT_LABEL = {
     'zCVobSpot': "FREEPOINT",
     'oCItem': "ITEM",
     'zCVobLight': "LIGHT",
+    'zCVobSound': "SOUND",
 }
 
 
