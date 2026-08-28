@@ -1,6 +1,7 @@
 from .zen_gin_zcvob_ocitem import OCItem
 from .zen_gin_zcvob_zcvobspot import ZCVobSpot
 from .zen_gin_zcvob_startpoint import ZCVobStartpoint
+from .zen_gin_zcvob_light import ZCVobLight
 from .zen_gin_zcvob import ZCVob
 from .zen_gin_zcvob_level_compo import ZCVobLevelCompo
 from .printer import Printer
@@ -30,6 +31,8 @@ class OCVobTree:
             return ZCVobStartpoint(blender_object, self.__printer, self.__data_printer)
         elif blender_object.name.startswith("zCVobLevelCompo:"):
             return ZCVobLevelCompo(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("zCVobLight:"):
+            return ZCVobLight(blender_object, self.__printer, self.__data_printer)
 
     def __init__(self, blender_objects, printer: Printer, data_printer):
         self.__printer = printer

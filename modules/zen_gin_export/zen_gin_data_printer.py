@@ -57,3 +57,6 @@ class ZenGinDataPrinter:
 
     def print_string_property(self, name, value_string):
         self.__print_property(name, "string", value_string)
+
+    def print_color_property(self, name, value_color):
+        self.__print_property(name, "color", value_color)
