@@ -1,6 +1,7 @@
 from .printer import Printer
 from mathutils import Quaternion
 from .zen_gin_data_printer import ZenGinDataPrinter
+from .coordinate_transform import blender_position_to_gothic, blender_quaternion_to_gothic
 
 
 class WayNet:
@@ -49,24 +50,20 @@ class WayNet:
 
     @staticmethod
     def __waypoint_location(waypoint):
-        # Same fixed transform as ZCVob.__location() - see that method's
-        # comment for the full explanation. Kept duplicated here rather
-        # than refactored to share code, matching the existing structure.
-        return "{x} {z} {y}".format(
-            x=waypoint.location.x * 100,
-            y=waypoint.location.y * -100,
-            z=waypoint.location.z * 100,
+        gx, gy, gz = blender_position_to_gothic(
+            waypoint.location.x, waypoint.location.y, waypoint.location.z,
         )
+        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
 
     @staticmethod
     def __waypoint_rotation_vec3(waypoint):
-        # Same fixed quaternion remap as ZCVob.__rotation() - see that
-        # method's comment. The downstream "which local axis counts as
-        # facing direction" choice (matrix column 2, x negated) is left
-        # unchanged since that's a separate design decision, not part of
-        # the coordinate-frame bug.
+        # The downstream "which local axis counts as facing direction"
+        # choice (matrix column 2, x negated) is a separate design
+        # decision from the coordinate-frame conversion itself, so it
+        # stays here rather than moving into coordinate_transform.py.
         qt: Quaternion = waypoint.rotation_quaternion
-        new_qt = Quaternion((qt[0], qt[1], qt[3], -qt[2]))
+        gw, gx, gy, gz = blender_quaternion_to_gothic(qt[0], qt[1], qt[2], qt[3])
+        new_qt = Quaternion((gw, gx, gy, gz))
         vector = new_qt.to_matrix()[2]
         return "{x} {y} {z}".format(x=-vector.x, y=vector.y, z=vector.z)
 

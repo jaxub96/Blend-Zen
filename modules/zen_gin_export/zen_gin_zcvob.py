@@ -3,6 +3,7 @@ from mathutils import Vector
 import struct
 from textwrap import wrap
 from .printer import Printer
+from .coordinate_transform import blender_position_to_gothic, blender_quaternion_to_gothic
 
 
 class ZCVob:
@@ -73,19 +74,12 @@ class ZCVob:
         )
 
     def __location(self):
-        # Blender (right-handed, Z-up) -> ZenGin (Y-up). This is a single
-        # axis swap (Y<->Z) with exactly one sign flip on the resulting
-        # depth axis - matches the standard Blender->Y-up-engine formula
-        # (X->X, Z->Y, Y->-Z). Two sign flips (the previous version negated
-        # both X and Y) made the transform a mirror reflection instead of
-        # a proper rotation - confirmed by determinant=-1 on the old
-        # formula, and by the "whole scene mirrored" symptom reported after
-        # a real Spacer test.
-        return "{x} {z} {y}".format(
-            x=self.__blender_object.location.x * 100,
-            y=self.__blender_object.location.y * -100,
-            z=self.__blender_object.location.z * 100,
+        gx, gy, gz = blender_position_to_gothic(
+            self.__blender_object.location.x,
+            self.__blender_object.location.y,
+            self.__blender_object.location.z,
         )
+        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
 
     @staticmethod
     def float_to_hex(to_convert: float):
@@ -105,15 +99,9 @@ class ZCVob:
         ])
 
     def __rotation(self):
-        # Consistent with __location()'s fixed coordinate transform:
-        # X->X, Y(new)->Z(old), Z(new)->-Y(old). For a proper (det=+1)
-        # change of basis, a rotation quaternion's scalar part (w) is
-        # basis-independent and must stay untouched; only the vector part
-        # (x,y,z) transforms like a regular point. The previous version
-        # mixed w into a spatial slot, which is not valid for any
-        # coordinate change - this replaces it with the correct remap.
         qt: Quaternion = self.__blender_object.rotation_quaternion
-        new_qt = Quaternion((qt[0], qt[1], qt[3], -qt[2]))
+        gw, gx, gy, gz = blender_quaternion_to_gothic(qt[0], qt[1], qt[2], qt[3])
+        new_qt = Quaternion((gw, gx, gy, gz))
         return "".join(map(ZCVob.convert_vector, new_qt.to_matrix()))
 
     def __print_vob_data(self):
