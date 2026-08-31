@@ -39,6 +39,7 @@ classes = (
     waypoint_ops.ZEN_OT_toggle_waypoint_links,
     vob_ops.ZEN_OT_add_vob,
     export_ops.ZEN_OT_export_zen,
+    export_ops.ZEN_OT_import_zen,
     mesh_preview.ZEN_OT_load_vob_mesh,
     panel.ZEN_PT_waypoint_tools,
 )
