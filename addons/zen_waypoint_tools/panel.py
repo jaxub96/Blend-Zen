@@ -66,3 +66,4 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
 
         layout.separator()
         layout.operator("zen.export_zen", icon='EXPORT')
+        layout.operator("zen.import_zen", icon='IMPORT')

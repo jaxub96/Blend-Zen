@@ -65,3 +65,50 @@ class ZEN_OT_export_zen(bpy.types.Operator, ExportHelper):
                 f"issues: {'; '.join(verification.issues)}",
             )
         return {'FINISHED'}
+
+
+from bpy_extras.io_utils import ImportHelper
+from . import zen_import
+
+
+class ZEN_OT_import_zen(bpy.types.Operator, ImportHelper):
+    bl_idname = "zen.import_zen"
+    bl_label = "Import Uncompiled ZEN"
+    bl_description = (
+        "Reconstruct vobs and the waynet from an uncompiled .ZEN file "
+        "(produced by this package's own exporter) as Blender objects. "
+        "Level mesh loading is best-effort: only looks in the ZEN's own "
+        "directory, and only compiled .MRM meshes can actually be "
+        "imported - a found .3ds is reported but not loaded."
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    filename_ext = ".ZEN"
+    filter_glob: bpy.props.StringProperty(
+        default="*.ZEN;*.zen",
+        options={'HIDDEN'},
+    )
+
+    def execute(self, context):
+        try:
+            report = zen_import.import_zen(context, self.filepath)
+        except Exception as e:
+            self.report({'ERROR'}, f"Import failed: {e}")
+            return {'CANCELLED'}
+
+        message = "Imported {} vob(s), {} waypoint(s), {} link(s)".format(
+            report["vobs_created"], report["waypoints_created"], report["ways_linked"],
+        )
+        status = report["level_mesh_status"]
+        if status == "imported":
+            message += f" - level mesh loaded from {report['level_mesh_path']}"
+        elif status == "found_not_importable":
+            message += (
+                f" - level mesh found ({report['level_mesh_path']}) but "
+                f"couldn't be imported (no working importer for this format)"
+            )
+        elif status == "not_found":
+            message += " - referenced level mesh not found next to the ZEN"
+
+        self.report({'INFO'}, message)
+        return {'FINISHED'}
