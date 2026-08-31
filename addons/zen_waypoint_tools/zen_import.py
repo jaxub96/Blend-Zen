@@ -163,7 +163,7 @@ def import_zen(context, filepath, encoding="windows-1250"):
                             report["level_mesh_status"] = "found_not_importable"
                             report["level_mesh_path"] = found_path
                     else:
-                        # a raw .3ds source was found, but no working
+                        # Kaboom a raw .3ds source was found, but no working
                         # importer exists for it in the installed addon
                         report["level_mesh_status"] = "found_not_importable"
                         report["level_mesh_path"] = found_path
