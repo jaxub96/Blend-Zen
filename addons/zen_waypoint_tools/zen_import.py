@@ -28,6 +28,7 @@ from .vob_types import VOB_DISPLAY
 from .waypoint_links import add_directed_link
 from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
 from .mesh_preview import get_preview_collection
+from .light_props import create_light_object
 
 
 # Real ZenGin class name -> Blender name prefix. Mirrors the mapping in
@@ -72,31 +73,36 @@ def _create_vob_object(context, real_type, block):
     prefix = _REAL_TYPE_TO_PREFIX.get(real_type, f"{real_type}:")
     full_name = f"{prefix}{vob_name}"
 
-    obj = bpy.data.objects.new(full_name, None)
-    display_type, display_size = VOB_DISPLAY.get(prefix.rstrip(":"), ('PLAIN_AXES', 0.3))
-    obj.empty_display_type = display_type
-    obj.empty_display_size = display_size
+    if real_type == "zCVobLight":
+        light_type = _LIGHT_TYPE_NAMES.get(int(block.get("lightType", "0")), "POINT")
+        range_cm = float(block.get("range", "1000.0"))
+        spot_cone_angle = float(block.get("spotConeAngle", "0.0"))
+        color_parts = [int(v) for v in block.get("color", "255 255 255 255").split()]
+        color_rgb = tuple(color_parts[:3]) if len(color_parts) >= 3 else (255, 255, 255)
+        color_a = color_parts[3] if len(color_parts) >= 4 else 255
+        light_static = block.get("lightStatic", "1") == "1"
+        obj = create_light_object(
+            full_name, light_type=light_type, range_cm=range_cm,
+            spot_cone_angle_deg=spot_cone_angle, color_rgb=color_rgb,
+            color_a=color_a, light_static=light_static,
+        )
+    else:
+        obj = bpy.data.objects.new(full_name, None)
+        display_type, display_size = VOB_DISPLAY.get(prefix.rstrip(":"), ('PLAIN_AXES', 0.3))
+        obj.empty_display_type = display_type
+        obj.empty_display_size = display_size
 
     _set_transform(obj, block.get("trafoOSToWSPos"), block.get("trafoOSToWSRot"))
 
     context.scene.collection.objects.link(obj)
-
-    if real_type == "zCVobLight":
-        obj["light_type"] = _LIGHT_TYPE_NAMES.get(int(block.get("lightType", "0")), "POINT")
-        obj["range"] = float(block.get("range", "1000.0"))
-        obj["spot_cone_angle"] = float(block.get("spotConeAngle", "0.0"))
-        obj["light_static"] = block.get("lightStatic", "1") == "1"
-        color_parts = block.get("color", "255 255 255 255").split()
-        for key, value in zip(("color_r", "color_g", "color_b", "color_a"), color_parts):
-            obj[key] = int(value)
 
     return obj
 
 
 def _create_waypoint_object(name, position_prop, direction_prop):
     obj = bpy.data.objects.new(f"zCWaypoint:{name}", None)
-    obj.empty_display_type = 'PLAIN_AXES'
-    obj.empty_display_size = 0.15
+    obj.empty_display_type = 'SINGLE_ARROW'
+    obj.empty_display_size = 1.0
     obj.rotation_mode = 'QUATERNION'
     if position_prop:
         gx, gy, gz = parse_vec3(position_prop)

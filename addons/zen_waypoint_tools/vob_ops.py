@@ -1,6 +1,7 @@
 import bpy
 
 from .vob_types import VOB_TYPE_ITEMS, VOB_DISPLAY, find_next_vob_name
+from .light_props import create_light_object
 
 
 def _update_vob_type_name(self, context):
@@ -51,11 +52,15 @@ class ZEN_OT_add_vob(bpy.types.Operator):
             name = find_next_vob_name(self.vob_type)
 
         full_name = f"{self.vob_type}:{name}"
-        display_type, display_size = VOB_DISPLAY.get(self.vob_type, ('PLAIN_AXES', 0.3))
 
-        obj = bpy.data.objects.new(full_name, None)
-        obj.empty_display_type = display_type
-        obj.empty_display_size = display_size
+        if self.vob_type == 'zCVobLight':
+            obj = create_light_object(full_name)
+        else:
+            display_type, display_size = VOB_DISPLAY.get(self.vob_type, ('PLAIN_AXES', 0.3))
+            obj = bpy.data.objects.new(full_name, None)
+            obj.empty_display_type = display_type
+            obj.empty_display_size = display_size
+
         obj.location = context.scene.cursor.location.copy()
         obj.rotation_mode = 'QUATERNION'
 

@@ -1,0 +1,66 @@
+ZenGin Archive
+ver 1
+zCArchiverGeneric
+ASCII
+saveGame 0
+date 1.1.1970 12:0:0
+user BlenderZenGinExportPlugin
+END
+objects 3
+END
+
+[% oCWorld:zCWorld 36865 0]
+	[VobTree % 0 0]
+		childs0=int:1
+		[% zCVobLight:zCVob 52224 1]
+			pack=int:0
+			presetName=string:
+			bbox3DWS=rawFloat:0.0 0.0 -0.0 0.0 0.0 -0.0
+			trafoOSToWSRot=raw:0000803f0000000000000000000000000000803f0000008000000080000000000000803f
+			trafoOSToWSPos=vec3:0.0 0.0 -0.0
+			vobName=string:TESTLIGHT
+			visual=string:
+			showVisual=bool:1
+			visualCamAlign=enum:0
+			visualAniMode=enum:0
+			visualAniModeStrength=float:0
+			vobFarClipZScale=float:1
+			cdStatic=bool:0
+			cdDyn=bool:0
+			staticVob=bool:0
+			dynShadow=enum:0
+			zbias=int:0
+			isAmbient=bool:0
+			[visual % 0 0]
+			[]
+			[ai % 0 0]
+			[]
+			lightPresetInUse=string:
+			lightType=enum:1
+			range=float:1500.0
+			color=color:255 180 90 255
+			spotConeAngle=float:34.99999983559887
+			lightStatic=bool:1
+			lightQuality=enum:2
+			lensflareFX=string:
+			turnedOn=bool:1
+			rangeAniScale=string:
+			rangeAniFPS=float:0.0
+			rangeAniSmooth=bool:1
+			colorAniList=string:
+			colorAniFPS=float:0.0
+			colorAniSmooth=bool:1
+			canMove=bool:0
+		[]
+		childs1=int:0
+	[]
+	[WayNet % 0 0]
+		[% zCWayNet 0 2]
+			waynetVersion=int:1
+			numWaypoints=int:0
+			numWays=int:0
+		[]
+	[]
+	[EndMarker % 0 0]
+	[]
+[]

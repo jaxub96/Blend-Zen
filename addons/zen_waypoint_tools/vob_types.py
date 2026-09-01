@@ -20,17 +20,17 @@ VOB_TYPE_ITEMS = (
 
 VOB_DISPLAY = {
     'zCVobLevelCompo': ('PLAIN_AXES', 1.0),
-    'zCVobStartpoint': ('PLAIN_AXES', 0.5),
-    'zCVob': ('SPHERE', 0.2),
-    'zCVobSpot': ('ARROWS', 0.25),
-    'oCItem': ('CUBE', 0.2),
+    'zCVobStartpoint': ('PLAIN_AXES', 2.0),
+    'zCVob': ('SPHERE', 0.5),
+    'zCVobSpot': ('ARROWS', 1.2),
+    'oCItem': ('CUBE', 0.3),
     'zCVobLight': ('CONE', 0.3),
     'zCVobSound': ('SPHERE', 1.0),
 }
 
 VOB_DEFAULT_LABEL = {
     'zCVobLevelCompo': "LEVEL",
-    'zCVobStartpoint': "START",
+    'zCVobStartpoint': "PC_START",
     'zCVob': "PROP",
     'zCVobSpot': "FREEPOINT",
     'oCItem': "ITEM",
@@ -43,11 +43,14 @@ def find_next_vob_name(vob_type):
     """Generic name generator, mirrors find_next_waypoint_name() in waypoint_links.py."""
     label = VOB_DEFAULT_LABEL.get(vob_type, "VOB")
     prefix = f"{vob_type}:{label}_"
-
+    if vob_type == "zCVobStartpoint":
+        return label
+    
     existing_numbers = set()
     for obj in bpy.data.objects:
         if not obj.name.startswith(prefix):
             continue
+
         suffix = obj.name[len(prefix):].split(".")[0]
         if suffix.isdigit():
             existing_numbers.add(int(suffix))

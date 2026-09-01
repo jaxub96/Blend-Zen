@@ -1,14 +1,14 @@
 bl_info = {
     "name": "Zen Waypoint Tools",
-    "author": "jaxub + patched",
-    "version": (2, 1, 0),
+    "author": "jaxub",
+    "version": (2, 4, 0),
     "blender": (5, 0, 0),
     "location": "View3D > Sidebar > ZenGin",
     "description": "Place, link, and visualize zCWaypoint objects, add other ZenGin VOBs, preview their meshes, and export to an uncompiled ZEN",
     "category": "Object",
 }
 
-import bpy
+import bpy # pyright: ignore[reportMissingImports]
 
 from . import preferences
 from . import waypoint_links

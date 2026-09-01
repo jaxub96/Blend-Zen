@@ -38,8 +38,8 @@ class ZEN_OT_add_waypoint(bpy.types.Operator):
         name = find_next_waypoint_name()
 
         obj = bpy.data.objects.new(name, None)
-        obj.empty_display_type = 'PLAIN_AXES'
-        obj.empty_display_size = 0.15
+        obj.empty_display_type = 'SINGLE_ARROW'
+        obj.empty_display_size = 1.0
         obj.location = cursor_loc
         obj.rotation_mode = 'QUATERNION'
 
