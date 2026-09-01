@@ -5,12 +5,10 @@ and the waynet as the same kind of Empties the addon itself creates, so a
 round trip (export -> import) should reproduce the original scene.
 
 Scope for now, per the initial version of this feature: vob/waynet
-reconstruction is the real focus. Level mesh loading is best-effort only
-- it looks for a matching .MRM or .3ds file in the same directory as the
-ZEN (not any configured search path), and only actually imports if a
-compiled .MRM is found (no working raw .3ds importer exists in the
-installed KrxImpExp addon - confirmed by checking its registered
-operators - so a found .3ds is reported, not imported).
+reconstruction is the real focus. Level mesh loading is best-effort - it
+only looks in the same directory as the ZEN (not any configured search
+path), but both compiled .MRM and raw .3ds meshes can be imported, via
+KrxImpExp's plain-callable functions (see krximpexp_bridge.py).
 """
 
 import os
@@ -28,6 +26,8 @@ from zen_gin_export import (
 
 from .vob_types import VOB_DISPLAY
 from .waypoint_links import add_directed_link
+from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
+from .mesh_preview import get_preview_collection
 
 
 # Real ZenGin class name -> Blender name prefix. Mirrors the mapping in
@@ -60,7 +60,15 @@ def _set_transform(obj, position_prop, rotation_prop):
 
 
 def _create_vob_object(context, real_type, block):
-    vob_name = block.get("vobName", "")
+    if real_type == "zCVobLevelCompo":
+        # ZCVobLevelCompo's exporter always writes vobName as the fixed
+        # placeholder "LEVEL-VOB" (see zen_gin_zcvob_level_compo.py's
+        # _printed_vob_name override) - the real per-instance name lives
+        # in the visual property (the referenced mesh filename) instead.
+        import os as _os
+        vob_name = _os.path.splitext(block.get("visual", ""))[0]
+    else:
+        vob_name = block.get("vobName", "")
     prefix = _REAL_TYPE_TO_PREFIX.get(real_type, f"{real_type}:")
     full_name = f"{prefix}{vob_name}"
 
@@ -149,24 +157,40 @@ def import_zen(context, filepath, encoding="windows-1250"):
                     found_path, ext = _find_local_mesh_file(filepath, mesh_name)
                     if found_path is None:
                         report["level_mesh_status"] = "not_found"
-                    elif ext == ".mrm":
-                        directory = os.path.dirname(found_path) + os.sep
-                        filename = os.path.basename(found_path)
+                    else:
+                        imported_objects = []
                         try:
-                            bpy.ops.import_scene.krxmrmimp(
-                                filepath=found_path, directory=directory,
-                                files=[{"name": filename}],
-                            )
+                            if ext == ".mrm":
+                                before = set(bpy.data.objects.keys())
+                                krx_mrm_imp = get_krx_mrm_importer()
+                                krx_mrm_imp(filename=found_path, scale=0.01)
+                                after = set(bpy.data.objects.keys())
+                                imported_objects = [bpy.data.objects[n] for n in (after - before)]
+                            elif ext == ".3ds":
+                                krx_3ds_imp = get_krx_3ds_importer()
+                                loader = krx_3ds_imp(filename=found_path, scale=0.01)
+                                imported_objects = list(loader.imported_objects)
+
+                            preview_collection = get_preview_collection(context)
+                            for imported_obj in imported_objects:
+                                for coll in list(imported_obj.users_collection):
+                                    coll.objects.unlink(imported_obj)
+                                preview_collection.objects.link(imported_obj)
+                                imported_obj.parent = obj
+                                imported_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
+                                imported_obj["zen_is_preview"] = True
+                                imported_obj.hide_select = True
+                                imported_obj.lock_location = (True, True, True)
+                                imported_obj.lock_rotation = (True, True, True)
+                                imported_obj.lock_scale = (True, True, True)
+
                             report["level_mesh_status"] = "imported"
                             report["level_mesh_path"] = found_path
-                        except Exception:
+                            report["level_mesh_objects"] = [o.name for o in imported_objects]
+                        except Exception as e:
                             report["level_mesh_status"] = "found_not_importable"
                             report["level_mesh_path"] = found_path
-                    else:
-                        # Kaboom a raw .3ds source was found, but no working
-                        # importer exists for it in the installed addon
-                        report["level_mesh_status"] = "found_not_importable"
-                        report["level_mesh_path"] = found_path
+                            report["level_mesh_error"] = str(e)
 
     way_net_outer = find_block(world_block, type1="WayNet")
     if way_net_outer is not None:

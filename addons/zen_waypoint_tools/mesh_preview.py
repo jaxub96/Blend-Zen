@@ -3,6 +3,7 @@ import os
 import mathutils
 
 from .preferences import get_mesh_directories
+from .krximpexp_bridge import get_krx_mrm_importer
 
 # ---------------------------------------------------------------------------
 # VOB mesh preview - imports the real .MRM for a zCVob prop via KrxImpExp's
@@ -73,24 +74,18 @@ class ZEN_OT_load_vob_mesh(bpy.types.Operator):
 
         clear_existing_preview(vob_obj)
 
-        # krxmrmimp branches on len(operator.files): it needs a populated
-        # `files` collection (length 1 for the single-file path) even
-        # though that path then re-reads the real target from `filepath`
-        # itself. Passing only `filepath` silently no-ops (confirmed by
-        # reading KrxMrmImp.py directly - it hits the `else` branch and
-        # loops over zero files).
-        directory = os.path.dirname(filepath) + os.sep
-        filename = os.path.basename(filepath)
-
+        # The installed KrxImpExp version wraps its bpy.ops entry point
+        # (krxmrmimpgui) in an interactive external GUI dialog that can't
+        # be driven headlessly - so this calls the plain Python function
+        # the addon exposes for exactly this purpose instead. It creates
+        # objects directly with no return value, so we diff
+        # bpy.data.objects before/after to find what was created.
         before = set(bpy.data.objects.keys())
         try:
-            bpy.ops.import_scene.krxmrmimp(
-                filepath=filepath,
-                directory=directory,
-                files=[{"name": filename}],
-            )
+            krx_mrm_imp = get_krx_mrm_importer()
+            krx_mrm_imp(filename=filepath, scale=0.01)
         except Exception as e:
-            self.report({'ERROR'}, f"krxmrmimp import failed: {e}")
+            self.report({'ERROR'}, f"MRM import failed: {e}")
             return {'CANCELLED'}
         after = set(bpy.data.objects.keys())
         new_object_names = after - before

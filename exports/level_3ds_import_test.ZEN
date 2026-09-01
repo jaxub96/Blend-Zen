@@ -6,7 +6,7 @@ saveGame 0
 date 1.1.1970 12:0:0
 user BlenderZenGinExportPlugin
 END
-objects 7
+objects 6
 END
 
 [% oCWorld:zCWorld 36865 0]
@@ -37,26 +37,26 @@ END
 			[]
 		[]
 		childs1=int:0
-		[% zCVobStartpoint:zCVob 52224 3]
+		[% zCVob 52224 3]
 			pack=int:0
 			presetName=string:
 			bbox3DWS=rawFloat:0.0 0.0 -0.0 0.0 0.0 -0.0
 			trafoOSToWSRot=raw:0000803f0000000000000000000000000000803f0000008000000080000000000000803f
 			trafoOSToWSPos=vec3:0.0 0.0 -0.0
-			vobName=string:PC_START
-			visual=string:
+			vobName=string:NW_CITY_CANDLE_01
+			visual=string:NW_CITY_CANDLE_01.3DS
 			showVisual=bool:1
 			visualCamAlign=enum:0
 			visualAniMode=enum:0
 			visualAniModeStrength=float:0
 			vobFarClipZScale=float:1
-			cdStatic=bool:0
-			cdDyn=bool:0
-			staticVob=bool:0
+			cdStatic=bool:1
+			cdDyn=bool:1
+			staticVob=bool:1
 			dynShadow=enum:0
 			zbias=int:0
 			isAmbient=bool:0
-			[visual % 0 0]
+			[visual zCProgMeshProto 53505 4]
 			[]
 			[ai % 0 0]
 			[]
@@ -64,24 +64,10 @@ END
 		childs2=int:0
 	[]
 	[WayNet % 0 0]
-		[% zCWayNet 0 4]
+		[% zCWayNet 0 5]
 			waynetVersion=int:1
 			numWaypoints=int:0
-			numWays=int:1
-			[wayl0 zCWaypoint 0 5]
-				wpName=string:WP_001
-				waterDepth=int:0
-				underWater=int:0
-				position=vec3:0.0 0.0 -0.0
-				direction=vec3:0.0 0.0 1.0
-			[]
-			[wayr0 zCWaypoint 0 6]
-				wpName=string:WP_002
-				waterDepth=int:0
-				underWater=int:0
-				position=vec3:100.40702819824219 51.53787136077881 -290.85097312927246
-				direction=vec3:0.0 0.0 1.0
-			[]
+			numWays=int:0
 		[]
 	[]
 	[EndMarker % 0 0]
