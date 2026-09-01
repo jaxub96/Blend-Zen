@@ -1,0 +1,139 @@
+ZenGin Archive
+ver 1
+zCArchiverGeneric
+ASCII
+saveGame 0
+date 1.1.1970 12:0:0
+user BlenderZenGinExportPlugin
+END
+objects 9
+END
+
+[% oCWorld:zCWorld 36865 0]
+	[VobTree % 0 0]
+		childs0=int:3
+		[% zCVobLevelCompo:zCVob 52224 1]
+			pack=int:0
+			presetName=string:
+			bbox3DWS=rawFloat:-421.2790012359619 72.66576290130615 -47.1684455871582 -421.2790012359619 72.66576290130615 -47.1684455871582
+			trafoOSToWSRot=raw:0000803f0000000000000000000000000000803f0000008000000080000000000000803f
+			trafoOSToWSPos=vec3:-421.2790012359619 72.66576290130615 -47.1684455871582
+			vobName=string:LEVEL-VOB
+			visual=string:LEVEL_001.3DS
+			showVisual=bool:0
+			visualCamAlign=enum:0
+			visualAniMode=enum:0
+			visualAniModeStrength=float:0
+			vobFarClipZScale=float:1
+			cdStatic=bool:0
+			cdDyn=bool:0
+			staticVob=bool:0
+			dynShadow=enum:0
+			zbias=int:0
+			isAmbient=bool:0
+			[visual zCMesh 53505 2]
+			[]
+			[ai % 0 0]
+			[]
+		[]
+		childs1=int:0
+		[% zCVobLight:zCVob 52224 3]
+			pack=int:0
+			presetName=string:
+			bbox3DWS=rawFloat:101.59022808074951 -276.31115913391113 -105.06124496459961 101.59022808074951 -276.31115913391113 -105.06124496459961
+			trafoOSToWSRot=raw:0000803f0000000000000000000000000000803f0000008000000080000000000000803f
+			trafoOSToWSPos=vec3:101.59022808074951 -276.31115913391113 -105.06124496459961
+			vobName=string:LIGHT_001
+			visual=string:
+			showVisual=bool:1
+			visualCamAlign=enum:0
+			visualAniMode=enum:0
+			visualAniModeStrength=float:0
+			vobFarClipZScale=float:1
+			cdStatic=bool:0
+			cdDyn=bool:0
+			staticVob=bool:0
+			dynShadow=enum:0
+			zbias=int:0
+			isAmbient=bool:0
+			[visual % 0 0]
+			[]
+			[ai % 0 0]
+			[]
+			lightPresetInUse=string:
+			lightType=enum:0
+			range=float:1000.0
+			color=color:255 255 255 255
+			spotConeAngle=float:0.0
+			lightStatic=bool:1
+			lightQuality=enum:2
+			lensflareFX=string:
+			turnedOn=bool:1
+			rangeAniScale=string:
+			rangeAniFPS=float:0.0
+			rangeAniSmooth=bool:1
+			colorAniList=string:
+			colorAniFPS=float:0.0
+			colorAniSmooth=bool:1
+			canMove=bool:0
+		[]
+		childs2=int:0
+		[% zCVobStartpoint:zCVob 52224 4]
+			pack=int:0
+			presetName=string:
+			bbox3DWS=rawFloat:0.0 0.0 -0.0 0.0 0.0 -0.0
+			trafoOSToWSRot=raw:0000803f0000000000000000000000000000803f0000008000000080000000000000803f
+			trafoOSToWSPos=vec3:0.0 0.0 -0.0
+			vobName=string:PC_START
+			visual=string:
+			showVisual=bool:1
+			visualCamAlign=enum:0
+			visualAniMode=enum:0
+			visualAniModeStrength=float:0
+			vobFarClipZScale=float:1
+			cdStatic=bool:0
+			cdDyn=bool:0
+			staticVob=bool:0
+			dynShadow=enum:0
+			zbias=int:0
+			isAmbient=bool:0
+			[visual % 0 0]
+			[]
+			[ai % 0 0]
+			[]
+		[]
+		childs3=int:0
+	[]
+	[WayNet % 0 0]
+		[% zCWayNet 0 5]
+			waynetVersion=int:1
+			numWaypoints=int:0
+			numWays=int:2
+			[wayl0 zCWaypoint 0 6]
+				wpName=string:WP_001
+				waterDepth=int:0
+				underWater=int:0
+				position=vec3:0.0 0.0 -0.0
+				direction=vec3:0.0 0.0 1.0
+			[]
+			[wayr0 zCWaypoint 0 7]
+				wpName=string:WP_002
+				waterDepth=int:0
+				underWater=int:0
+				position=vec3:53.27043533325195 20.128679275512695 -217.12913513183594
+				direction=vec3:0.0 0.0 1.0
+			[]
+			[wayl1 § 0 7]
+			[]
+			[wayr1 zCWaypoint 0 8]
+				wpName=string:WP_003
+				waterDepth=int:0
+				underWater=int:0
+				position=vec3:150.06470680236816 -170.7409381866455 -173.43919277191162
+				direction=vec3:0.0 0.0 1.0
+			[]
+		[]
+	[]
+	[EndMarker % 0 0]
+	[]
+[]
