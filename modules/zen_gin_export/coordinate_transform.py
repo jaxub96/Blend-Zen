@@ -36,15 +36,33 @@ def blender_quaternion_to_gothic(w, x, y, z):
     matching Blender's own mathutils.Quaternion component order) to the
     equivalent quaternion in ZenGin space.
 
-    For a proper (determinant +1) change of basis, a rotation
-    quaternion's scalar part (w) is basis-independent and must stay
-    untouched - only the vector part (x, y, z) transforms, using the
-    identical per-axis mapping as blender_position_to_gothic (X->X,
-    Z->Y, Y->-Z).
+    The vector part uses the same per-axis permutation as
+    blender_position_to_gothic (X->X, Z->Y, Y->-Z), but NEGATED - i.e.
+    the rotation angle is inverted while the rotation axis stays the
+    same physical line. The scalar part (w) does not change sign, since
+    w = cos(angle/2) is identical for +angle and -angle.
+
+    Why the negation: a determinant check alone (is this a proper
+    rotation vs a mirror) cannot catch "rotating the correct axis by the
+    wrong sign" - both a +90 and a -90 degree rotation about the same
+    axis are valid proper rotations (determinant +1). The unnegated
+    version was mathematically self-consistent (verified by round-trip
+    testing) but empirically produced the wrong direction in a real
+    Spacer test: a prop rotated +90 degrees about Blender's vertical
+    axis (a bookshelf) came out facing the opposite direction in-game,
+    while un-rotated props in the same scene were unaffected - exactly
+    the signature of a rotation-direction sign error rather than a
+    handedness/mirror error (identity rotations are unaffected by
+    negating the angle, since -0 == 0).
+
+    This fix is inferred from that empirical evidence, not derived from
+    an independent authoritative spec of ZenGin's rotation convention -
+    if a future test shows rotations are wrong in some other way, this
+    is the first place to revisit.
 
     Returns (gw, gx, gy, gz) in the same (w, x, y, z) order.
     """
-    return (w, x, z, -y)
+    return (w, -x, -z, y)
 
 
 def is_proper_rotation(matrix_3x3):

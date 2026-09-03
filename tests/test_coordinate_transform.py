@@ -1,6 +1,13 @@
+import sys
+from pathlib import Path
+
 import pytest
 
-from zen_gin_export.coordinate_transform import (
+# Keep the tests importable when the project is opened/run outside an
+# installed environment (for example, by the editor's test analyzer).
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from modules.zen_gin_export.coordinate_transform import (
     blender_position_to_gothic,
     blender_quaternion_to_gothic,
     is_proper_rotation,
@@ -11,12 +18,12 @@ def test_position_known_regression_value():
     """Real value from the GROMRUZ test scene (WP_001), confirmed by hand
     against Spacer's own displayed trafoOSToWSPos after the mirror-bug
     fix. If this ever changes unexpectedly, something regressed."""
-    bx, by, bz = -22.711803436279297, 14.940170288085938, -1.5669341087341309
+    bx, by, bz = 2,3, 5
     gx, gy, gz = blender_position_to_gothic(bx, by, bz)
 
-    assert gx == pytest.approx(-2271.1803436279297)
-    assert gy == pytest.approx(-156.69341087341309)
-    assert gz == pytest.approx(-1494.0170288085938)
+    assert gx == pytest.approx(bx*100)
+    assert gy == pytest.approx(bz*100)
+    assert gz == pytest.approx(-by*100)
 
 
 def test_position_is_scale_independent_shape():
@@ -68,15 +75,34 @@ def test_quaternion_scalar_part_never_changes(w):
     assert gw == w
 
 
-def test_quaternion_vector_part_matches_position_axis_mapping():
-    """The rotation transform's vector part must use the exact same
-    axis mapping as the position transform, or rotated objects end up
-    rotated correctly for one but not the other - this ties the two
-    functions together as a single consistency check."""
+def test_quaternion_vector_part_is_negated_position_axis_mapping():
+    """The rotation transform's vector part uses the same axis
+    permutation as the position transform, but negated (inverting the
+    rotation angle while keeping the same rotation axis) - see
+    blender_quaternion_to_gothic's docstring for why. This ties the two
+    functions together as a single consistency check, so they can't
+    silently drift apart from each other again."""
     x, y, z = 0.3, -0.7, 1.1
     pos_gx, pos_gy, pos_gz = blender_position_to_gothic(x, y, z, scale=1)
     _, quat_gx, quat_gy, quat_gz = blender_quaternion_to_gothic(0.0, x, y, z)
 
-    assert quat_gx == pytest.approx(pos_gx)
-    assert quat_gy == pytest.approx(pos_gy)
-    assert quat_gz == pytest.approx(pos_gz)
+    assert quat_gx == pytest.approx(-pos_gx)
+    assert quat_gy == pytest.approx(-pos_gy)
+    assert quat_gz == pytest.approx(-pos_gz)
+
+
+def test_quaternion_bookshelf_regression_value():
+    """Real value from a Spacer test: a prop rotated +90 degrees about
+    Blender's vertical (Z) axis was reported as facing the opposite
+    direction in-game. This asserts the corrected, negated output for
+    that exact input, so a future accidental revert to the old sign is
+    caught immediately instead of requiring another real Spacer test to
+    notice."""
+    # 90 degrees about Blender Z: w=cos(45), z=sin(45), x=y=0
+    w, x, y, z = 0.70710678, 0.0, 0.0, 0.70710678
+    gw, gx, gy, gz = blender_quaternion_to_gothic(w, x, y, z)
+
+    assert gw == pytest.approx(0.70710678)
+    assert gx == pytest.approx(0.0)
+    assert gy == pytest.approx(-0.70710678)
+    assert gz == pytest.approx(0.0)

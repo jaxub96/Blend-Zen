@@ -1,4 +1,4 @@
-from zen_gin_export.archive_verifier import verify_archive_text
+from modules.zen_gin_export.archive_verifier import verify_archive_text
 
 
 def make_header(object_count):

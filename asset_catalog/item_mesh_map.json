@@ -1,0 +1,4 @@
+{
+  "_comment": "Maps oCItem script instance names to their real mesh filenames (without extension). These are NOT generally the same string - confirmed via a real Spacer test where using the mesh name 'ITMW_030_1H_PAL_SWORD_02' as the itemInstance resolved no in-game visual at all, while the real instance name 'ITMW_1H_PAL_SWORD' correctly resolved to that mesh. Add entries here as you discover them - see PLAN_vob_mesh_preview.md for the original plan this implements.",
+  "ITMW_1H_PAL_SWORD": "ITMW_030_1H_PAL_SWORD_02"
+}

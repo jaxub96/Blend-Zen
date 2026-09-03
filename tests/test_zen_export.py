@@ -1,4 +1,4 @@
-import zen_gin_export
+from modules import zen_gin_export
 from mathutils import Quaternion
 
 
