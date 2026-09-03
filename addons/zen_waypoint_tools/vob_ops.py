@@ -35,14 +35,16 @@ class ZEN_OT_add_vob(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "vob_type")
-        if self.vob_type == 'zCVob' and len(context.window_manager.zen_mesh_catalog) > 0:
-            # searchable autocomplete against the real mesh catalog - still
-            # freely editable, this only offers suggestions
-            layout.prop_search(
-                self, "vob_name",
-                context.window_manager, "zen_mesh_catalog",
-                text="Name",
-            )
+        wm = context.window_manager
+        # searchable autocomplete against the real mesh catalogs - still
+        # freely editable, this only offers suggestions. Props and items
+        # are separate catalogs (split by the ITxx item-mesh naming
+        # convention - see mesh_catalog.py) since an item's mesh isn't
+        # meant to be picked as a generic static prop and vice versa.
+        if self.vob_type == 'zCVob' and len(wm.zen_mesh_catalog) > 0:
+            layout.prop_search(self, "vob_name", wm, "zen_mesh_catalog", text="Name")
+        elif self.vob_type == 'oCItem' and len(wm.zen_item_catalog) > 0:
+            layout.prop_search(self, "vob_name", wm, "zen_item_catalog", text="Name")
         else:
             layout.prop(self, "vob_name", text="Name")
 
