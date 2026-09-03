@@ -6,11 +6,15 @@ from .preferences import get_mesh_directories
 from .krximpexp_bridge import get_krx_mrm_importer
 
 # ---------------------------------------------------------------------------
-# VOB mesh preview - imports the real .MRM for a zCVob prop via KrxImpExp's
-# krxmrmimp importer and parents it as a preview under the vob.
+# VOB mesh preview - imports the real .MRM for a zCVob prop or oCItem via
+# KrxImpExp's importer and parents it as a preview under the vob. Both
+# types use the same name-matches-mesh-filename convention (an item's
+# script instance name generally does correspond directly to its mesh
+# file for the common ITxx-prefixed items - see mesh_catalog.py).
 # ---------------------------------------------------------------------------
 
 PREVIEW_COLLECTION_NAME = "Zen VOB Previews"
+_PREVIEWABLE_PREFIXES = ("zCVob:", "oCItem:")
 
 
 def find_mesh_file(mesh_name):
@@ -47,22 +51,23 @@ class ZEN_OT_load_vob_mesh(bpy.types.Operator):
     bl_idname = "zen.load_vob_mesh"
     bl_label = "Load Mesh Preview"
     bl_description = (
-        "Import the real .MRM mesh for the active zCVob prop and parent it "
-        "as a preview (does not affect export data)"
+        "Import the real .MRM mesh for the active zCVob prop or oCItem and "
+        "parent it as a preview (does not affect export data)"
     )
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        return obj is not None and obj.name.startswith("zCVob:")
+        return obj is not None and obj.name.startswith(_PREVIEWABLE_PREFIXES)
 
     def execute(self, context):
         vob_obj = context.active_object
 
         # same name convention as the exporter's own _vob_name(): strip the
         # prefix and anything from the first dot onward
-        mesh_name = vob_obj.name[len("zCVob:"):].split(".")[0]
+        prefix = next(p for p in _PREVIEWABLE_PREFIXES if vob_obj.name.startswith(p))
+        mesh_name = vob_obj.name[len(prefix):].split(".")[0]
 
         filepath = find_mesh_file(mesh_name)
         if filepath is None:

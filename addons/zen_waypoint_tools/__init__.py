@@ -50,6 +50,7 @@ def register():
         bpy.utils.register_class(cls)
 
     bpy.types.WindowManager.zen_mesh_catalog = bpy.props.CollectionProperty(type=mesh_catalog.ZenMeshCatalogItem)
+    bpy.types.WindowManager.zen_item_catalog = bpy.props.CollectionProperty(type=mesh_catalog.ZenMeshCatalogItem)
     mesh_catalog.refresh_mesh_catalog()
 
     bpy.types.Object.zen_waypoint_links = bpy.props.PointerProperty(type=waypoint_links.ZenWaypointLinks)
@@ -66,6 +67,9 @@ def unregister():
 
     if hasattr(bpy.types.WindowManager, "zen_mesh_catalog"):
         del bpy.types.WindowManager.zen_mesh_catalog
+
+    if hasattr(bpy.types.WindowManager, "zen_item_catalog"):
+        del bpy.types.WindowManager.zen_item_catalog
 
     if hasattr(bpy.types.Scene, "zen_show_waypoint_links"):
         del bpy.types.Scene.zen_show_waypoint_links
