@@ -11,4 +11,4 @@ class OCItem(NoVisualObjectVob):
         return ""
 
     def _print_additional_data(self):
-        self._data_printer.print_string_property("itemInstance", self._vob_name())
+        self._data_printer.print_string_property("itemInstance", self._vob_name()+".3ds")
