@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Zen Waypoint Tools",
     "author": "jaxub",
-    "version": (2, 4, 0),
-    "blender": (5, 0, 0),
+    "version": (2, 5, 0),
+    "blender": (5, 2, 0),
     "location": "View3D > Sidebar > ZenGin",
     "description": "Place, link, and visualize zCWaypoint objects, add other ZenGin VOBs, preview their meshes, and export to an uncompiled ZEN",
     "category": "Object",
@@ -51,7 +51,9 @@ def register():
 
     bpy.types.WindowManager.zen_mesh_catalog = bpy.props.CollectionProperty(type=mesh_catalog.ZenMeshCatalogItem)
     bpy.types.WindowManager.zen_item_catalog = bpy.props.CollectionProperty(type=mesh_catalog.ZenMeshCatalogItem)
+    bpy.types.WindowManager.zen_item_instance_catalog = bpy.props.CollectionProperty(type=mesh_catalog.ZenMeshCatalogItem)
     mesh_catalog.refresh_mesh_catalog()
+    mesh_catalog.refresh_item_instance_catalog()
 
     bpy.types.Object.zen_waypoint_links = bpy.props.PointerProperty(type=waypoint_links.ZenWaypointLinks)
 
@@ -70,6 +72,9 @@ def unregister():
 
     if hasattr(bpy.types.WindowManager, "zen_item_catalog"):
         del bpy.types.WindowManager.zen_item_catalog
+
+    if hasattr(bpy.types.WindowManager, "zen_item_instance_catalog"):
+        del bpy.types.WindowManager.zen_item_instance_catalog
 
     if hasattr(bpy.types.Scene, "zen_show_waypoint_links"):
         del bpy.types.Scene.zen_show_waypoint_links

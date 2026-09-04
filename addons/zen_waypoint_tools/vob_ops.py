@@ -49,7 +49,21 @@ class ZEN_OT_add_vob(bpy.types.Operator):
         # make by accident. See item_mesh_map.json / mesh_preview.py for
         # the mesh-lookup side of this.
         if self.vob_type == 'zCVob' and len(wm.zen_mesh_catalog) > 0:
-            layout.prop_search(self, "vob_name", wm, "zen_mesh_catalog", text="Name")
+            layout.prop_search(
+                self,
+                "vob_name",
+                wm,
+                "zen_mesh_catalog",
+                text="Name",
+            )
+        elif self.vob_type == 'oCItem' and len(wm.zen_item_instance_catalog) > 0:
+            layout.prop_search(
+                self,
+                "vob_name",
+                wm,
+                "zen_item_instance_catalog",
+                text="Name",
+            )
         else:
             layout.prop(self, "vob_name", text="Name")
 
