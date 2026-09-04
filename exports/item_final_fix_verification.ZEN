@@ -1,0 +1,51 @@
+ZenGin Archive
+ver 1
+zCArchiverGeneric
+ASCII
+saveGame 0
+date 1.1.1970 12:0:0
+user BlenderZenGinExportPlugin
+END
+objects 3
+END
+
+[% oCWorld:zCWorld 36865 0]
+	[VobTree % 0 0]
+		childs0=int:1
+		[% oCItem:zCVob 0 1]
+			pack=int:0
+			presetName=string:
+			bbox3DWS=rawFloat:0.0 0.0 -0.0 0.0 0.0 -0.0
+			trafoOSToWSRot=raw:0000803f0000000000000080000000000000803f0000000000000000000000800000803f
+			trafoOSToWSPos=vec3:0.0 0.0 -0.0
+			vobName=string:ITMW_1H_PAL_SWORD
+			visual=string:
+			showVisual=bool:0
+			visualCamAlign=enum:0
+			visualAniMode=enum:0
+			visualAniModeStrength=float:0
+			vobFarClipZScale=float:1
+			cdStatic=bool:1
+			cdDyn=bool:1
+			staticVob=bool:0
+			dynShadow=enum:0
+			zbias=int:0
+			isAmbient=bool:0
+			[visual % 0 0]
+			[]
+			[ai % 0 0]
+			[]
+			itemInstance=string:ITMW_1H_PAL_SWORD
+		[]
+		childs1=int:0
+	[]
+	[WayNet % 0 0]
+		[% zCWayNet 0 2]
+			waynetVersion=int:1
+			numWaypoints=int:0
+			numWays=int:0
+		[]
+	[]
+	[EndMarker % 0 0]
+	[]
+[]
