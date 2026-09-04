@@ -2,6 +2,7 @@ import bpy
 import os
 
 from .preferences import get_mesh_directories
+from .item_mesh_map import get_item_mesh_map
 
 # Item meshes follow Gothic's "ITxx_..." naming convention (ITMW = melee
 # weapon, ITAR = armor, ITRU = rune, ITSC = scroll, ITMI = misc, etc.) -
@@ -75,3 +76,11 @@ class ZEN_OT_refresh_mesh_catalog(bpy.types.Operator):
             f"from configured directories",
         )
         return {'FINISHED'}
+
+def refresh_item_instance_catalog():
+    wm = bpy.context.window_manager
+    wm.zen_item_instance_catalog.clear()
+
+    for instance_name in sorted(get_item_mesh_map()):
+        item = wm.zen_item_instance_catalog.add()
+        item.name = instance_name
