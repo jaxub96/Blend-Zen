@@ -19,6 +19,7 @@ from . import mesh_catalog
 from . import vob_ops
 from . import mesh_preview
 from . import export_ops
+from . import quick_export
 from . import panel
 
 
@@ -40,6 +41,7 @@ classes = (
     vob_ops.ZEN_OT_add_vob,
     export_ops.ZEN_OT_export_zen,
     export_ops.ZEN_OT_import_zen,
+    quick_export.ZEN_OT_quick_export_package,
     mesh_preview.ZEN_OT_load_vob_mesh,
     panel.ZEN_PT_waypoint_tools,
 )
