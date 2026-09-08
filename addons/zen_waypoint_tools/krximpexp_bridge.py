@@ -45,3 +45,13 @@ def get_krx_mrm_importer():
         raise RuntimeError("krximpexp addon is not installed or enabled")
     mod = importlib.import_module(f"{module_name}.KrxMrmImp")
     return mod.KrxMrmImp
+
+
+def get_krx_3ds_exporter():
+    """Returns Krx3dsExp(filename, selected_objects_param=None,
+    use_local_cs=True, scale=100, matlib_file_path=None, ...)."""
+    module_name = _find_krximpexp_module_name()
+    if module_name is None:
+        raise RuntimeError("krximpexp addon is not installed or enabled")
+    mod = importlib.import_module(f"{module_name}.Krx3dsExp")
+    return mod.Krx3dsExp
