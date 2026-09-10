@@ -5,10 +5,17 @@ and the waynet as the same kind of Empties the addon itself creates, so a
 round trip (export -> import) should reproduce the original scene.
 
 Scope for now, per the initial version of this feature: vob/waynet
-reconstruction is the real focus. Level mesh loading is best-effort - it
-only looks in the same directory as the ZEN (not any configured search
-path), but both compiled .MRM and raw .3ds meshes can be imported, via
-KrxImpExp's plain-callable functions (see krximpexp_bridge.py).
+reconstruction is the real focus. Level mesh loading searches, in order:
+  1. The ZEN file's own directory (cheap, common case).
+  2. The sibling _work/Data/Meshes/Level/<mod>/ tree, if the ZEN sits
+     inside a _work/Data/Worlds/<mod>/ tree - our own Export Level
+     Package convention (see quick_export.py). Without this, a package
+     produced by our own other feature couldn't be found here at all,
+     since Worlds and Meshes/Level are sibling folders, not the same one.
+  3. Every directory configured in Preferences > Add-ons > Zen Waypoint
+     Tools > Mesh directories - the same search "Load Mesh Preview" uses.
+Both compiled .MRM and raw .3ds meshes can be imported, via KrxImpExp's
+plain-callable functions (see krximpexp_bridge.py).
 """
 
 import os
@@ -29,6 +36,7 @@ from .waypoint_links import add_directed_link
 from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
 from .mesh_preview import get_preview_collection
 from .light_props import create_light_object
+from .preferences import get_mesh_directories
 
 
 # Real ZenGin class name -> Blender name prefix. Mirrors the mapping in
@@ -116,14 +124,73 @@ def _create_waypoint_object(name, position_prop, direction_prop):
     return obj
 
 
-def _find_local_mesh_file(zen_filepath, mesh_name):
-    directory = os.path.dirname(zen_filepath)
+def _scan_directory_for_mesh(directory, mesh_name):
+    """Case-insensitive search for mesh_name.mrm or mesh_name.3ds
+    directly inside directory (non-recursive). .mrm (compiled) is
+    preferred over .3ds (source) if both happen to exist."""
     if not os.path.isdir(directory):
         return None, None
+    match_3ds = None
     for filename in os.listdir(directory):
         stem, ext = os.path.splitext(filename)
-        if stem.lower() == mesh_name.lower() and ext.lower() in (".mrm", ".3ds"):
-            return os.path.join(directory, filename), ext.lower()
+        if stem.lower() != mesh_name.lower():
+            continue
+        ext_lower = ext.lower()
+        if ext_lower == ".mrm":
+            return os.path.join(directory, filename), ".mrm"
+        if ext_lower == ".3ds":
+            match_3ds = (os.path.join(directory, filename), ".3ds")
+    return match_3ds if match_3ds else (None, None)
+
+
+def _find_work_root(filepath):
+    """Walk upward from filepath looking for a "_work" folder, matching
+    our own Export Level Package structure
+    (.../_work/Data/Worlds/<mod>/...). Returns the _work folder's path,
+    or None if not found within a reasonable depth."""
+    current = os.path.dirname(os.path.abspath(filepath))
+    for _ in range(6):
+        if os.path.basename(current) == "_work":
+            return current
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return None
+
+
+def _find_level_mesh_file(zen_filepath, mesh_name):
+    """Tiered search, cheapest/most-specific first - see module
+    docstring for the full explanation of each tier. Returns
+    (path, ext) or (None, None)."""
+
+    # 1. same directory as the ZEN itself
+    zen_dir = os.path.dirname(zen_filepath)
+    path, ext = _scan_directory_for_mesh(zen_dir, mesh_name)
+    if path:
+        return path, ext
+
+    # 2. sibling _work/Data/Meshes/Level/<mod>/ tree, derived from the
+    # ZEN's own _work/Data/Worlds/<mod>/ location. Every mod subfolder
+    # is checked, not just one matching name, since the mod folder name
+    # isn't recoverable from anything stored in the ZEN itself.
+    work_root = _find_work_root(zen_filepath)
+    if work_root:
+        meshes_level_dir = os.path.join(work_root, "Data", "Meshes", "Level")
+        if os.path.isdir(meshes_level_dir):
+            for mod_folder in os.listdir(meshes_level_dir):
+                candidate_dir = os.path.join(meshes_level_dir, mod_folder)
+                path, ext = _scan_directory_for_mesh(candidate_dir, mesh_name)
+                if path:
+                    return path, ext
+
+    # 3. every directory configured in Preferences - same search "Load
+    # Mesh Preview" uses.
+    for directory in get_mesh_directories():
+        path, ext = _scan_directory_for_mesh(directory, mesh_name)
+        if path:
+            return path, ext
+
     return None, None
 
 
@@ -160,7 +227,7 @@ def import_zen(context, filepath, encoding="windows-1250"):
             if real_type == "zCVobLevelCompo":
                 mesh_name = os.path.splitext(vob_block.get("visual", ""))[0]
                 if mesh_name:
-                    found_path, ext = _find_local_mesh_file(filepath, mesh_name)
+                    found_path, ext = _find_level_mesh_file(filepath, mesh_name)
                     if found_path is None:
                         report["level_mesh_status"] = "not_found"
                     else:
