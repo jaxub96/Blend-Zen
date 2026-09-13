@@ -20,6 +20,7 @@ from . import vob_ops
 from . import mesh_preview
 from . import export_ops
 from . import quick_export
+from . import asset_library
 from . import panel
 
 
@@ -42,6 +43,7 @@ classes = (
     export_ops.ZEN_OT_export_zen,
     export_ops.ZEN_OT_import_zen,
     quick_export.ZEN_OT_quick_export_package,
+    asset_library.ZEN_OT_populate_asset_library_file,
     mesh_preview.ZEN_OT_load_vob_mesh,
     panel.ZEN_PT_waypoint_tools,
 )
