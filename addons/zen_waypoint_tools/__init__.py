@@ -44,6 +44,7 @@ classes = (
     export_ops.ZEN_OT_import_zen,
     quick_export.ZEN_OT_quick_export_package,
     asset_library.ZEN_OT_populate_asset_library_file,
+    asset_library.ZEN_OT_populate_props_from_catalog,
     mesh_preview.ZEN_OT_load_vob_mesh,
     panel.ZEN_PT_waypoint_tools,
 )

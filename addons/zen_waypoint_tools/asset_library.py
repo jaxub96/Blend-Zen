@@ -135,15 +135,26 @@ def _get_context_override():
     return {"window": win, "screen": win.screen, "area": area, "region": region}
 
 
+def _resolve_mesh_name(obj_name):
+    """zCVob: object name IS the mesh filename directly (matches the
+    exporter's own convention). oCItem: object name is the Daedalus
+    script instance name, which generally is NOT the mesh filename -
+    resolved via item_mesh_map.json instead. Same distinction
+    mesh_preview.py's load-preview operator makes, for the same reason."""
+    raw_name = obj_name.split(":", 1)[-1].split(".")[0]
+    if obj_name.startswith("oCItem:"):
+        return resolve_item_mesh_name(raw_name)
+    return raw_name
+
+
 def populate_asset_with_mesh(obj, catalog_id=None):
     """Resolve, import, and transplant the real mesh onto obj's identity
     (name, transform, asset metadata, collection membership), mark it as
     an asset, assign the given catalog if provided, and trigger preview
     generation. Returns (ok, message)."""
-    instance_name = obj.name.split(":", 1)[-1].split(".")[0]
-    mesh_name = resolve_item_mesh_name(instance_name)
+    mesh_name = _resolve_mesh_name(obj.name)
     if mesh_name is None:
-        return False, f"no mesh mapping for '{instance_name}'"
+        return False, f"no mesh mapping for '{obj.name}'"
 
     filepath = find_mesh_file(mesh_name)
     if filepath is None:
@@ -235,7 +246,7 @@ def _process_next_asset():
     if not targets:
         succeeded, failed = job["succeeded"], job["failed"]
         print(f"[Zen Asset Library] Populated {len(succeeded)}/{len(succeeded) + len(failed)} "
-              f"asset(s) in catalog '{job['catalog_path']}'")
+              f"asset(s) - {job['describe_catalogs']()}")
         for n, m in failed:
             print(f"[Zen Asset Library]   FAILED {n}: {m}")
         bpy.ops.wm.save_mainfile()
@@ -243,13 +254,25 @@ def _process_next_asset():
         job["active"] = False
         return None
 
-    obj = targets.pop(0)
+    entry = targets.pop(0)
+    # "make_target" turns a plain identifier (e.g. a mesh catalog name)
+    # into a fresh placeholder object for jobs that have no pre-existing
+    # scene object to populate (see ZEN_OT_populate_props_from_catalog);
+    # jobs with real pre-existing targets (ZEN_OT_populate_asset_library_file)
+    # leave it unset and use the popped entry directly.
+    make_target = job.get("make_target")
+    obj = make_target(entry) if make_target else entry
     # capture the name before calling - on success the original object is
     # deleted internally as part of the identity transfer, so obj.name
     # would be a freed reference afterward
     original_name = obj.name
     try:
-        ok, msg = populate_asset_with_mesh(obj, catalog_id=job["catalog_id"])
+        # catalog_id_for(entry) - the *pre-transform* identifier (existing
+        # object or plain name), not obj - lets a job assign a different
+        # catalog per item (e.g. one per source subfolder) instead of one
+        # fixed catalog for the whole run
+        catalog_id = job["catalog_id_for"](entry)
+        ok, msg = populate_asset_with_mesh(obj, catalog_id=catalog_id)
     except Exception as e:
         ok, msg = False, f"exception: {e}"
     (job["succeeded"] if ok else job["failed"]).append((original_name, msg))
@@ -321,11 +344,118 @@ class ZEN_OT_populate_asset_library_file(bpy.types.Operator):
             total=len(targets),
             succeeded=[],
             failed=[],
-            catalog_id=catalog_id,
-            catalog_path=catalog_path,
+            catalog_id_for=lambda entry: catalog_id,
+            describe_catalogs=lambda: f"catalog '{catalog_path}'",
             save_every=self.save_every,
+            make_target=None,  # _populate_job persists across runs - always
+                                # reset this or a previous job's factory (see
+                                # ZEN_OT_populate_props_from_catalog) leaks in
         )
         bpy.app.timers.register(_process_next_asset)
         self.report({'INFO'}, f"Started populating {len(targets)} asset(s) in the "
                                f"background - watch the system console for progress")
+        return {'FINISHED'}
+
+
+def _create_vob_placeholder(mesh_name):
+    """Fresh, not-yet-asset-marked zCVob: Empty for a prop mesh catalog
+    name - the creation counterpart to the pre-existing oCItem: Empties
+    ZEN_OT_populate_asset_library_file consumes. populate_asset_with_mesh
+    handles marking it as an asset itself; it doesn't require that to
+    already be true going in."""
+    obj = bpy.data.objects.new(f"zCVob:{mesh_name}", None)
+    obj.empty_display_type = 'PLAIN_AXES'
+    obj.rotation_mode = 'QUATERNION'
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+class ZEN_OT_populate_props_from_catalog(bpy.types.Operator):
+    bl_idname = "zen.populate_props_from_catalog"
+    bl_label = "Populate Props From Mesh Catalog"
+    bl_description = (
+        "For every prop mesh name in the searchable mesh catalog (see "
+        "'Refresh Asset Catalog'), create a zCVob placeholder, import its "
+        "real mesh, generate a preview thumbnail, and mark it as an asset "
+        "with a catalog based on the mesh's own source subfolder (e.g. "
+        "Mobs/Misc, Mobs/Stones, Level/NewWorld) - not one flat catalog for "
+        "everything. Skips names that already exist as an asset-marked "
+        "zCVob in this file. Runs in the background one item at a time - "
+        "watch the system console for progress"
+    )
+    bl_options = {'REGISTER'}
+
+    max_count: bpy.props.IntProperty(
+        name="Max Count (0 = all)",
+        description="Process at most this many prop names, useful for "
+                    "testing a small batch before running the whole "
+                    "catalog. 0 processes everything not already done.",
+        default=0,
+        min=0,
+    )
+
+    save_every: bpy.props.IntProperty(
+        name="Save Every N Items",
+        description="Auto-save the file after every N processed assets "
+                    "(0 disables auto-save). Guards against losing a large "
+                    "batch's progress if Blender is closed or crashes mid-run",
+        default=15,
+        min=0,
+    )
+
+    @classmethod
+    def poll(cls, context):
+        return bpy.data.filepath != "" and not _populate_job["active"]
+
+    def execute(self, context):
+        from .mesh_catalog import refresh_mesh_catalog
+        refresh_mesh_catalog()
+
+        all_names = [item.name for item in context.window_manager.zen_mesh_catalog]
+
+        already_done = {
+            o.name[len("zCVob:"):].split(".")[0]
+            for o in bpy.data.objects
+            if o.name.startswith("zCVob:") and o.asset_data is not None
+        }
+        names = [n for n in all_names if n not in already_done]
+        if self.max_count > 0:
+            names = names[:self.max_count]
+
+        if not names:
+            self.report({'INFO'}, "No new prop mesh names to populate "
+                                   "(catalog empty, or all already done)")
+            return {'FINISHED'}
+
+        from .mesh_catalog import build_prop_category_map, PROP_FALLBACK_CATEGORY
+        category_by_name = build_prop_category_map(names)
+
+        # one catalog entry per distinct source subfolder (e.g.
+        # "Mobs/Misc", "Mobs/Stones", "Level/NewWorld"), not one flat
+        # catalog for every prop - see build_prop_category_map's
+        # docstring for how a name maps to a subfolder
+        library_root = find_library_root(bpy.data.filepath)
+        catalog_id_by_category = {}
+        for category in set(category_by_name.values()) | {PROP_FALLBACK_CATEGORY}:
+            catalog_id_by_category[category] = ensure_catalog_written(library_root, category)
+
+        def catalog_id_for(name):
+            category = category_by_name.get(name.upper(), PROP_FALLBACK_CATEGORY)
+            return catalog_id_by_category[category]
+
+        _populate_job.update(
+            active=True,
+            targets=names,
+            total=len(names),
+            succeeded=[],
+            failed=[],
+            catalog_id_for=catalog_id_for,
+            describe_catalogs=lambda: f"{len(catalog_id_by_category)} catalog(s) by source subfolder",
+            save_every=self.save_every,
+            make_target=_create_vob_placeholder,
+        )
+        bpy.app.timers.register(_process_next_asset)
+        self.report({'INFO'}, f"Started populating {len(names)} prop asset(s) across "
+                               f"{len(catalog_id_by_category)} subfolder catalog(s) in "
+                               f"the background - watch the system console for progress")
         return {'FINISHED'}

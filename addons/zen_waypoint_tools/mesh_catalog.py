@@ -84,3 +84,50 @@ def refresh_item_instance_catalog():
     for instance_name in sorted(get_item_mesh_map()):
         item = wm.zen_item_instance_catalog.add()
         item.name = instance_name
+
+
+_GENERIC_MESH_DIRS = ("_compiled", "_intern")
+PROP_FALLBACK_CATEGORY = "Mobs/Uncategorized"
+
+
+def _category_for_dir(directory):
+    """Everything after the last "Meshes" path segment, e.g.
+    ".../Data/Meshes/Mobs/Misc/" -> "Mobs/Misc". Returns None for
+    directories with no real categorization value: outside any
+    "Meshes" tree, the bare Meshes root itself, or one of the flat
+    aggregate dump folders (_compiled/_intern - these hold every
+    *compiled* .mrm with no subfolder structure at all; the real
+    per-category info only lives on the uncompiled .3ds sources under
+    Mobs/Level/Magic/etc, which is what this is for)."""
+    parts = os.path.normpath(directory).split(os.sep)
+    lowered = [p.lower() for p in parts]
+    if "meshes" not in lowered:
+        return None
+    idx = len(lowered) - 1 - lowered[::-1].index("meshes")
+    rel = parts[idx + 1:]
+    if not rel or rel[0] in _GENERIC_MESH_DIRS:
+        return None
+    return "/".join(rel)
+
+
+def build_prop_category_map(names):
+    """Maps each of `names` (case-insensitive) to a "Mobs/Misc"-style
+    catalog path, by matching it against a same-named file (any
+    extension - Gothic's compiled .mrm meshes are dumped flatly with no
+    folders, but the uncompiled .3ds sources they're modeled from are
+    organized into meaningful subfolders) anywhere under the configured
+    mesh directories. Names with no such match (e.g. INVISIBLE_ZCVOB,
+    SKYDOME_LAYER1, CAMERA - engine markers with no real prop folder)
+    are simply absent from the returned dict; look up with
+    dict.get(name.upper(), PROP_FALLBACK_CATEGORY)."""
+    name_set = {n.upper() for n in names}
+    mapping = {}
+    for directory in get_mesh_directories():
+        category = _category_for_dir(directory)
+        if category is None or not os.path.isdir(directory):
+            continue
+        for filename in os.listdir(directory):
+            base = os.path.splitext(filename)[0].upper()
+            if base in name_set and base not in mapping:
+                mapping[base] = category
+    return mapping
