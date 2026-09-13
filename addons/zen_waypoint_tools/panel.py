@@ -70,3 +70,6 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
 
         layout.separator()
         layout.operator("zen.quick_export_package", icon='PACKAGE')
+
+        layout.separator()
+        layout.operator("zen.populate_asset_library_file", icon='ASSET_MANAGER')
