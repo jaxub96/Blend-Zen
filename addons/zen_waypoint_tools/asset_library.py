@@ -22,10 +22,18 @@ session, not assumed):
   data immediately after the operator call, in the same script
   execution, will read a still-blank image - Blender's main thread
   can't process the job's completion callback while the script itself
-  is still running. This resolves on its own once the script returns
-  control to Blender's normal event loop (i.e. it works correctly when
-  triggered by a real button click) - no special handling is needed in
-  the operator itself, just don't try to synchronously wait for it.
+  is still running. This resolves on its own once that script execution
+  returns control to Blender's normal event loop - but that is exactly
+  why populate_asset_with_mesh() must never be called more than once
+  per event-loop tick: doing so from a synchronous loop over multiple
+  items queues overlapping async preview jobs before any of them
+  finish, which reliably **crashes Blender** (confirmed via a real UI
+  button click, not just via script - this is not a theoretical risk).
+  ZEN_OT_populate_asset_library_file works around this by never looping
+  synchronously: execute() only builds the target list and registers a
+  bpy.app.timers callback that processes exactly one item per tick,
+  returning a delay so Blender's event loop - and each item's preview
+  job - fully settles before the next item starts.
 
 Catalog assignment: blender_assets.cats.txt (a plain, documented text
 format - see Blender's developer docs) lives at the asset library root.
@@ -203,13 +211,69 @@ def populate_asset_with_mesh(obj, catalog_id=None):
     return True, mesh_name
 
 
+# Module-level state for the background timer job below. A single dict
+# instance (not per-operator-call locals) so the timer callback - which
+# Blender calls with no arguments and no operator context - can find it.
+_populate_job = {"active": False}
+
+
+def _process_next_asset():
+    """bpy.app.timers callback: pops and processes one target per tick.
+
+    Doing exactly one item per timer tick (instead of looping over all
+    targets inside a single execute() call) is the actual fix for a real
+    crash: back-to-back import + mark_single + generate_preview calls for
+    multiple items in one Python call never let Blender's event loop run
+    between them, which queues overlapping async preview-render jobs and
+    reliably crashes Blender (confirmed via a real button click, not just
+    when driven by a script). Returning a delay here instead of looping
+    lets the event loop - and each item's async preview job - fully
+    settle before the next import starts."""
+    job = _populate_job
+    targets = job["targets"]
+
+    if not targets:
+        succeeded, failed = job["succeeded"], job["failed"]
+        print(f"[Zen Asset Library] Populated {len(succeeded)}/{len(succeeded) + len(failed)} "
+              f"asset(s) in catalog '{job['catalog_path']}'")
+        for n, m in failed:
+            print(f"[Zen Asset Library]   FAILED {n}: {m}")
+        bpy.ops.wm.save_mainfile()
+        print("[Zen Asset Library] Final save complete.")
+        job["active"] = False
+        return None
+
+    obj = targets.pop(0)
+    # capture the name before calling - on success the original object is
+    # deleted internally as part of the identity transfer, so obj.name
+    # would be a freed reference afterward
+    original_name = obj.name
+    try:
+        ok, msg = populate_asset_with_mesh(obj, catalog_id=job["catalog_id"])
+    except Exception as e:
+        ok, msg = False, f"exception: {e}"
+    (job["succeeded"] if ok else job["failed"]).append((original_name, msg))
+
+    total_done = len(job["succeeded"]) + len(job["failed"])
+    print(f"[Zen Asset Library] ({total_done}/{job['total']}) {original_name}: "
+          f"{'ok' if ok else 'FAILED - ' + msg}")
+
+    if job["save_every"] and total_done % job["save_every"] == 0:
+        bpy.ops.wm.save_mainfile()
+        print(f"[Zen Asset Library] Progress saved ({total_done} processed so far)")
+
+    return 0.5  # seconds until the next tick
+
+
 class ZEN_OT_populate_asset_library_file(bpy.types.Operator):
     bl_idname = "zen.populate_asset_library_file"
     bl_label = "Populate Asset Previews (This File)"
     bl_description = (
         "For every marked-as-asset Empty in the current file (oCItem "
         "placeholders), import its real mesh, generate a preview "
-        "thumbnail, and assign a catalog based on this file's name/folder"
+        "thumbnail, and assign a catalog based on this file's name/folder. "
+        "Runs in the background one item at a time - watch the system "
+        "console for progress"
     )
     bl_options = {'REGISTER'}
 
@@ -222,9 +286,18 @@ class ZEN_OT_populate_asset_library_file(bpy.types.Operator):
         min=0,
     )
 
+    save_every: bpy.props.IntProperty(
+        name="Save Every N Items",
+        description="Auto-save the file after every N processed assets "
+                    "(0 disables auto-save). Guards against losing a large "
+                    "batch's progress if Blender is closed or crashes mid-run",
+        default=15,
+        min=0,
+    )
+
     @classmethod
     def poll(cls, context):
-        return bpy.data.filepath != ""
+        return bpy.data.filepath != "" and not _populate_job["active"]
 
     def execute(self, context):
         library_root = find_library_root(bpy.data.filepath)
@@ -238,19 +311,21 @@ class ZEN_OT_populate_asset_library_file(bpy.types.Operator):
         if self.max_count > 0:
             targets = targets[:self.max_count]
 
-        succeeded, failed = [], []
-        for obj in targets:
-            # capture the name before calling - on success the original
-            # object is deleted internally as part of the identity
-            # transfer, so obj.name would be a freed reference afterward
-            original_name = obj.name
-            ok, msg = populate_asset_with_mesh(obj, catalog_id=catalog_id)
-            (succeeded if ok else failed).append((original_name, msg))
+        if not targets:
+            self.report({'INFO'}, "No placeholder assets left to populate")
+            return {'FINISHED'}
 
-        report_type = 'INFO' if not failed else 'WARNING'
-        message = f"Populated {len(succeeded)}/{len(targets)} asset(s) in catalog '{catalog_path}'"
-        if failed:
-            sample = "; ".join(f"{n}: {m}" for n, m in failed[:5])
-            message += f" - {len(failed)} failed, e.g. {sample}"
-        self.report({report_type}, message)
+        _populate_job.update(
+            active=True,
+            targets=targets,
+            total=len(targets),
+            succeeded=[],
+            failed=[],
+            catalog_id=catalog_id,
+            catalog_path=catalog_path,
+            save_every=self.save_every,
+        )
+        bpy.app.timers.register(_process_next_asset)
+        self.report({'INFO'}, f"Started populating {len(targets)} asset(s) in the "
+                               f"background - watch the system console for progress")
         return {'FINISHED'}
