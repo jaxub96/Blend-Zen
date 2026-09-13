@@ -73,3 +73,4 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
 
         layout.separator()
         layout.operator("zen.populate_asset_library_file", icon='ASSET_MANAGER')
+        layout.operator("zen.populate_props_from_catalog", icon='ASSET_MANAGER')

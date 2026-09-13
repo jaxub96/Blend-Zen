@@ -37,12 +37,27 @@ and-drop from the Asset Browser instead of manual naming/importing.
   (predates this handoff). It doesn't correspond to any of the 160 real
   items - harmless clutter, flagged for cleanup but not yet removed
   (ask before deleting; hasn't been confirmed as safe to remove).
+- **`Props/Props.blend`**: **DONE - all 822/822** prop mesh names from
+  the searchable mesh catalog (`wm.zen_mesh_catalog`, scanned across all
+  `mesh_directories`) now exist as real `zCVob:<name>` assets - real
+  geometry, asset-marked, previewed, and cataloged by their actual
+  source subfolder (see "Prop catalog = source subfolder" below), not
+  one flat catalog. 6 images are genuinely missing on disk (not a repo
+  or tooling bug - see gotcha #5); everything else resolved cleanly.
 - **No other category file has been touched yet** (there are ~30+ more
-  under `Items/`, plus separate Mobs/Props/etc. categories planned but
-  not started). The next one should go much faster now that the crash
-  below is fixed - see "Immediate next step".
-- `blender_assets.cats.txt` currently has exactly one catalog entry:
-  `Items/ITMW`.
+  Items/* files, plus Mobs/*, if that ends up meaning something
+  different from what `Props.blend` already covers - check before
+  assuming there's more prop work left). The next Items/* file should go
+  much faster now that the crash below is fixed - see "Immediate next
+  step".
+- `blender_assets.cats.txt` currently has: `Items/ITMW` (from the Items
+  work) plus 15 subfolder-derived prop catalogs (`Mobs/NewWorld`,
+  `Mobs/Misc`, `Mobs/Addon`, `Mobs/Household`, `Mobs/Planks`,
+  `Mobs/Stones`, `Mobs/Uncategorized`, `Mobs/Nature`,
+  `Mobs/NewWorld/Events`, `Mobs/Addon/Events`, `Mobs/OldWorld`, `Magic`,
+  `Mobs/NewWorld/nolod`, `Mobs/_work`, `Mobs/Addon/nolod`, plus one prop
+  - `FAKESCROLL` - that genuinely lives under `Items/IT_FakeScroll` on
+  disk and got cataloged there, which is correct, not a bug).
 - `asset_catalog/item_mesh_map.json` in this repo already has ~869 real
   instance-name -> mesh-filename mappings (user-provided, not something
   to regenerate).
@@ -101,6 +116,56 @@ to change this operator's internals again: do not go back to a
 synchronous multi-item loop, and if you add any other per-item
 Blender-UI-driven step (not just previews), assume it may need the same
 one-per-tick treatment.
+
+## Props: a second, related operator (`zen.populate_props_from_catalog`)
+
+Unlike `Items_ITMW.blend`, `Props.blend` started **empty** - there were
+no pre-existing placeholder Empties to populate, because props aren't
+tracked in a curated per-file object list the way `oCItem:` items are.
+Instead they come from `wm.zen_mesh_catalog` (`mesh_catalog.py`) - the
+same searchable name list the "Add ZenGin VOB" dialog uses, built by
+scanning every configured mesh directory for `.MRM` files that don't
+match Gothic's `IT*` item-mesh naming convention.
+
+`ZEN_OT_populate_props_from_catalog` (`zen.populate_props_from_catalog`
+- second button in the sidebar, right under the Items one) handles
+this: for each name still missing (an asset-marked `zCVob:<name>`
+doesn't already exist), it creates a fresh `zCVob:<name>` Empty itself
+(`_create_vob_placeholder`), then reuses the exact same
+`populate_asset_with_mesh()` / one-per-timer-tick machinery as the Items
+operator - `_populate_job` grew a `make_target` hook (a callable that
+turns a plain catalog name into a placeholder object; the Items
+operator leaves it `None` and uses its pre-existing Empties directly).
+
+**Prop catalog = source subfolder, not one bucket for the whole
+file.** Gothic's *compiled* `.mrm` meshes are dumped flat with zero
+folder structure (they all live directly in `Meshes/_compiled/` - 1351
+files, no subfolders). The *uncompiled* `.3ds` sources they were
+modeled from, however, ARE organized into real per-category subfolders
+(`Meshes/Mobs/Misc/`, `Meshes/Mobs/Stones/`, `Meshes/Level/NewWorld/`,
+etc.) - 767 of them under `Mobs/` alone. `mesh_catalog.py`'s
+`build_prop_category_map(names)` exploits this: for each prop name, it
+searches every configured mesh directory for a same-named file of *any*
+extension and, if found in a real subfolder (not the flat
+`_compiled`/`_intern` dump or the bare `Meshes/` root - `_category_for_dir`
+excludes those), uses that subfolder's path (everything after the
+`Meshes` segment) as the catalog, e.g. `Mobs/Misc`. This matched 779/822
+names on the first real run. The other 43 - all engine markers with no
+real-world appearance (`INVISIBLE_ZCVOB*`, `SKYDOME_LAYER*`, `WAYPOINT`,
+`CAMERA`, `LIGHT`, `SOUND`, `MARKER`, `SPOT`, `SPHERE`, `STARTPOINT`,
+`VOBBOX`, `MAGICFRONTIER_OUT`) - have no `.3ds` source at all and fall
+back to `PROP_FALLBACK_CATEGORY` ("Mobs/Uncategorized"). Because the
+category (and therefore the right catalog_id) differs per item, the job
+runner's `catalog_id_for` field is a **callable** taking the pre-
+transform entry (not a single fixed UUID like the Items job uses) -
+see `_process_next_asset`'s docstring in `asset_library.py`.
+
+**If re-running this on a new prop-heavy file**: don't assume every
+name will resolve to a real subfolder - always check the fallback
+bucket's size after a run and decide whether it's worth improving the
+source-matching heuristic (e.g. searching Items/* subfolders too, which
+already happens and correctly caught one real prop - `FAKESCROLL` -
+living under `Items/IT_FakeScroll`).
 
 ## Known gotchas hit during development (read before continuing)
 
@@ -161,27 +226,42 @@ one-per-tick treatment.
    `.filepath` and calling `.reload()`. Worth a quick scan like this on
    any file imported before the KrxImpExp fix landed, if a texture ever
    looks wrong.
+5. **Not every missing texture is a bug to fix - some source files are
+   just genuinely absent.** After the `Props.blend` run, 6 images
+   (`ITMELEEWEAPONS.TGA`, `MODICARPET03/04/05.TGA`, `NW_NATUR.TGA`,
+   `OW_NATUR.TGA`, affecting 8 objects: the `OC_WEAPON_SHELF_*`,
+   `OC_EBA_FURE_SMALL_*`, and `OW_NATURE_DEADTREE_01` assets) resolved
+   to nothing anywhere under the configured texture directories -
+   confirmed via `find` across the entire `Gothic-Mod` tree, not just
+   the configured paths. Unlike gotcha #4, there is no correct path to
+   repoint these to; the files simply were never present in this local
+   copy of the mod's assets. Before spending time on a "fix" for a
+   missing texture, verify the file actually exists somewhere first.
 
 ## Immediate next step
 
-`Items_ITMW.blend` is done (see "Current state" above). Move to the
-next category file under `Items/`: open it, confirm `mesh_directories`
-and `asset_library_root` preferences are set (see gotcha #1 if not),
-click "Populate Asset Previews (This File)" (or use `max_count` for a
-smaller test batch first - the operator is now crash-safe at any batch
-size, but starting small on a new file is still a reasonable way to
-catch a per-file surprise early), verify a few thumbnails look right,
-confirm it auto-saved (or save manually). Then repeat across the rest of
-`Items/`.
+Both `Items_ITMW.blend` and `Props.blend` are done (see "Current
+state" above). Next: either move to the next Items/* category file
+(open it, confirm preferences per gotcha #1, click "Populate Asset
+Previews (This File)"), or check whether any Mobs/* category work is
+still meaningfully distinct from what `Props.blend` already covers -
+`Props.blend` already populated every non-item mesh name across ALL
+configured `Mobs/`, `Level/`, and `Magic/` mesh directories via
+`zen.populate_props_from_catalog`, so there may not be a separate
+"Mobs" file left to do.
 
-Also still pending: a stray, non-asset-marked leftover object named
-`ITMW_007_1H_SICKLE_01` in `Items_ITMW.blend`'s Scene Collection (debris
-from an earlier crash, unrelated to any of the 160 real items) - flagged
-for cleanup but not yet deleted; get confirmation before removing it.
+Still pending, low priority:
+- A stray, non-asset-marked leftover object named
+  `ITMW_007_1H_SICKLE_01` in `Items_ITMW.blend`'s Scene Collection
+  (debris from an earlier crash, unrelated to any of the 160 real
+  items) - flagged for cleanup but not yet deleted; get confirmation
+  before removing it.
+- The 6 genuinely-missing textures from gotcha #5 - only fixable by
+  sourcing the actual files from a more complete copy of the mod, not
+  from inside Blender.
 
 ## Longer-term / not started
 
-- Mobs/props categories (only Items/ has begun).
 - No UI yet for running the populate operator across *all* category
   files in one go - currently one file at a time, opened manually.
 - The plan doc `PLAN_vob_mesh_preview.md` covers the earlier live-scene
