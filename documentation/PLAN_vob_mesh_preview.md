@@ -15,11 +15,17 @@ order below:
   (`item_mesh_map.json`) below, skipping the Tier 1 name-heuristic - it
   goes straight to the lookup table and reports a warning (not a
   fallback guess) when an instance has no entry yet.
-- Step 4 (clear-previews operator, status label) - **not built** as a
-  standalone user-facing feature; re-running "Load Mesh Preview" on one
-  object does replace its own existing preview internally
-  (`clear_existing_preview()`), but there's no bulk "clear all previews"
-  button or loaded-count status label.
+- Step 4 (batch load, clear-previews operator) - **done**:
+  `ZEN_OT_load_all_vob_meshes` ("Load All") scans the scene for every
+  `zCVob:`/`oCItem:` without a preview yet (skip-if-loaded by default,
+  a `Force Reload` toggle in the redo panel to redo everything), and
+  `ZEN_OT_clear_vob_previews` ("Clear All") removes every
+  `zen_is_preview`-tagged object scene-wide. Per-object failures during
+  a batch run are summarized in the report popup and detailed in the
+  system console rather than failing the whole run. The one thing still
+  missing from this step: no persistent "N/M previews loaded" status
+  label in the panel - just the one-shot report popup each operator run
+  already gives you.
 - Step 5 / stretch (`zCVobLevelCompo`/`krxwrdimp` whole-world preview,
   full Daedalus-based item resolution) - **not built**, as expected for
   a stretch goal.

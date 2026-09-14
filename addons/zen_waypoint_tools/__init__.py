@@ -43,6 +43,8 @@ classes = (
     export_ops.ZEN_OT_import_zen,
     quick_export.ZEN_OT_quick_export_package,
     mesh_preview.ZEN_OT_load_vob_mesh,
+    mesh_preview.ZEN_OT_load_all_vob_meshes,
+    mesh_preview.ZEN_OT_clear_vob_previews,
     panel.ZEN_PT_waypoint_tools,
 )
 

@@ -39,6 +39,25 @@ what actually gets written to the uncompiled ZEN. You can delete, hide,
 or ignore preview objects freely - re-running "Load Mesh Preview"
 replaces the old preview rather than duplicating it.
 
+**Batch operators.** Next to "Load Mesh Preview" are two scene-wide
+buttons (`mesh_preview.py`):
+- **Load All** (`ZEN_OT_load_all_vob_meshes`) - loads a preview for every
+  `zCVob:`/`oCItem:` in the scene that doesn't already have one. Safe to
+  re-run any time you've added a few new vobs - already-previewed
+  objects are skipped by default. A source mesh changed on disk? Run it
+  once, then open the redo panel (bottom-left of the viewport, or F9)
+  and tick **Force Reload** to redo everything instead of only what's
+  missing.
+- **Clear All** (`ZEN_OT_clear_vob_previews`) - removes every
+  `zen_is_preview`-tagged object in the scene in one go, vob empties
+  untouched.
+
+Either one reports a summary popup (`Loaded N/M preview(s)`); if any
+individual object failed, the popup says how many and the full per-object
+reason goes to Blender's system console (**Window > Toggle System
+Console** on Windows) rather than a batch run failing outright on the
+first miss.
+
 **Not covered:** the oCMOB interactive-object family (chest, door, bed,
 switch, ladder, wheel, fire) has no preview support at all - they use
 animated `.MDS` models, not static `.MRM` meshes, which this mechanism
@@ -102,6 +121,9 @@ from Gothic's compiled Daedalus scripts, not the mesh files themselves.
    preview objects are correctly ignored by the exporter (they don't
    have a recognized name prefix), only the real vob empties are read.
 
+Placed a whole batch of props/items at once? Skip steps 2-4 per object
+and just click **Load All** once instead - see Batch operators above.
+
 ## Quick reference: what goes where
 
 | You want to... | Do this |
@@ -113,5 +135,7 @@ from Gothic's compiled Daedalus scripts, not the mesh files themselves.
 | Add a light | Add Other VOBs > Light - it's a real Blender Light, tune type/range/color/cone-angle in Blender's own Light Properties tab |
 | Add an interactive object (chest/door/bed/...) | See `USAGE_interactive_objects.md` - different mechanism, no mesh preview |
 | Find a mesh or item name | Refresh the catalog (Preferences or the sidebar refresh icon), then use the autocomplete in Add VOB |
+| Preview every prop/item in the scene at once | Load All button |
+| Remove every loaded preview at once | Clear All button |
 | Configure where meshes are searched | Preferences > Add-ons > Zen Waypoint Tools > Mesh directories |
 | Export for Spacer | Export Uncompiled ZEN button |
