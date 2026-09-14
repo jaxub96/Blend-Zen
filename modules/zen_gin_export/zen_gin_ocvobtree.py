@@ -6,6 +6,14 @@ from .zen_gin_zcvob import ZCVob
 from .zen_gin_zcvob_level_compo import ZCVobLevelCompo
 from .printer import Printer
 from .zen_gin_zcvob_sound import ZCVobSound
+from .zen_gin_zcvob_ocmob_inter import OCMobInter
+from .zen_gin_zcvob_ocmob_container import OCMobContainer
+from .zen_gin_zcvob_ocmob_door import OCMobDoor
+from .zen_gin_zcvob_ocmob_bed import OCMobBed
+from .zen_gin_zcvob_ocmob_switch import OCMobSwitch
+from .zen_gin_zcvob_ocmob_ladder import OCMobLadder
+from .zen_gin_zcvob_ocmob_wheel import OCMobWheel
+from .zen_gin_zcvob_ocmob_fire import OCMobFire
 
 class OCVobTree:
 
@@ -36,6 +44,22 @@ class OCVobTree:
             return ZCVobLight(blender_object, self.__printer, self.__data_printer)
         elif blender_object.name.startswith("zCVobSound:"):
             return ZCVobSound(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobContainer:"):
+            return OCMobContainer(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobDoor:"):
+            return OCMobDoor(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobBed:"):
+            return OCMobBed(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobSwitch:"):
+            return OCMobSwitch(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobLadder:"):
+            return OCMobLadder(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobWheel:"):
+            return OCMobWheel(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobFire:"):
+            return OCMobFire(blender_object, self.__printer, self.__data_printer)
+        elif blender_object.name.startswith("oCMobInter:"):
+            return OCMobInter(blender_object, self.__printer, self.__data_printer)
 
     def __init__(self, blender_objects, printer: Printer, data_printer):
         self.__printer = printer
