@@ -1,5 +1,45 @@
 # Plan: VOB Mesh Preview
 
+**Status: mostly built.** This is kept as the original planning record,
+not rewritten to match what shipped - see `USAGE_mesh_preview.md` for
+current, accurate usage instructions. Quick scorecard against the build
+order below:
+
+- Step 1 (`zCVob:` single-object preview) - **done**, `mesh_preview.py`.
+- Step 2 (configurable Preferences path list) - **done**,
+  `preferences.py` (a real `AddonPreferences` UI, not the hardcoded list
+  this plan assumed as a starting point). The **batch operator**
+  (`ZEN_OT_load_all_vob_meshes` below) was **not** built - "Load Mesh
+  Preview" only ever operates on the single active object.
+- Step 3 (`oCItem:` support) - **done**, but landed as *only* Tier 2
+  (`item_mesh_map.json`) below, skipping the Tier 1 name-heuristic - it
+  goes straight to the lookup table and reports a warning (not a
+  fallback guess) when an instance has no entry yet.
+- Step 4 (batch load, clear-previews operator) - **done**:
+  `ZEN_OT_load_all_vob_meshes` ("Load All") scans the scene for every
+  `zCVob:`/`oCItem:` without a preview yet (skip-if-loaded by default,
+  a `Force Reload` toggle in the redo panel to redo everything), and
+  `ZEN_OT_clear_vob_previews` ("Clear All") removes every
+  `zen_is_preview`-tagged object scene-wide. Per-object failures during
+  a batch run are summarized in the report popup and detailed in the
+  system console rather than failing the whole run. The one thing still
+  missing from this step: no persistent "N/M previews loaded" status
+  label in the panel - just the one-shot report popup each operator run
+  already gives you.
+- Step 5 / stretch (`zCVobLevelCompo`/`krxwrdimp` whole-world preview,
+  full Daedalus-based item resolution) - **not built**, as expected for
+  a stretch goal.
+- Both "Open questions" at the bottom were answered as this shipped:
+  `item_mesh_map.json` lives in the repo (`asset_catalog/`), and "Load
+  Meshes" stayed a deliberate, separate step rather than running
+  automatically on `zen.add_vob`.
+
+The oCMOB interactive-object family (chest/door/bed/etc., added later)
+is explicitly **out of scope** for this plan and has no mesh preview
+support - see `USAGE_interactive_objects.md`.
+
+---
+
 Goal: when a vob is added in Blender (a `zCVob:` prop, an `oCItem:` item,
 eventually the level mesh itself), automatically locate and import its
 real Gothic mesh so it's visible in the viewport before ever opening
