@@ -1,13 +1,4 @@
-import sys
-from pathlib import Path
-
-# mob_props.py has zero bpy dependency (unlike the rest of
-# zen_waypoint_tools, which imports bpy at module scope and can only run
-# inside Blender) - import it directly as a standalone module rather
-# than through the addon package, so this test suite stays Blender-free.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "addons" / "zen_waypoint_tools"))
-
-import mob_props  # noqa: E402
+import mob_props  # noqa: E402 (path set up by conftest.py)
 
 
 class FakeIdPropertiesUI:

@@ -57,10 +57,6 @@ class ZCVobLight(NoVisualObjectVob):
     def _visual(self):
         return ""
 
-    def __custom(self, key, default):
-        obj = self._blender_object()
-        return obj.get(key, default) if obj is not None else default
-
     def __light_values(self):
         """Returns (light_type, range_cm, spot_cone_angle_deg, (r, g, b))."""
         obj = self._blender_object()
@@ -78,19 +74,19 @@ class ZCVobLight(NoVisualObjectVob):
             r, g, b = blender_color_to_gothic(data.color)
             return light_type, range_cm, spot_cone_angle, (r, g, b)
 
-        light_type = str(self.__custom("light_type", "POINT")).upper()
-        range_cm = float(self.__custom("range", self._DEFAULT_RANGE))
-        spot_cone_angle = float(self.__custom("spot_cone_angle", 0.0))
-        r = int(self.__custom("color_r", 255))
-        g = int(self.__custom("color_g", 255))
-        b = int(self.__custom("color_b", 255))
+        light_type = str(self._custom("light_type", "POINT")).upper()
+        range_cm = float(self._custom("range", self._DEFAULT_RANGE))
+        spot_cone_angle = float(self._custom("spot_cone_angle", 0.0))
+        r = int(self._custom("color_r", 255))
+        g = int(self._custom("color_g", 255))
+        b = int(self._custom("color_b", 255))
         return light_type, range_cm, spot_cone_angle, (r, g, b)
 
     def _print_additional_data(self):
         light_type, range_value, spot_cone_angle, (r, g, b) = self.__light_values()
         light_type_ordinal = self._LIGHT_TYPE_ORDINALS.get(light_type, 0)
-        light_static = bool(self.__custom("light_static", True))
-        a = int(self.__custom("color_a", 255))
+        light_static = bool(self._custom("light_static", True))
+        a = int(self._custom("color_a", 255))
 
         self._data_printer.print_string_property("lightPresetInUse", "")
         self._data_printer.print_enum_property("lightType", light_type_ordinal)
