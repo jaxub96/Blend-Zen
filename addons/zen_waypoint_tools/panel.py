@@ -74,6 +74,9 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
 
         layout.separator()
         layout.operator("zen.load_vob_mesh", icon='MESH_DATA')
+        row = layout.row(align=True)
+        row.operator("zen.load_all_vob_meshes", text="Load All", icon='IMPORT')
+        row.operator("zen.clear_vob_previews", text="Clear All", icon='TRASH')
 
         layout.separator()
         layout.operator("zen.export_zen", icon='EXPORT')

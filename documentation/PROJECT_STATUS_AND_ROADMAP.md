@@ -40,7 +40,9 @@ working on that feature from this machine).
   per-instance fields (locked state, trigger target, contents, the real
   shared model to use, ...)
 - Real mesh preview (props and items) via KrxImpExp, locked/non-
-  selectable so it can't be accidentally desynced from the real vob data
+  selectable so it can't be accidentally desynced from the real vob data,
+  including scene-wide "Load All" (skip-if-loaded, Force Reload toggle)
+  and "Clear All" batch operators
 - Item instance -> mesh filename mapping (869 real entries) - the two
   are genuinely different namespaces, confirmed via a real Spacer test
 - Configurable mesh search directories and asset library root
@@ -122,9 +124,9 @@ abandoned.
 - Multi-file batch runner for the asset library (process every category
   file unattended, rather than one open file at a time)
 - Report the KrxImpExp `.TGA` case-sensitivity bug upstream
-- A batch "Load All" mesh-preview operator and a "clear all previews"
-  button (currently "Load Mesh Preview" only ever operates on the single
-  active object) - see `PLAN_vob_mesh_preview.md`'s status banner
+- A persistent "N/M previews loaded" status label in the panel (the
+  batch load/clear operators themselves are done - see
+  `PLAN_vob_mesh_preview.md`'s status banner)
 
 **Medium-term feature expansion**
 - Support more VOB types: the `zCTrigger` family (movers, script
