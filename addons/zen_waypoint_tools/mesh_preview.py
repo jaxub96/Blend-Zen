@@ -21,18 +21,31 @@ PREVIEW_COLLECTION_NAME = "Zen VOB Previews"
 _PREVIEWABLE_PREFIXES = ("zCVob:", "oCItem:")
 
 
-def find_mesh_file(mesh_name):
-    """Case-insensitive search for <mesh_name>.MRM across the directories
-    configured in Preferences > Add-ons > Zen Waypoint Tools, first
-    configured directory wins. Returns a path or None."""
-    target = f"{mesh_name}.mrm".lower()
+def build_mesh_index():
+    """Scan every directory configured in Preferences > Add-ons > Zen
+    Waypoint Tools once, returning a {lowercased filename: full path}
+    index - first configured directory wins on a name collision. Pass
+    the result to find_mesh_file() to reuse one scan across many
+    lookups (a batch run) instead of re-listing the same directories
+    once per object."""
+    index = {}
     for directory in get_mesh_directories():
         if not os.path.isdir(directory):
             continue
         for filename in os.listdir(directory):
-            if filename.lower() == target:
-                return os.path.join(directory, filename)
-    return None
+            key = filename.lower()
+            if key not in index:
+                index[key] = os.path.join(directory, filename)
+    return index
+
+
+def find_mesh_file(mesh_name, mesh_index=None):
+    """Case-insensitive lookup of <mesh_name>.MRM. Uses `mesh_index`
+    (see build_mesh_index()) if given; otherwise scans the configured
+    directories fresh for this one call. Returns a path or None."""
+    if mesh_index is None:
+        mesh_index = build_mesh_index()
+    return mesh_index.get(f"{mesh_name}.mrm".lower())
 
 
 def get_preview_collection(context):
@@ -55,13 +68,19 @@ def _has_preview(vob_obj):
     return any(child.get("zen_is_preview") for child in vob_obj.children)
 
 
-def load_preview_for_vob(context, vob_obj):
+def load_preview_for_vob(context, vob_obj, mesh_index=None, krx_importer=None):
     """Core of "Load Mesh Preview", shared by the single-object and batch
     operators below. Returns (status, message):
 
       status is 'loaded', 'no_mapping', 'not_found', or 'import_failed'.
       message is a ready-to-report string - the full helpful text for the
       failure cases, or "Loaded preview for X (N object(s))" on success.
+
+    `mesh_index` (build_mesh_index()) and `krx_importer`
+    (krximpexp_bridge.get_krx_mrm_importer()) let a batch caller resolve
+    these once for the whole run instead of once per object; omitted,
+    each is resolved fresh for this one call - what the single-object
+    operator does.
 
     Leaves scene selection untouched (krxmrmimp changes it) - callers that
     want the vob re-selected afterward (the single-object operator) do
@@ -84,7 +103,7 @@ def load_preview_for_vob(context, vob_obj):
     else:
         mesh_name = raw_name
 
-    filepath = find_mesh_file(mesh_name)
+    filepath = find_mesh_file(mesh_name, mesh_index)
     if filepath is None:
         return "not_found", f"No mesh file found for '{mesh_name}' in configured search paths"
 
@@ -98,7 +117,7 @@ def load_preview_for_vob(context, vob_obj):
     # bpy.data.objects before/after to find what was created.
     before = set(bpy.data.objects.keys())
     try:
-        krx_mrm_imp = get_krx_mrm_importer()
+        krx_mrm_imp = krx_importer or get_krx_mrm_importer()
         krx_mrm_imp(filename=filepath, scale=0.01)
     except Exception as e:
         return "import_failed", f"MRM import failed for '{mesh_name}': {e}"
@@ -203,10 +222,20 @@ class ZEN_OT_load_all_vob_meshes(bpy.types.Operator):
             self.report({'INFO'}, "Nothing to load - every vob already has a preview (try Force Reload)")
             return {'CANCELLED'}
 
+        try:
+            krx_importer = get_krx_mrm_importer()
+        except Exception as e:
+            self.report({'ERROR'}, f"KrxImpExp not available: {e}")
+            return {'CANCELLED'}
+        # resolved once for the whole batch, not once per object - both
+        # are otherwise-per-call I/O (a directory scan, an addon-module
+        # lookup) that doesn't change between objects in the same run
+        mesh_index = build_mesh_index()
+
         loaded = 0
         skipped = []
         for vob_obj in targets:
-            status, message = load_preview_for_vob(context, vob_obj)
+            status, message = load_preview_for_vob(context, vob_obj, mesh_index, krx_importer)
             if status == "loaded":
                 loaded += 1
             else:

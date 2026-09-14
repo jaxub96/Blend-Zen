@@ -31,13 +31,13 @@ class OCMob(ZCVob):
     documentation/USAGE_interactive_objects.md for a worked example.
 
     All fields are read as flat custom (ID) properties on the Blender
-    object via `ZCVob._blender_object()` - the same addon-independent
-    mechanism `ZCVobLight` uses (see its `__custom()`) - so this file has
-    no dependency on the zen_waypoint_tools addon and keeps working from
-    plain Python/pytest with a bare test double. zen_waypoint_tools'
-    vob_ops.py / mob_props.py is what actually creates these properties
-    (with UI descriptions, via Blender's native Custom Properties panel)
-    when a VOB of one of these types is added.
+    object via `ZCVob._custom()` - the same addon-independent mechanism
+    `ZCVobLight` uses - so this file has no dependency on the
+    zen_waypoint_tools addon and keeps working from plain Python/pytest
+    with a bare test double. zen_waypoint_tools' vob_ops.py / mob_props.py
+    is what actually creates these properties (with UI descriptions, via
+    Blender's native Custom Properties panel) when a VOB of one of these
+    types is added.
     """
 
     _visual_object_type_2 = "zCModel"
@@ -46,10 +46,6 @@ class OCMob(ZCVob):
     _SOUND_MATERIAL_ORDINALS = {
         "WOOD": 0, "STONE": 1, "METAL": 2, "LEATHER": 3, "CLAY": 4, "GLAS": 5,
     }
-
-    def _custom(self, key, default):
-        obj = self._blender_object()
-        return obj.get(key, default) if obj is not None else default
 
     def _visual(self):
         visual_name = str(self._custom("visual_name", "")).strip()
