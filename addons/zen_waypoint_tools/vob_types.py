@@ -13,9 +13,36 @@ VOB_TYPE_ITEMS = (
     ('oCItem', "Item",
      "Pickupable item - name must match the item's script instance name"),
     ('zCVobLight', "Light",
-     "Point or spot light source. Tune range/color/type via Custom Properties on the created empty"),
+     "Point or spot light source. Created as a real Blender Light - tune "
+     "range/color/type in Blender's own Light Properties tab"),
     ('zCVobSound', "Sound",
      "Sound source - name must match the sound's script instance name"),
+    ('oCMobContainer', "Interactive: Container",
+     "Lootable chest/barrel/sack - name is this instance's unique vobName, "
+     "not its mesh. Configure via Custom Properties after adding - see "
+     "documentation/USAGE_interactive_objects.md"),
+    ('oCMobDoor', "Interactive: Door",
+     "A door - name is this instance's unique vobName, not its mesh. "
+     "Configure via Custom Properties after adding"),
+    ('oCMobBed', "Interactive: Bed",
+     "A sleepable bed - name is this instance's unique vobName, not its "
+     "mesh. Configure via Custom Properties after adding"),
+    ('oCMobSwitch', "Interactive: Switch",
+     "A two-state switch/lever - name is this instance's unique vobName, "
+     "not its mesh. Configure via Custom Properties after adding"),
+    ('oCMobLadder', "Interactive: Ladder",
+     "A climbable ladder - name is this instance's unique vobName, not "
+     "its mesh. Configure via Custom Properties after adding"),
+    ('oCMobWheel', "Interactive: Wheel",
+     "A four-state rotating wheel mechanism - name is this instance's "
+     "unique vobName, not its mesh. Configure via Custom Properties after adding"),
+    ('oCMobFire', "Interactive: Fire",
+     "A usable fire source (campfire/forge) - name is this instance's "
+     "unique vobName, not its mesh. Configure via Custom Properties after adding"),
+    ('oCMobInter', "Interactive: Generic",
+     "Generic interactive object for anything that doesn't fit the more "
+     "specific types above - name is this instance's unique vobName, not "
+     "its mesh. Configure via Custom Properties after adding"),
 )
 
 VOB_DISPLAY = {
@@ -26,6 +53,14 @@ VOB_DISPLAY = {
     'oCItem': ('CUBE', 0.3),
     'zCVobLight': ('CONE', 0.3),
     'zCVobSound': ('SPHERE', 1.0),
+    'oCMobContainer': ('CUBE', 0.5),
+    'oCMobDoor': ('CUBE', 0.4),
+    'oCMobBed': ('CUBE', 0.6),
+    'oCMobSwitch': ('CONE', 0.25),
+    'oCMobLadder': ('PLAIN_AXES', 1.5),
+    'oCMobWheel': ('CIRCLE', 0.5),
+    'oCMobFire': ('SPHERE', 0.3),
+    'oCMobInter': ('CUBE', 0.4),
 }
 
 VOB_DEFAULT_LABEL = {
@@ -36,6 +71,14 @@ VOB_DEFAULT_LABEL = {
     'oCItem': "ITEM",
     'zCVobLight': "LIGHT",
     'zCVobSound': "SOUND",
+    'oCMobContainer': "CHEST",
+    'oCMobDoor': "DOOR",
+    'oCMobBed': "BED",
+    'oCMobSwitch': "SWITCH",
+    'oCMobLadder': "LADDER",
+    'oCMobWheel': "WHEEL",
+    'oCMobFire': "FIRE",
+    'oCMobInter': "INTERACTIVE",
 }
 
 
