@@ -1,5 +1,39 @@
 # Plan: VOB Mesh Preview
 
+**Status: mostly built.** This is kept as the original planning record,
+not rewritten to match what shipped - see `USAGE_mesh_preview.md` for
+current, accurate usage instructions. Quick scorecard against the build
+order below:
+
+- Step 1 (`zCVob:` single-object preview) - **done**, `mesh_preview.py`.
+- Step 2 (configurable Preferences path list) - **done**,
+  `preferences.py` (a real `AddonPreferences` UI, not the hardcoded list
+  this plan assumed as a starting point). The **batch operator**
+  (`ZEN_OT_load_all_vob_meshes` below) was **not** built - "Load Mesh
+  Preview" only ever operates on the single active object.
+- Step 3 (`oCItem:` support) - **done**, but landed as *only* Tier 2
+  (`item_mesh_map.json`) below, skipping the Tier 1 name-heuristic - it
+  goes straight to the lookup table and reports a warning (not a
+  fallback guess) when an instance has no entry yet.
+- Step 4 (clear-previews operator, status label) - **not built** as a
+  standalone user-facing feature; re-running "Load Mesh Preview" on one
+  object does replace its own existing preview internally
+  (`clear_existing_preview()`), but there's no bulk "clear all previews"
+  button or loaded-count status label.
+- Step 5 / stretch (`zCVobLevelCompo`/`krxwrdimp` whole-world preview,
+  full Daedalus-based item resolution) - **not built**, as expected for
+  a stretch goal.
+- Both "Open questions" at the bottom were answered as this shipped:
+  `item_mesh_map.json` lives in the repo (`asset_catalog/`), and "Load
+  Meshes" stayed a deliberate, separate step rather than running
+  automatically on `zen.add_vob`.
+
+The oCMOB interactive-object family (chest/door/bed/etc., added later)
+is explicitly **out of scope** for this plan and has no mesh preview
+support - see `USAGE_interactive_objects.md`.
+
+---
+
 Goal: when a vob is added in Blender (a `zCVob:` prop, an `oCItem:` item,
 eventually the level mesh itself), automatically locate and import its
 real Gothic mesh so it's visible in the viewport before ever opening

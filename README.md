@@ -26,17 +26,21 @@ ZEN is the right handoff format rather than a limitation to work around.
   - `WORKFLOW.md` - the Blender -> Spacer -> Gothic pipeline and the
     compiled/uncompiled ZEN distinction.
   - `USAGE_mesh_preview.md` - the mesh browsing/preview workflow.
-  - `PLAN_vob_mesh_preview.md` - feature plan for mesh preview; partially
-    implemented (level-compo and prop mesh loading both work now; item
-    mesh resolution is still open, see Known Issues).
+  - `PLAN_vob_mesh_preview.md` - the original feature plan for mesh
+    preview, kept as a historical record with a status banner at the top
+    (prop and item mesh preview both work now; batch/"load all" and a
+    clear-previews button don't exist yet, see Known Issues).
   - `VOB_TYPES.md` - every ZenGin VOB type researched so far: which are
     implemented here, which aren't yet, and what each does in-game.
   - `USAGE_interactive_objects.md` - how to configure a chest/door/bed/
     switch/etc. (the oCMOB family) so it's actually usable in-game, not
     just exported.
-- **`asset_catalog/`** - a generated snapshot of available Gothic meshes.
-  Superseded at runtime by the live directory scan in Preferences; kept
-  as a static reference.
+- **`asset_catalog/`** - `gothic2_meshes.json` is a one-time generated
+  snapshot of available Gothic meshes, superseded at runtime by the live
+  directory scan in Preferences and kept only as a static reference.
+  `item_mesh_map.json` is different: it's the actively-read, hand-
+  maintained instance-name -> mesh-filename lookup `oCItem` mesh preview
+  depends on (see `USAGE_mesh_preview.md`) - not superseded by anything.
 - **`tests/`** - pytest suite for the Blender-independent parts of
   `zen_gin_export`.
 - **`exports/`** - real sample `.blend`/`.ZEN` files generated during
@@ -157,9 +161,13 @@ updating KrxImpExp, that bridge module is the first place to check.
 - `zCVobLight`'s `lightType`/`lightQuality` enum ordinals are inferred
   from documented option names, not independently confirmed against a
   real compiled light.
-- `oCItem` mesh preview isn't wired up yet - an item's script instance
-  name generally isn't its mesh filename, unlike props. See
-  `PLAN_vob_mesh_preview.md`.
+- `oCItem` mesh preview requires a matching entry in
+  `asset_catalog/item_mesh_map.json` (instance name -> mesh filename) -
+  the mechanism itself works (see `USAGE_mesh_preview.md`), but the map
+  only knows about instances you've added by hand so far. No automatic
+  "Load All" / batch preview operator exists yet either - only the
+  active object at a time. See `PLAN_vob_mesh_preview.md`'s status
+  banner for the full picture of what's built vs. still open.
 - The oCMOB family (chest/door/bed/switch/ladder/wheel/fire/generic
   interactive) has no mesh preview support at all - "Load Mesh Preview"
   only imports static `.MRM` meshes, not the skeletal/animated `.MDS`
