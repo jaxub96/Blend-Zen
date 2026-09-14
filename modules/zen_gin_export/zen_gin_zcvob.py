@@ -68,10 +68,47 @@ class ZCVob:
         return self._vob_name() + self.__3ds_extension
 
     def __bounding_box(self):
-        return "{start} {end}".format(
-            start=self.__location(),
-            end=self.__location()
+        corners = self.__world_bound_box_corners()
+        if not corners:
+            # No mesh geometry anywhere in this vob's hierarchy (no
+            # preview loaded, or a genuinely visual-less vob like a
+            # freepoint) - fall back to the old degenerate single-point
+            # box, since there's nothing to size against.
+            point = self.__location()
+            return "{start} {end}".format(start=point, end=point)
+        gothic_points = [
+            blender_position_to_gothic(corner.x, corner.y, corner.z)
+            for corner in corners
+        ]
+        mins = [min(point[axis] for point in gothic_points) for axis in range(3)]
+        maxs = [max(point[axis] for point in gothic_points) for axis in range(3)]
+        return "{minx} {miny} {minz} {maxx} {maxy} {maxz}".format(
+            minx=mins[0], miny=mins[1], minz=mins[2],
+            maxx=maxs[0], maxy=maxs[1], maxz=maxs[2],
         )
+
+    def __world_bound_box_corners(self):
+        """Collect mesh bounding-box corners, in Blender world space,
+        from this vob's own object and every mesh descendant - notably
+        the KrxImpExp preview mesh that zen_waypoint_tools' mesh-preview
+        feature parents under the vob Empty (see mesh_preview.py). The
+        vob object itself carries no geometry (it's an Empty), so the
+        real bounding box lives entirely on preview children when one
+        has been loaded.
+        """
+        corners = []
+        for obj in ZCVob.__self_and_descendants(self.__blender_object):
+            bound_box = getattr(obj, "bound_box", None)
+            if getattr(obj, "type", None) == "MESH" and bound_box:
+                matrix_world = obj.matrix_world
+                corners.extend(matrix_world @ Vector(corner) for corner in bound_box)
+        return corners
+
+    @staticmethod
+    def __self_and_descendants(obj):
+        yield obj
+        for child in getattr(obj, "children", ()):
+            yield from ZCVob.__self_and_descendants(child)
 
     def __location(self):
         gx, gy, gz = blender_position_to_gothic(
