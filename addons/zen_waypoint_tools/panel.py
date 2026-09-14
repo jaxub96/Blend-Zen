@@ -8,6 +8,7 @@ from .waypoint_links import (
     LINK_SLOT_COUNT,
 )
 from .viewport_draw import start_draw_handler, is_draw_handler_active
+from .mob_props import mob_type_of, fields_for, init_mob_properties
 
 
 class ZEN_PT_waypoint_tools(bpy.types.Panel):
@@ -55,6 +56,17 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
             for target in neighbors:
                 layout.label(text=f"- {get_waypoint_display_name(target)}", icon='FORWARD')
 
+        mob_type = mob_type_of(active)
+        if mob_type is not None:
+            layout.separator()
+            fields = fields_for(mob_type)
+            init_mob_properties(active, mob_type, fields)  # self-heals older/imported objects
+            box = layout.box()
+            box.label(text=f"{mob_type} properties:")
+            col = box.column(align=True)
+            for key in fields:
+                col.prop(active, f'["{key}"]', text=key.replace("_", " ").title())
+
         layout.separator()
         row = layout.row(align=True)
         row.label(text="Add Other VOBs:")
@@ -63,6 +75,9 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
 
         layout.separator()
         layout.operator("zen.load_vob_mesh", icon='MESH_DATA')
+        row = layout.row(align=True)
+        row.operator("zen.load_all_vob_meshes", text="Load All", icon='IMPORT')
+        row.operator("zen.clear_vob_previews", text="Clear All", icon='TRASH')
 
         layout.separator()
         layout.operator("zen.export_zen", icon='EXPORT')

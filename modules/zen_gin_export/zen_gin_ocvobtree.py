@@ -6,8 +6,37 @@ from .zen_gin_zcvob import ZCVob
 from .zen_gin_zcvob_level_compo import ZCVobLevelCompo
 from .printer import Printer
 from .zen_gin_zcvob_sound import ZCVobSound
+from .zen_gin_zcvob_ocmob_inter import OCMobInter
+from .zen_gin_zcvob_ocmob_container import OCMobContainer
+from .zen_gin_zcvob_ocmob_door import OCMobDoor
+from .zen_gin_zcvob_ocmob_bed import OCMobBed
+from .zen_gin_zcvob_ocmob_switch import OCMobSwitch
+from .zen_gin_zcvob_ocmob_ladder import OCMobLadder
+from .zen_gin_zcvob_ocmob_wheel import OCMobWheel
+from .zen_gin_zcvob_ocmob_fire import OCMobFire
 
 class OCVobTree:
+
+    # prefix -> vob class. Every prefix ends in ":", so one name being a
+    # textual prefix of another can't cause an ambiguous match - order
+    # doesn't matter.
+    _VOB_CLASSES = {
+        "zCVob:": ZCVob,
+        "oCItem:": OCItem,
+        "zCVobSpot:": ZCVobSpot,
+        "zCVobStartpoint:": ZCVobStartpoint,
+        "zCVobLevelCompo:": ZCVobLevelCompo,
+        "zCVobLight:": ZCVobLight,
+        "zCVobSound:": ZCVobSound,
+        "oCMobContainer:": OCMobContainer,
+        "oCMobDoor:": OCMobDoor,
+        "oCMobBed:": OCMobBed,
+        "oCMobSwitch:": OCMobSwitch,
+        "oCMobLadder:": OCMobLadder,
+        "oCMobWheel:": OCMobWheel,
+        "oCMobFire:": OCMobFire,
+        "oCMobInter:": OCMobInter,
+    }
 
     @staticmethod
     def __vob_order(vob):
@@ -21,21 +50,12 @@ class OCVobTree:
             return 3
         elif isinstance(vob, ZCVobSound):
             return 4
+
     def __create_vob(self, blender_object):
-        if blender_object.name.startswith("zCVob:"):
-            return ZCVob(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("oCItem:"):
-            return OCItem(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("zCVobSpot:"):
-            return ZCVobSpot(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("zCVobStartpoint:"):
-            return ZCVobStartpoint(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("zCVobLevelCompo:"):
-            return ZCVobLevelCompo(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("zCVobLight:"):
-            return ZCVobLight(blender_object, self.__printer, self.__data_printer)
-        elif blender_object.name.startswith("zCVobSound:"):
-            return ZCVobSound(blender_object, self.__printer, self.__data_printer)
+        for prefix, vob_class in OCVobTree._VOB_CLASSES.items():
+            if blender_object.name.startswith(prefix):
+                return vob_class(blender_object, self.__printer, self.__data_printer)
+        return None
 
     def __init__(self, blender_objects, printer: Printer, data_printer):
         self.__printer = printer

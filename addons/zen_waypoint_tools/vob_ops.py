@@ -2,6 +2,7 @@ import bpy
 
 from .vob_types import VOB_TYPE_ITEMS, VOB_DISPLAY, find_next_vob_name
 from .light_props import create_light_object
+from .mob_props import init_mob_properties
 
 
 def _update_vob_type_name(self, context):
@@ -84,6 +85,8 @@ class ZEN_OT_add_vob(bpy.types.Operator):
 
         obj.location = context.scene.cursor.location.copy()
         obj.rotation_mode = 'QUATERNION'
+
+        init_mob_properties(obj, self.vob_type)
 
         target_collection = context.collection or context.scene.collection
         target_collection.objects.link(obj)

@@ -46,6 +46,8 @@ classes = (
     asset_library.ZEN_OT_populate_asset_library_file,
     asset_library.ZEN_OT_populate_props_from_catalog,
     mesh_preview.ZEN_OT_load_vob_mesh,
+    mesh_preview.ZEN_OT_load_all_vob_meshes,
+    mesh_preview.ZEN_OT_clear_vob_previews,
     panel.ZEN_PT_waypoint_tools,
 )
 

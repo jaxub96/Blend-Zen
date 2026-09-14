@@ -46,8 +46,10 @@ for free and only needs to override a handful of class attributes/methods:
   `vobName + ".3DS"`; override to return `""` for non-visual vobs).
 * `_show_visual`, `_static`, `_collision` - simple flag overrides.
 * `_print_additional_data()` - hook for writing any extra type-specific
-  properties (the only current user of this is `OCItem`, which writes an
-  `itemInstance` property).
+  properties, e.g. `OCItem`'s `itemInstance`, `ZCVobLight`'s full light
+  struct, or the oCMOB family's fields (see below) - call `super()` first
+  if your class sits partway down a multi-level hierarchy (see
+  `zen_gin_zcvob_ocmob_inter.py` / `_lockable.py` for the pattern).
 
 `NoVisualObjectVob` is a small intermediate base class for vobs that don't
 have a mesh at all (waypoints' cousins `ZCVobSpot`, `ZCVobStartpoint`,
@@ -60,11 +62,13 @@ Blender objects and do their own filtering:
 
 * `OCVobTree.__create_vob()` pattern-matches each object's name prefix
   (`zCVob:`, `oCItem:`, `zCVobSpot:`, `zCVobStartpoint:`,
-  `zCVobLevelCompo:`) against a fixed elif chain, constructs the matching
-  class, drops anything that doesn't match (plain meshes, cameras,
-  lights, etc. are silently ignored), sorts the result, and prints it as
-  a flat list of children under one implicit root - there's no real
-  parent/child nesting despite the "tree" name.
+  `zCVobLevelCompo:`, `zCVobLight:`, `zCVobSound:`, and the eight
+  `oCMob*:` prefixes below) against a `prefix -> class` dict, constructs
+  the matching class, and drops anything whose name doesn't match one of
+  these (plain meshes, cameras, unprefixed objects, etc. are silently
+  ignored) - then sorts the result and prints it as a flat list of
+  children under one implicit root - there's no real parent/child
+  nesting despite the "tree" name.
 * `WayNet` (in `zen_gin_waynet.py`) separately filters for
   `zCWaypoint:` objects and reads their link data from the
   `zen_waypoint_links` PropertyGroup - which is registered by the
@@ -99,11 +103,33 @@ exactly how many `[type ...]...[]` blocks your `print()`/
 * Core ASCII archive serialization (Printer / ZenGinDataPrinter / ZenArchive)
 * Vob types: `zCVob` (generic mesh prop), `oCItem`, `zCVobSpot` (freepoints),
   `zCVobStartpoint`, `zCVobLevelCompo` (mesh *reference*, not embedded
-  geometry - see `WORKFLOW.md` for the compiled/uncompiled distinction)
+  geometry - see `WORKFLOW.md` for the compiled/uncompiled distinction),
+  `zCVobLight`
+* The oCMOB family: `oCMobInter` (generic interactive object) and its
+  subclasses `oCMobContainer`, `oCMobDoor`, `oCMobBed`, `oCMobSwitch`,
+  `oCMobLadder`, `oCMobWheel`, `oCMobFire` - see
+  `zen_gin_zcvob_ocmob.py`/`_inter.py`/`_lockable.py` for the shared base
+  classes and `VOB_TYPES.md` / `USAGE_interactive_objects.md` for what
+  each does and how to configure one so it actually works in-game (the
+  export side alone isn't sufficient - see that doc for why)
 * `zCWaypoint` export via `WayNet`, fed by the `zen_waypoint_tools` addon
 * `FilePrinter` / `ConsolePrinter` output backends
 * Blender-side waypoint authoring: add/link/unlink/visualize, using plain
   Empty objects (no mesh or geometry-nodes dependency)
+* **Real `bbox3DWS`** - `ZCVob.__bounding_box()` walks the vob object's
+  own children recursively, collects `bound_box` corners (in world
+  space, via `matrix_world`) from every mesh it finds, and reports the
+  true min/max extent instead of a degenerate point. In practice this
+  means the box is only as good as whatever mesh geometry is present in
+  Blender: since every vob is authored as an Empty (never a mesh
+  itself), this only produces a real box once "Load Mesh Preview" (see
+  `mesh_preview.py` / `USAGE_mesh_preview.md`) has parented the actual
+  KrxImpExp mesh under it. A vob exported with no preview loaded still
+  falls back to the old single-point box (`start == end`) - there is no
+  geometry anywhere in its hierarchy to size against. `mesh_preview.py`
+  only supports loading a preview for `zCVob:`/`oCItem:` objects, so
+  `zCVobSpot`/`zCVobStartpoint` (freepoints/startpoints - genuinely
+  visual-less vob types) always fall into this fallback.
 
 ### Present but not fully solid
 
@@ -116,9 +142,6 @@ exactly how many `[type ...]...[]` blocks your `print()`/
   per-type ordering the code seems to intend never actually happens.
   Doesn't appear to break valid output, just doesn't do what it looks
   like it's meant to do.
-* **Bounding boxes** are a single point repeated twice (`start == end`),
-  not a real box derived from object size - documented as a known issue
-  in the main README, relevant to LOD behavior.
 * **`FilePrinter` writes on `__del__`**, i.e. it relies on Python's
   garbage collector to actually flush content to disk, rather than an
   explicit `save()`/`close()` call. This bit us directly during testing -
@@ -133,10 +156,9 @@ exactly how many `[type ...]...[]` blocks your `print()`/
 
 ### Not yet implemented
 
-* `zCVobLight` (static/dynamic lighting)
-* `oCMobInter` and its interactive-object subclasses (doors, containers,
-  switches, fires, ladders, wheels, etc.)
-* Sound (`zCVobSound`, `zCVobSoundDaytime`)
+* `zCVobSoundDaytime` (day/night-varying sound - plain `zCVobSound` is
+  implemented, though it currently only writes the base vob block with
+  no sound-specific fields of its own - see VOB_TYPES.md)
 * Triggers of any kind (`zCTrigger` family: movers, script triggers,
   level-change triggers, code masters, ...)
 * Zones/atmosphere (`oCZoneMusic(Default)`, fog/far-plane zones)
@@ -159,10 +181,13 @@ unit of work and follows a consistent recipe, demonstrated by
 
 1. New file, subclass `ZCVob` or `NoVisualObjectVob` depending on whether
    it has a mesh.
-2. Set `_type_name` to the real ZenGin class string (`"YourType:zCVob"`,
-   or `"YourType:zCVob:oCMOB"` etc. for deeper native hierarchies - see
-   the "polymorphic class names" note in ZenKit's archive format docs if
-   you go beyond a single level of inheritance).
+2. Set `_type_name` to the real ZenGin class string: `"YourType:zCVob"`
+   for a direct child of `zCVob`, or the full most-derived-first chain
+   down to `zCVob` for deeper native hierarchies - confirmed from a real
+   decompiled archive, e.g. `"oCMobInter:oCMOB:zCVob"` (note `oCVob`,
+   though it appears in class-hierarchy diagrams, is NOT part of this
+   persisted chain - see the oCMOB family in
+   `zen_gin_zcvob_ocmob_inter.py` etc. for more examples).
 3. Override `_visual()`, `_show_visual`, `_static`, `_collision` as
    appropriate.
 4. If the type needs extra properties beyond the standard vob block,
@@ -174,3 +199,15 @@ Anything with its own sub-hierarchy of properties (triggers, lights,
 interactive objects) will need more thought - primarily figuring out that
 type's exact property schema, which the `zk.gothickit.dev` documentation
 for each class is the most reliable current source for.
+
+For a type that needs its own tunable, per-instance data beyond
+name/position/rotation (a light's color, an oCMOB's lock state, ...),
+the established pattern is: read it as a flat custom (ID) property on
+the Blender object via `self._custom(key, default)` - a protected method
+on the `ZCVob` base itself (`zen_gin_zcvob.py`), shared by `ZCVobLight`
+and the whole oCMOB family - NOT a dependency on the `zen_waypoint_tools`
+addon's own PropertyGroups. This keeps `zen_gin_export` usable from
+plain Python with a bare test double (see `tests/test_ocmob_export.py`),
+with the addon side (`zen_waypoint_tools/mob_props.py` /
+`light_props.py`) only responsible for populating sensible defaults and
+UI descriptions when the object is created.
