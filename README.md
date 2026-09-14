@@ -164,10 +164,9 @@ updating KrxImpExp, that bridge module is the first place to check.
 - `oCItem` mesh preview requires a matching entry in
   `asset_catalog/item_mesh_map.json` (instance name -> mesh filename) -
   the mechanism itself works (see `USAGE_mesh_preview.md`), but the map
-  only knows about instances you've added by hand so far. No automatic
-  "Load All" / batch preview operator exists yet either - only the
-  active object at a time. See `PLAN_vob_mesh_preview.md`'s status
-  banner for the full picture of what's built vs. still open.
+  only knows about instances you've added by hand so far. See
+  `PLAN_vob_mesh_preview.md`'s status banner for the full picture of
+  what's built vs. still open.
 - The oCMOB family (chest/door/bed/switch/ladder/wheel/fire/generic
   interactive) has no mesh preview support at all - "Load Mesh Preview"
   only imports static `.MRM` meshes, not the skeletal/animated `.MDS`
