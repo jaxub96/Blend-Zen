@@ -1,30 +1,11 @@
-import sys
-from pathlib import Path
-
 from mathutils import Quaternion
 
-# Keep the tests importable when the project is opened/run outside an
-# installed environment (for example, by the editor's test analyzer).
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from modules.zen_gin_export.printer import Printer
+from conftest import RecordingPrinter, FakeLocation
 from modules.zen_gin_export.zen_gin_data_printer import ZenGinDataPrinter
 from modules.zen_gin_export.zen_gin_zcvob_ocmob_inter import OCMobInter
 from modules.zen_gin_export.zen_gin_zcvob_ocmob_container import OCMobContainer
 from modules.zen_gin_export.zen_gin_zcvob_ocmob_door import OCMobDoor
 from modules.zen_gin_export.zen_gin_zcvob_ocmob_fire import OCMobFire
-
-
-class RecordingPrinter(Printer):
-    def __init__(self):
-        self.lines = []
-
-    def print(self, *content):
-        self.lines.append("".join(content))
-
-
-class FakeLocation:
-    x = y = z = 0.0
 
 
 class FakeBlenderObject:

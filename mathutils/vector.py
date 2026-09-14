@@ -11,9 +11,3 @@ class Vector:
         yield self.x
         yield self.y
         yield self.z
-
-    def __eq__(self, other):
-        return tuple(self) == tuple(other)
-
-    def __repr__(self):
-        return "Vector(({}, {}, {}))".format(self.x, self.y, self.z)

@@ -109,12 +109,10 @@ MOB_PROPERTIES = {
     ),
 }
 
-# Longest-name-first so a prefix check can't match a shorter type whose
-# name happens to be a prefix of a longer one.
-_KNOWN_MOB_TYPES = tuple(sorted(
-    {t for _, _, types in MOB_PROPERTIES.values() for t in types},
-    key=len, reverse=True,
-))
+# Every match below requires a trailing ":", so one type name being a
+# prefix of another's text can't cause a false match - order doesn't
+# matter.
+_KNOWN_MOB_TYPES = tuple({t for _, _, types in MOB_PROPERTIES.values() for t in types})
 
 
 def fields_for(vob_type):
@@ -135,12 +133,14 @@ def mob_type_of(obj):
     return None
 
 
-def init_mob_properties(obj, vob_type):
+def init_mob_properties(obj, vob_type, fields=None):
     """Set every custom property this VOB type needs to a sensible
     default, with a UI description - but only for keys that don't
     already exist, so re-running this (e.g. from the sidebar panel,
-    every draw) never clobbers a value you've already tuned by hand."""
-    for key in fields_for(vob_type):
+    every draw) never clobbers a value you've already tuned by hand.
+    Pass `fields` (from `fields_for(vob_type)`) when the caller already
+    has it, to avoid rebuilding that list a second time."""
+    for key in fields if fields is not None else fields_for(vob_type):
         if key in obj.keys():
             continue
         default, description, _ = MOB_PROPERTIES[key]

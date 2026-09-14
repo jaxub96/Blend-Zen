@@ -63,8 +63,8 @@ Blender objects and do their own filtering:
 * `OCVobTree.__create_vob()` pattern-matches each object's name prefix
   (`zCVob:`, `oCItem:`, `zCVobSpot:`, `zCVobStartpoint:`,
   `zCVobLevelCompo:`, `zCVobLight:`, `zCVobSound:`, and the eight
-  `oCMob*:` prefixes below) against a fixed elif chain, constructs the
-  matching class, and drops anything whose name doesn't match one of
+  `oCMob*:` prefixes below) against a `prefix -> class` dict, constructs
+  the matching class, and drops anything whose name doesn't match one of
   these (plain meshes, cameras, unprefixed objects, etc. are silently
   ignored) - then sorts the result and prints it as a flat list of
   children under one implicit root - there's no real parent/child
@@ -203,9 +203,9 @@ for each class is the most reliable current source for.
 For a type that needs its own tunable, per-instance data beyond
 name/position/rotation (a light's color, an oCMOB's lock state, ...),
 the established pattern is: read it as a flat custom (ID) property on
-the Blender object via `self._custom(key, default)` /
-`self._blender_object().get(key, default)` (see `ZCVobLight.__custom()`
-or `OCMob._custom()`), NOT a dependency on the `zen_waypoint_tools`
+the Blender object via `self._custom(key, default)` - a protected method
+on the `ZCVob` base itself (`zen_gin_zcvob.py`), shared by `ZCVobLight`
+and the whole oCMOB family - NOT a dependency on the `zen_waypoint_tools`
 addon's own PropertyGroups. This keeps `zen_gin_export` usable from
 plain Python with a bare test double (see `tests/test_ocmob_export.py`),
 with the addon side (`zen_waypoint_tools/mob_props.py` /

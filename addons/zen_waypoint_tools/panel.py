@@ -59,11 +59,12 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
         mob_type = mob_type_of(active)
         if mob_type is not None:
             layout.separator()
-            init_mob_properties(active, mob_type)  # self-heals older/imported objects
+            fields = fields_for(mob_type)
+            init_mob_properties(active, mob_type, fields)  # self-heals older/imported objects
             box = layout.box()
             box.label(text=f"{mob_type} properties:")
             col = box.column(align=True)
-            for key in fields_for(mob_type):
+            for key in fields:
                 col.prop(active, f'["{key}"]', text=key.replace("_", " ").title())
 
         layout.separator()

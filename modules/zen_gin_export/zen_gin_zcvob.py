@@ -45,6 +45,14 @@ class ZCVob:
         direct access to the name-mangled __blender_object."""
         return self.__blender_object
 
+    def _custom(self, key, default):
+        """Read a flat custom (ID) property from the Blender object, the
+        addon-independent way any subclass with per-instance tunable data
+        (ZCVobLight, the oCMOB family) reads it - see ARCHITECTURE.md's
+        note on this pattern."""
+        obj = self._blender_object()
+        return obj.get(key, default) if obj is not None else default
+
     def __print_visual_block(self, object_index):
         self._data_printer.start_object_block(
             type_1="visual",

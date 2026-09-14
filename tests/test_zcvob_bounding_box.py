@@ -1,29 +1,9 @@
-import sys
-from pathlib import Path
-
 import pytest
 from mathutils import Matrix, Quaternion
 
-# Keep the tests importable when the project is opened/run outside an
-# installed environment (for example, by the editor's test analyzer).
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from modules.zen_gin_export.printer import Printer
+from conftest import RecordingPrinter, FakeLocation
 from modules.zen_gin_export.zen_gin_data_printer import ZenGinDataPrinter
 from modules.zen_gin_export.zen_gin_zcvob import ZCVob
-
-
-class RecordingPrinter(Printer):
-    def __init__(self):
-        self.lines = []
-
-    def print(self, *content):
-        self.lines.append("".join(content))
-
-
-class FakeLocation:
-    def __init__(self, x=0.0, y=0.0, z=0.0):
-        self.x, self.y, self.z = x, y, z
 
 
 class FakeMeshData:
@@ -104,7 +84,14 @@ def test_preview_mesh_box_follows_child_world_transform():
     this already includes the vob's position) determines the box, not
     the vob Empty's location directly - regression guard against
     accidentally reading the vob's own location instead."""
-    offset = Matrix.Translation((5.0, 0.0, 0.0)) @ Matrix.Diagonal((2.0, 2.0, 2.0, 1.0))
+    # scale by 2 on every axis, then shift +5 on X (row-major, applied as
+    # matrix_world @ Vector - see mathutils/matrix.py's __matmul__)
+    offset = Matrix((
+        (2.0, 0.0, 0.0, 5.0),
+        (0.0, 2.0, 0.0, 0.0),
+        (0.0, 0.0, 2.0, 0.0),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
     preview = FakeMeshObject(bound_box=UNIT_CUBE, matrix_world=offset)
     vob = FakeVobObject("zCVob:Offset", FakeLocation(0, 0, 0), children=(preview,))
 
