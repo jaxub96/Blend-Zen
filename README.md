@@ -29,6 +29,11 @@ ZEN is the right handoff format rather than a limitation to work around.
   - `PLAN_vob_mesh_preview.md` - feature plan for mesh preview; partially
     implemented (level-compo and prop mesh loading both work now; item
     mesh resolution is still open, see Known Issues).
+  - `VOB_TYPES.md` - every ZenGin VOB type researched so far: which are
+    implemented here, which aren't yet, and what each does in-game.
+  - `USAGE_interactive_objects.md` - how to configure a chest/door/bed/
+    switch/etc. (the oCMOB family) so it's actually usable in-game, not
+    just exported.
 - **`asset_catalog/`** - a generated snapshot of available Gothic meshes.
   Superseded at runtime by the live directory scan in Preferences; kept
   as a static reference.
@@ -64,7 +69,11 @@ The "ZenGin" sidebar tab has:
   link display.
 - **Add Other VOBs** - create any supported VOB type at the 3D cursor.
   For `zCVob` props, the name field autocompletes against your
-  configured mesh directories.
+  configured mesh directories. For the interactive `oCMob*` types
+  (chest, door, bed, switch, ladder, wheel, fire, generic interactive),
+  selecting the new object shows a properties box in this same sidebar
+  tab (locked state, trigger target, contents, the real model to use,
+  etc.) - see `USAGE_interactive_objects.md`.
 - **Load Mesh Preview** - imports the real Gothic mesh for the active
   prop and parents it as a (locked, non-selectable) preview, so you can
   see what a level looks like before ever opening Spacer.
@@ -93,6 +102,7 @@ identically to the original.
 | `zCWaypoint:` | Waypoint name | Links are edited via the addon's link slots, not by name |
 | `zCVobLight:` | Light name | Created as a real Blender Light - edit type/range/cone-angle/color via Blender's own Light Properties tab, not custom properties |
 | `zCVobSound:` | The sound's script instance name | |
+| `oCMobContainer:`, `oCMobDoor:`, `oCMobBed:`, `oCMobSwitch:`, `oCMobLadder:`, `oCMobWheel:`, `oCMobFire:`, `oCMobInter:` | This instance's unique in-game name (`vobName`) | **Not** a mesh name - the actual model is a separate "Visual Name" custom property, since these almost always reuse a shared animated asset. See `USAGE_interactive_objects.md` |
 
 Adding VOBs through the addon's "Add Other VOBs" dialog handles the
 `Prefix:Name` construction for you - the table above matters mainly if
@@ -122,13 +132,22 @@ updating KrxImpExp, that bridge module is the first place to check.
   rotation) - see `ARCHITECTURE.md` for the story.
 - `tests/test_zen_export.py` - the original prototype's test, exercising
   more of the export pipeline end to end.
+- `tests/test_zcvob_bounding_box.py` - the real `bbox3DWS` computation
+  (see Known issues / limitations): degenerate-point fallback when no
+  preview mesh is loaded, and a real box derived from a fake mesh's
+  `bound_box`/`matrix_world` otherwise.
+- `tests/test_ocmob_export.py` - the oCMOB family's field mapping and
+  inheritance chain (container/door lock fields, fire's extra fields,
+  the `oCMobX:oCMOB:zCVob`-style archive type-name chains).
+- `tests/test_mob_props.py` - `zen_waypoint_tools/mob_props.py` (the
+  addon-side custom-property schema behind the oCMOB properties box) -
+  it has zero `bpy` dependency, so this imports it directly rather than
+  through the addon package.
 - `exports/` - real generated `.blend`/`.ZEN` samples from manual
   testing sessions, kept for reference rather than deleted.
 
 ## Known issues / limitations
 
-- Bounding boxes are always a single point, not sized to the object -
-  can affect LOD behavior in-game.
 - `OCVobTree`'s intended per-type sort ordering doesn't fully work (an
   `isinstance` check order issue) - doesn't corrupt output, just doesn't
   sort the way the code appears to intend. See `ARCHITECTURE.md`.
@@ -141,12 +160,22 @@ updating KrxImpExp, that bridge module is the first place to check.
 - `oCItem` mesh preview isn't wired up yet - an item's script instance
   name generally isn't its mesh filename, unlike props. See
   `PLAN_vob_mesh_preview.md`.
+- The oCMOB family (chest/door/bed/switch/ladder/wheel/fire/generic
+  interactive) has no mesh preview support at all - "Load Mesh Preview"
+  only imports static `.MRM` meshes, not the skeletal/animated `.MDS`
+  models these types actually use. See `USAGE_interactive_objects.md`.
+- The oCMOB family's engine behavior (e.g. that a player can sleep in a
+  placed `oCMobBed` with no Daedalus scripting, as long as its visual
+  points at an already-animated model) is inferred from ZenGin
+  documentation, not yet confirmed with a real Gothic II Spacer/in-game
+  round-trip the way the coordinate-transform fixes were (see `ARCHITECTURE.md`).
 
 ## Project history
 
 Started as a single-script prototype (`example_zen_export.py`,
 export-only, five VOB types) by jaxub. Since extended into the current
 addon: a searchable VOB creation UI, real mesh preview via KrxImpExp,
-native Blender lights mapped to `zCVobLight`, automatic export
-verification, an uncompiled-ZEN importer, and a modular addon structure
-kept in sync across two machines via git.
+native Blender lights mapped to `zCVobLight`, the full oCMOB family of
+interactive objects, automatic export verification, an uncompiled-ZEN
+importer, and a modular addon structure kept in sync across two
+machines via git.
