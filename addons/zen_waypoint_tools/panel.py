@@ -8,6 +8,7 @@ from .waypoint_links import (
     LINK_SLOT_COUNT,
 )
 from .viewport_draw import start_draw_handler, is_draw_handler_active
+from .mob_props import mob_type_of, fields_for, init_mob_properties
 
 
 class ZEN_PT_waypoint_tools(bpy.types.Panel):
@@ -54,6 +55,16 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
             layout.label(text=f"Links: {len(neighbors)}/{LINK_SLOT_COUNT}")
             for target in neighbors:
                 layout.label(text=f"- {get_waypoint_display_name(target)}", icon='FORWARD')
+
+        mob_type = mob_type_of(active)
+        if mob_type is not None:
+            layout.separator()
+            init_mob_properties(active, mob_type)  # self-heals older/imported objects
+            box = layout.box()
+            box.label(text=f"{mob_type} properties:")
+            col = box.column(align=True)
+            for key in fields_for(mob_type):
+                col.prop(active, f'["{key}"]', text=key.replace("_", " ").title())
 
         layout.separator()
         row = layout.row(align=True)
