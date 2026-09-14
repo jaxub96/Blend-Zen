@@ -1,0 +1,30 @@
+# This is an Asset Catalog Definition file for Blender.
+#
+# Empty lines and lines starting with `#` will be ignored.
+# The first non-ignored line should be the version indicator.
+# Other lines are of the format "UUID:catalog tree path:simple catalog name"
+
+VERSION 1
+
+03f8f8d2-f5da-471c-8b3d-490b9f0cee4f:Water:Water
+80044b88-d573-4493-b768-8a3b5b19590f:Ice_Snow:Ice_Snow
+ed11d2ff-7f64-4d27-9d71-87656fd4325d:Fire_Lava:Fire_Lava
+49866d93-dd11-4448-9a9a-0c39d1512759:Sand_Desert:Sand_Desert
+c2970789-5289-4b64-acc0-632dbf72d313:Stair:Stair
+5c6e4cd9-4e71-4f21-8a74-9858088243ec:Roof:Roof
+4ac41ff2-54d2-4ae8-827c-693561b42e29:Door:Door
+1128b469-dacb-411f-8ed4-f4d8b0336708:Window:Window
+0fa91c0b-b60b-44c4-b83c-6dbdf2395298:Brick:Brick
+e8a4ab2b-a868-4ecf-aab9-bf88acef990a:Metal:Metal
+e2edee76-a37c-4d6b-a2f6-4758fde05f40:Fabric:Fabric
+06e8476d-4bd2-435d-9e98-303b9f479edb:Furniture:Furniture
+170df105-6093-4329-a08c-94fb2124a195:Decal:Decal
+81e9a3a2-af42-4526-8daf-bb8d4d6d90cd:Ornament:Ornament
+03bd8cf6-aad2-4db5-9e6f-376fc644c73f:Ship:Ship
+65530a92-7157-4890-ad61-4d299a6562a4:Wood:Wood
+236879ae-ac39-4c9a-bba8-023b975cae23:Nature:Nature
+5d253bb0-c216-4ad1-afc4-68ef2a4424d0:Rock_Cave:Rock_Cave
+b55a1168-55dd-42e4-ac34-aea2b562629f:Ground:Ground
+accda948-aa1d-492d-9e8f-a35455d44134:Wall:Wall
+76b25cdb-96ac-4051-b29a-ab579bc000b2:Stone:Stone
+e6957900-afdc-4a98-97b7-b996baa8b38a:Misc:Misc
