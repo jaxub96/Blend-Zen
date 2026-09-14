@@ -34,9 +34,11 @@ working on that feature from this machine).
 - Modular package (10+ single-purpose files, not one monolith)
 - Waypoint authoring: add/link/unlink/toggle display
 - Generic "Add VOB" dialog for all 16 types, with mesh-name search
-  autocomplete for props, and a properties box (in the same sidebar
-  tab) for the oCMOB family's per-instance fields (locked state,
-  trigger target, contents, the real shared model to use, ...)
+  autocomplete for props, a *real* (not prototype) item-instance-name
+  search dropdown for `oCItem` sourced from `item_mesh_map.json`, and a
+  properties box (in the same sidebar tab) for the oCMOB family's
+  per-instance fields (locked state, trigger target, contents, the real
+  shared model to use, ...)
 - Real mesh preview (props and items) via KrxImpExp, locked/non-
   selectable so it can't be accidentally desynced from the real vob data
 - Item instance -> mesh filename mapping (869 real entries) - the two
@@ -119,9 +121,10 @@ abandoned.
   Props - the mechanism is proven, this is now a matter of running it
 - Multi-file batch runner for the asset library (process every category
   file unattended, rather than one open file at a time)
-- Wire the item-instance-name search dropdown into `Add VOB` for real
-  (a version of this was prototyped once, needs reconciling properly)
 - Report the KrxImpExp `.TGA` case-sensitivity bug upstream
+- A batch "Load All" mesh-preview operator and a "clear all previews"
+  button (currently "Load Mesh Preview" only ever operates on the single
+  active object) - see `PLAN_vob_mesh_preview.md`'s status banner
 
 **Medium-term feature expansion**
 - Support more VOB types: the `zCTrigger` family (movers, script
