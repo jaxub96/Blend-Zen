@@ -1,0 +1,143 @@
+"""Generate a Blender material asset library from the Gothic II level
+textures in GothicBlenderAssets-master/TEXTURES/LEVELS/{NewWorld,OldWorld}.
+
+For each texture: creates a material (Image Texture -> Principled BSDF
+Base Color, plus Alpha if the texture has one), marks it as a Blender
+asset, and files it into a catalog based on a keyword guess at its
+material type (wood/stone/roof/nature/etc. - see texture_classify.py).
+
+Run headless from this repo's asset_catalog/ directory:
+
+    "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe" ^
+        --background --python generate_material_catalog.py
+
+Produces materials_levels.blend and blender_assets.cats.txt next to this
+script. Add asset_catalog/ as an Asset Library in Blender's Preferences >
+File Paths > Asset Libraries to browse the result.
+
+Texture images are linked, not packed, from their location on disk at
+generation time (see TEXTURE_ROOT below) - the .blend stays small, but
+depends on that path still existing. If it moves, use Blender's
+File > External Data > Find Missing Files.
+
+Preview thumbnails are intentionally NOT generated here (headless preview
+rendering is unreliable / needs a display). After opening the result,
+select all assets in the Asset Browser and use "Generate Previews" from
+the context menu.
+"""
+import os
+import sys
+import uuid
+
+import bpy
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from texture_classify import classify, ALL_CATEGORIES  # noqa: E402
+
+TEXTURE_ROOT = r"C:\Users\jkjw\Documents\gothic mod\GothicBlenderAssets-master\TEXTURES\LEVELS"
+SUBFOLDERS = ["NewWorld", "OldWorld"]
+
+OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
+OUTPUT_BLEND = os.path.join(OUTPUT_DIR, "materials_levels.blend")
+OUTPUT_CATS = os.path.join(OUTPUT_DIR, "blender_assets.cats.txt")
+
+
+def find_textures():
+    """Yield (subfolder, absolute_path) for every .tga under SUBFOLDERS."""
+    for sub in SUBFOLDERS:
+        root = os.path.join(TEXTURE_ROOT, sub)
+        for dirpath, _dirnames, filenames in os.walk(root):
+            for fn in filenames:
+                if fn.lower().endswith(".tga"):
+                    yield sub, os.path.join(dirpath, fn)
+
+
+def build_catalogs():
+    """Return {category: uuid_str} and the cats.txt file content."""
+    cat_uuids = {name: str(uuid.uuid4()) for name in ALL_CATEGORIES}
+    lines = [
+        "# This is an Asset Catalog Definition file for Blender.",
+        "#",
+        "# Empty lines and lines starting with `#` will be ignored.",
+        "# The first non-ignored line should be the version indicator.",
+        "# Other lines are of the format \"UUID:catalog tree path:simple catalog name\"",
+        "",
+        "VERSION 1",
+        "",
+    ]
+    for name in ALL_CATEGORIES:
+        lines.append(f"{cat_uuids[name]}:{name}:{name}")
+    return cat_uuids, "\n".join(lines) + "\n"
+
+
+def make_material(name, image_path, subfolder, catalog_uuid):
+    mat = bpy.data.materials.new(name=name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    bsdf = nodes.get("Principled BSDF")
+    if bsdf is None:
+        bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+
+    tex_node = nodes.new("ShaderNodeTexImage")
+    tex_node.location = (bsdf.location.x - 350, bsdf.location.y)
+
+    image = bpy.data.images.load(image_path, check_existing=True)
+    tex_node.image = image
+
+    links.new(tex_node.outputs["Color"], bsdf.inputs["Base Color"])
+
+    if image.depth == 32 or image.channels == 4:
+        links.new(tex_node.outputs["Alpha"], bsdf.inputs["Alpha"])
+        try:
+            mat.blend_method = "CLIP"
+        except (AttributeError, TypeError):
+            pass
+        try:
+            mat.surface_render_method = "DITHERED"
+        except (AttributeError, TypeError):
+            pass
+
+    mat.asset_mark()
+    mat.asset_data.catalog_id = catalog_uuid
+    mat.asset_data.description = f"{subfolder}/{name}.tga"
+    try:
+        mat.asset_data.tags.new("gothic-level")
+        mat.asset_data.tags.new(subfolder)
+    except (AttributeError, RuntimeError):
+        pass
+
+    return mat
+
+
+def main():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+
+    cat_uuids, cats_txt = build_catalogs()
+
+    counts = {}
+    total = 0
+    for subfolder, path in find_textures():
+        base = os.path.splitext(os.path.basename(path))[0]
+        category = classify(base)
+        make_material(base, path, subfolder, cat_uuids[category])
+        counts[category] = counts.get(category, 0) + 1
+        total += 1
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(OUTPUT_CATS, "w", encoding="utf-8") as f:
+        f.write(cats_txt)
+
+    bpy.ops.wm.save_as_mainfile(filepath=OUTPUT_BLEND)
+
+    print(f"Generated {total} materials across {len(counts)} catalogs:")
+    for cat in ALL_CATEGORIES:
+        if cat in counts:
+            print(f"  {cat}: {counts[cat]}")
+    print(f"Saved: {OUTPUT_BLEND}")
+    print(f"Saved: {OUTPUT_CATS}")
+
+
+if __name__ == "__main__":
+    main()
