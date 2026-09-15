@@ -1,17 +1,19 @@
 import bpy
 
 
+# zCVob (mesh props) and oCItem (items) are deliberately absent from this
+# dialog - Props.blend and Items_ITMW.blend are fully populated Blender
+# asset libraries now, so those are placed by dragging a real asset in from
+# the Asset Browser instead. VOB_DISPLAY/VOB_DEFAULT_LABEL below still carry
+# entries for both types since zen_import.py needs them for objects that
+# already exist with those prefixes (from an imported ZEN, or hand-renamed).
 VOB_TYPE_ITEMS = (
     ('zCVobLevelCompo', "Level Compo (World Mesh Ref)",
      "Reference to the compiled level mesh - name must match the .3ds filename, without extension"),
     ('zCVobStartpoint', "Startpoint",
      "Player/NPC start position"),
-    ('zCVob', "Vob (Mesh Prop)",
-     "Generic static prop - name must match its .3ds mesh filename, without extension"),
     ('zCVobSpot', "Vob Spot (Freepoint)",
      "Freepoint used by NPCs during TA_Stand_* routines"),
-    ('oCItem', "Item",
-     "Pickupable item - name must match the item's script instance name"),
     ('zCVobLight', "Light",
      "Point or spot light source. Created as a real Blender Light - tune "
      "range/color/type in Blender's own Light Properties tab"),

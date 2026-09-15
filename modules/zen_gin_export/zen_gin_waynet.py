@@ -41,12 +41,21 @@ class WayNet:
         self.__printer = printer
         self.__data_printer = data_printer
         self.__way_net = []
-        self.objects_count = 1
         for blender_object in blender_objects:
             if blender_object.name.startswith("zCWaypoint:"):
-                self.objects_count += 1
                 for target in self.__linked_waypoints(blender_object):
                     self.__way_net.append((blender_object, target))
+
+        # Only waypoints that actually appear in a way (source or target)
+        # get printed by print() below - counting every zCWaypoint:-named
+        # object here regardless of linkage overstated the header's total
+        # object count whenever a waypoint existed with no link yet (e.g.
+        # freshly added, not yet wired up), which archive_verifier then
+        # correctly flagged as a header/body mismatch.
+        distinct_waypoint_names = {
+            waypoint.name for way in self.__way_net for waypoint in way
+        }
+        self.objects_count = 1 + len(distinct_waypoint_names)
 
     @staticmethod
     def __waypoint_location(waypoint):
