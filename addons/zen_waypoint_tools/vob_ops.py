@@ -18,7 +18,7 @@ class ZEN_OT_add_vob(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     vob_type: bpy.props.EnumProperty(
-        items=VOB_TYPE_ITEMS, name="Type", default='zCVob',
+        items=VOB_TYPE_ITEMS, name="Type", default='oCMobInter',
         update=_update_vob_type_name,
     )
     vob_name: bpy.props.StringProperty(name="Name", default="", options={'SKIP_SAVE'})
@@ -36,37 +36,7 @@ class ZEN_OT_add_vob(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "vob_type")
-        wm = context.window_manager
-        # searchable autocomplete against the real mesh catalog - still
-        # freely editable, this only offers suggestions.
-        #
-        # oCItem intentionally does NOT get mesh-name autocomplete here:
-        # an item's name must be its real Daedalus script instance name
-        # (e.g. "ITMW_1H_PAL_SWORD"), which is generally a DIFFERENT
-        # string from its mesh filename (e.g. "ITMW_030_1H_PAL_SWORD_02")
-        # - confirmed via a real Spacer test where using the mesh name as
-        # the instance name resolved no visual at all in-game. Suggesting
-        # ITxx mesh names here previously made this exact mistake easy to
-        # make by accident. See item_mesh_map.json / mesh_preview.py for
-        # the mesh-lookup side of this.
-        if self.vob_type == 'zCVob' and len(wm.zen_mesh_catalog) > 0:
-            layout.prop_search(
-                self,
-                "vob_name",
-                wm,
-                "zen_mesh_catalog",
-                text="Name",
-            )
-        elif self.vob_type == 'oCItem' and len(wm.zen_item_instance_catalog) > 0:
-            layout.prop_search(
-                self,
-                "vob_name",
-                wm,
-                "zen_item_instance_catalog",
-                text="Name",
-            )
-        else:
-            layout.prop(self, "vob_name", text="Name")
+        layout.prop(self, "vob_name", text="Name")
 
     def execute(self, context):
         name = self.vob_name.strip()

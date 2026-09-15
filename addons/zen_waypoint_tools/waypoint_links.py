@@ -63,8 +63,28 @@ def get_links(obj):
     return getattr(obj, "zen_waypoint_links", None)
 
 
+def _is_freed(obj):
+    """True if obj is a stale reference to an Object Blender has since freed.
+
+    Deleting a waypoint via the viewport (X) does not reliably clear the
+    PointerProperty slots that other waypoints hold pointing at it - the
+    slot can be left holding a dangling reference. Accessing any attribute
+    on one raises ReferenceError; that's the only way to detect it.
+    """
+    try:
+        obj.name
+    except ReferenceError:
+        return True
+    return False
+
+
 def get_link_targets(obj):
-    """Return (slot_name, target) tuples for this object's own occupied link slots."""
+    """Return (slot_name, target) tuples for this object's own occupied link slots.
+
+    Self-heals: a slot pointing at a freed Object (its target waypoint was
+    deleted) is cleared here, so the link stops being drawn/counted on the
+    very next read instead of surviving until the file is reloaded.
+    """
     links = get_links(obj)
     if links is None:
         return []
@@ -72,8 +92,12 @@ def get_link_targets(obj):
     result = []
     for slot in LINK_SLOT_NAMES:
         target = getattr(links, slot, None)
-        if target is not None:
-            result.append((slot, target))
+        if target is None:
+            continue
+        if _is_freed(target):
+            setattr(links, slot, None)
+            continue
+        result.append((slot, target))
     return result
 
 

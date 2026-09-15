@@ -35,6 +35,8 @@ ZEN is the right handoff format rather than a limitation to work around.
   - `USAGE_interactive_objects.md` - how to configure a chest/door/bed/
     switch/etc. (the oCMOB family) so it's actually usable in-game, not
     just exported.
+  - `GIT_CHECKLIST.md` - pre/post-session checklist for working across
+    two machines on this repo, so a checkout can't silently fall behind.
 - **`asset_catalog/`** - `gothic2_meshes.json` is a one-time generated
   snapshot of available Gothic meshes, superseded at runtime by the live
   directory scan in Preferences and kept only as a static reference.
