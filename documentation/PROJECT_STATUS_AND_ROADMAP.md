@@ -79,14 +79,9 @@ abandoned.
 - **No compiled-ZEN writing.** Confirmed infeasible to reimplement -
   BSP construction and lightmap baking are genuine proprietary
   algorithms, not a data format. Spacer remains required for the
-  compile step. (A "graft freshly-exported vobs into an already-
-  compiled ZEN, skip recompiling geometry" technique was identified as
-  feasible but not built - see Potentials.)
+  compile step.
 - **Waypoint facing direction isn't reconstructed on import** - only
   position. Deliberately deferred, not a bug.
-- `OCVobTree`'s intended per-type sort order doesn't actually work (an
-  `isinstance` ordering issue) - harmless to output, just not doing
-  what the code appears to intend.
 - `zCVobLight`'s `lightType`/`lightQuality` enum ordinals are inferred
   from documented option *names*, not independently confirmed against
   a real compiled, in-game light.
@@ -139,11 +134,6 @@ abandoned.
   behaves as documented) - same rigor as the coordinate-transform bugs
   already caught this way; USAGE_interactive_objects.md flags this as
   unverified
-- The "graft vobs into a pre-compiled ZEN" tool - real time-saver for
-  iterating on vob placement without a full Spacer geometry recompile
-  each time
-- Fix the `OCVobTree` sort-order bug (or deliberately decide ordering
-  doesn't matter and document that instead)
 
 **Longer-term / bigger bets**
 - Independently verify the `lightType`/`lightQuality` enum ordinals

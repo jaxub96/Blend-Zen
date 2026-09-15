@@ -133,15 +133,6 @@ exactly how many `[type ...]...[]` blocks your `print()`/
 
 ### Present but not fully solid
 
-* **`OCVobTree.__vob_order`** has a latent bug: it checks
-  `isinstance(vob, ZCVob)` before checking `OCItem`/`ZCVobSpot`
-  specifically, but those are *subclasses* of `ZCVob`, so the generic
-  check always matches first. In practice this means only
-  `ZCVobLevelCompo` gets sorted to the front (order 0); everything else
-  ends up in the same bucket (order 1) regardless of type, and the
-  per-type ordering the code seems to intend never actually happens.
-  Doesn't appear to break valid output, just doesn't do what it looks
-  like it's meant to do.
 * **`FilePrinter` writes on `__del__`**, i.e. it relies on Python's
   garbage collector to actually flush content to disk, rather than an
   explicit `save()`/`close()` call. This bit us directly during testing -
