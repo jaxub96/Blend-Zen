@@ -12,6 +12,10 @@ from .mob_props import mob_type_of, fields_for, init_mob_properties
 
 
 class ZEN_PT_waypoint_tools(bpy.types.Panel):
+    """Root panel: waypoint authoring plus the active object's own
+    properties - the two things relevant on every single selection
+    change, so they stay always-visible rather than tucked into a
+    collapsible section like the less-frequent tool groups below."""
     bl_label = "Zen Waypoints"
     bl_idname = "ZEN_PT_waypoint_tools"
     bl_space_type = 'VIEW_3D'
@@ -67,25 +71,74 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
             for key in fields:
                 col.prop(active, f'["{key}"]', text=key.replace("_", " ").title())
 
-        layout.separator()
+
+class ZEN_PT_zen_add_vob(bpy.types.Panel):
+    bl_label = "Add Other VOBs"
+    bl_idname = "ZEN_PT_zen_add_vob"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "ZenGin"
+    bl_parent_id = "ZEN_PT_waypoint_tools"
+
+    def draw(self, context):
+        layout = self.layout
         row = layout.row(align=True)
-        row.label(text="Add Other VOBs:")
         row.operator("zen.refresh_mesh_catalog", text="", icon='FILE_REFRESH')
         layout.operator("zen.add_vob", icon='ADD')
 
+
+class ZEN_PT_zen_export(bpy.types.Panel):
+    bl_label = "Export / Import"
+    bl_idname = "ZEN_PT_zen_export"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "ZenGin"
+    bl_parent_id = "ZEN_PT_waypoint_tools"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("zen.export_zen", icon='EXPORT')
+        layout.operator("zen.import_zen", icon='IMPORT')
         layout.separator()
+        layout.operator("zen.quick_export_package", icon='PACKAGE')
+
+
+class ZEN_PT_zen_mesh_preview(bpy.types.Panel):
+    """Collapsed by default: "Load Mesh Preview" only ever targeted
+    zCVob:/oCItem: objects, and those are placed from the Blender asset
+    library (Items_ITMW.blend/Props.blend - real geometry already, no
+    preview step needed) rather than through Add VOB now. Left in,
+    collapsed, for the one case it's still useful: reviewing an imported
+    ZEN's vobs (zen_import.py) before matching them to real library
+    assets."""
+    bl_label = "Mesh Preview (legacy zCVob:/oCItem: review)"
+    bl_idname = "ZEN_PT_zen_mesh_preview"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "ZenGin"
+    bl_parent_id = "ZEN_PT_waypoint_tools"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
         layout.operator("zen.load_vob_mesh", icon='MESH_DATA')
         row = layout.row(align=True)
         row.operator("zen.load_all_vob_meshes", text="Load All", icon='IMPORT')
         row.operator("zen.clear_vob_previews", text="Clear All", icon='TRASH')
 
-        layout.separator()
-        layout.operator("zen.export_zen", icon='EXPORT')
-        layout.operator("zen.import_zen", icon='IMPORT')
 
-        layout.separator()
-        layout.operator("zen.quick_export_package", icon='PACKAGE')
+class ZEN_PT_zen_asset_library(bpy.types.Panel):
+    """Collapsed by default: one-off asset-library maintenance, not part
+    of everyday level authoring - see documentation/ASSET_LIBRARY_HANDOFF.md."""
+    bl_label = "Asset Library Tools"
+    bl_idname = "ZEN_PT_zen_asset_library"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "ZenGin"
+    bl_parent_id = "ZEN_PT_waypoint_tools"
+    bl_options = {'DEFAULT_CLOSED'}
 
-        layout.separator()
+    def draw(self, context):
+        layout = self.layout
         layout.operator("zen.populate_asset_library_file", icon='ASSET_MANAGER')
         layout.operator("zen.populate_props_from_catalog", icon='ASSET_MANAGER')

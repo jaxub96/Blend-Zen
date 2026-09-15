@@ -6,6 +6,18 @@ from gpu_extras.batch import batch_for_shader
 from .waypoint_links import is_waypoint, get_link_targets
 
 DRAW_HANDLER = None
+DEPSGRAPH_HANDLER = None
+
+# Connection topology (which waypoint pairs are linked) rarely changes -
+# only add/link/unlink/delete touch it - but draw_waypoint_links() used to
+# rebuild it from a full bpy.data.objects scan on every single viewport
+# redraw, including pure camera orbit/pan/zoom with zero scene changes.
+# In a level with hundreds of objects that's a real per-frame cost paid
+# exactly while the user is actively working with waypoints. Cache it and
+# only rebuild when a depsgraph update says something might have changed;
+# world-space positions are still read fresh from the cached objects every
+# draw, so live movement of a waypoint is unaffected.
+_cached_connections = None
 
 
 def collect_unique_connections():
@@ -30,11 +42,15 @@ def collect_unique_connections():
 
 def draw_waypoint_links():
     """Draw unique waypoint connections in the 3D viewport."""
+    global _cached_connections
+
     scene = bpy.context.scene
     if scene is None or not getattr(scene, "zen_show_waypoint_links", True):
         return
 
-    connections = collect_unique_connections()
+    if _cached_connections is None:
+        _cached_connections = collect_unique_connections()
+    connections = _cached_connections
     if not connections:
         return
 
@@ -60,8 +76,13 @@ def draw_waypoint_links():
         gpu.state.blend_set('NONE')
 
 
+def _invalidate_connections_cache(scene, depsgraph):
+    global _cached_connections
+    _cached_connections = None
+
+
 def start_draw_handler():
-    global DRAW_HANDLER
+    global DRAW_HANDLER, DEPSGRAPH_HANDLER
 
     if DRAW_HANDLER is None:
         DRAW_HANDLER = bpy.types.SpaceView3D.draw_handler_add(
@@ -71,13 +92,23 @@ def start_draw_handler():
             'POST_VIEW',
         )
 
+    if DEPSGRAPH_HANDLER is None:
+        DEPSGRAPH_HANDLER = _invalidate_connections_cache
+        bpy.app.handlers.depsgraph_update_post.append(DEPSGRAPH_HANDLER)
+
 
 def stop_draw_handler():
-    global DRAW_HANDLER
+    global DRAW_HANDLER, DEPSGRAPH_HANDLER, _cached_connections
 
     if DRAW_HANDLER is not None:
         bpy.types.SpaceView3D.draw_handler_remove(DRAW_HANDLER, 'WINDOW')
         DRAW_HANDLER = None
+
+    if DEPSGRAPH_HANDLER is not None:
+        bpy.app.handlers.depsgraph_update_post.remove(DEPSGRAPH_HANDLER)
+        DEPSGRAPH_HANDLER = None
+
+    _cached_connections = None
 
 
 def is_draw_handler_active():
