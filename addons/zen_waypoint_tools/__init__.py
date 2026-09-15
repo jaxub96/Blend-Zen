@@ -49,6 +49,10 @@ classes = (
     mesh_preview.ZEN_OT_load_all_vob_meshes,
     mesh_preview.ZEN_OT_clear_vob_previews,
     panel.ZEN_PT_waypoint_tools,
+    panel.ZEN_PT_zen_add_vob,
+    panel.ZEN_PT_zen_export,
+    panel.ZEN_PT_zen_mesh_preview,
+    panel.ZEN_PT_zen_asset_library,
 )
 
 
