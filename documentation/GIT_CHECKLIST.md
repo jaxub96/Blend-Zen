@@ -1,4 +1,4 @@
-# Cross-machine git checklist
+# Cross-Machine Git Checklist
 
 This repo is worked on from two machines under one contributor (`jaxub96-WINDOWS`
 and `jeanKoby-MAC`).

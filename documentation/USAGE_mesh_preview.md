@@ -1,4 +1,4 @@
-# Using Mesh Preview + Building a Gothic Asset Library
+# Usage: Mesh Preview & Gothic Asset Library
 
 ## How it works
 

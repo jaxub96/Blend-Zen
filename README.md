@@ -1,6 +1,5 @@
 # Blend-Zen: Blender <-> ZenGin (Gothic II) Toolkit
 
-# Perganum
 A Blender addon and Python export/import library for building Gothic II
 levels in Blender, instead of placing every VOB and waypoint by hand in
 Spacer. Originally a single-script prototype for exporting vob metadata;
@@ -64,9 +63,6 @@ ZEN is the right handoff format rather than a limitation to work around.
   Browser rather than editing the script per-asset.
 - **`tests/`** - pytest suite for the Blender-independent parts of
   `zen_gin_export`.
-- **`exports/`** - real sample `.blend`/`.ZEN` files generated during
-  development testing, kept here (not deleted) so they can be reviewed
-  or reused.
 
 ## Setup
 
@@ -168,8 +164,6 @@ updating KrxImpExp, that bridge module is the first place to check.
   addon-side custom-property schema behind the oCMOB properties box) -
   it has zero `bpy` dependency, so this imports it directly rather than
   through the addon package.
-- `exports/` - real generated `.blend`/`.ZEN` samples from manual
-  testing sessions, kept for reference rather than deleted.
 
 ## Known issues / limitations
 
