@@ -38,18 +38,23 @@ class OCVobTree:
         "oCMobInter:": OCMobInter,
     }
 
+    # (class, order) pairs, most-specific first. ZCVob is the common base
+    # class of every vob type, so it must be checked last - any type not
+    # explicitly listed above it (e.g. ZCVobStartpoint, ZCVobLight, the
+    # oCMob family) falls through to its order value.
+    _VOB_ORDER = (
+        (ZCVobLevelCompo, 0),
+        (OCItem, 2),
+        (ZCVobSpot, 3),
+        (ZCVobSound, 4),
+        (ZCVob, 1),
+    )
+
     @staticmethod
     def __vob_order(vob):
-        if isinstance(vob, ZCVobLevelCompo):
-            return 0
-        elif isinstance(vob, ZCVob):
-            return 1
-        elif isinstance(vob, OCItem):
-            return 2
-        elif isinstance(vob, ZCVobSpot):
-            return 3
-        elif isinstance(vob, ZCVobSound):
-            return 4
+        for vob_class, order in OCVobTree._VOB_ORDER:
+            if isinstance(vob, vob_class):
+                return order
 
     def __create_vob(self, blender_object):
         for prefix, vob_class in OCVobTree._VOB_CLASSES.items():
