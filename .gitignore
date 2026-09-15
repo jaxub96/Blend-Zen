@@ -1,2 +1,10 @@
 __pycache__/
 .DS_Store
+
+# Blender auto-save backups
+*.blend1
+*.blend2
+
+# Python virtual env / test cache (also self-ignored via their own .gitignore)
+.venv/
+.pytest_cache/
