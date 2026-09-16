@@ -26,6 +26,38 @@ Gothic_y = -Blender_z
 Gothic_z =  Blender_y
 ```
 
+## Exact code locations
+
+**This repo:**
+
+| What | File | Line |
+|---|---|---|
+| `blender_position_to_gothic()` definition | `modules/zen_gin_export/coordinate_transform.py` | 24 |
+| its `return` statement (the actual formula) | same file | 31 |
+| `blender_quaternion_to_gothic()` definition | `modules/zen_gin_export/coordinate_transform.py` | 34 |
+| its `return` statement (the actual formula) | same file | 65 |
+| `ZCVob.__location()` (calls position transform) | `modules/zen_gin_export/zen_gin_zcvob.py` | 121 (call at 122) |
+| `ZCVob.__rotation()` (calls rotation transform) | `modules/zen_gin_export/zen_gin_zcvob.py` | 146 (call at 148) |
+| `WayNet.__waypoint_location()` (duplicate, waypoints) | `modules/zen_gin_export/zen_gin_waynet.py` | 61 (call at 62) |
+| `WayNet.__waypoint_rotation_vec3()` (duplicate) | `modules/zen_gin_export/zen_gin_waynet.py` | 68 (call at 74) |
+
+All four call sites route through the same two functions in
+`coordinate_transform.py` - that's deliberate, so there's exactly one
+place to fix if either formula changes.
+
+**KrxImpExp** (installed addon, hash-suffixed folder name will differ if
+reinstalled):
+`...\Blender\5.2\scripts\addons\krximpexp-c20f0350a528e53f9bddc158f3cc18b6bfec61c1\`
+
+| What | File | Line |
+|---|---|---|
+| `zenginWorldLoader.__read_vertices()` definition | `KrxMshImp.py` | 105 |
+| the `x, z, y = verts_pos[...]` unpacking | same file | 111 |
+| the `verts.append([x, y, z])` reassembly | same file | 115 |
+| `T3DSFileSaver.__write_vertices_list()` (dead end, see below) | `Krx3dsExp.py` | 227 |
+| the unconverted `vert = vert @ transform` | same file | 232 |
+| the raw `WriteFloat(vert.x...)` calls | same file | 234 |
+
 ## Honest history: there is no canonical source for any of this
 
 Worth being direct about, since it's easy to assume a spec exists
@@ -46,33 +78,15 @@ somewhere that was simply "found." It wasn't. The actual process:
 4. The rotation-direction fix has the **weakest evidence of anything in
    this project**: inferred purely from one real Spacer test (a prop
    rotated 90 degrees about Blender's vertical axis came out facing
-   backwards), with no independent source at all. Flagged as such in
-   the code comments at the time.
+   backwards), with no independent source at all, and - important - the
+   fixed formula has never actually been re-tested in Spacer since being
+   applied. Only the original bug was observed; the fix was reasoned out
+   and never empirically re-confirmed.
 
 ## What this session found: a real, unresolved disagreement
 
-Read KrxImpExp's own `KrxMshImp.py` (`zenginWorldLoader.__read_vertices`)
-- the code that reads a **compiled** world mesh's raw vertex chunk back
-into Blender:
-
-```python
-def __read_vertices(self):
-    ...
-    for i in range(0, len(verts_pos), 3):
-        x, z, y = verts_pos[i : i + 3]
-        x *= self.__scale_coef
-        z *= self.__scale_coef
-        y *= self.__scale_coef
-        self.__current_mesh.verts.append([x, y, z])
-```
-
-Calling the three floats stored in the file `field0, field1, field2` (in
-that order), this code produces `Blender = [field0, field2, field1]`,
-i.e. `Blender_X = field0`, `Blender_Y = field2`, `Blender_Z = field1`.
-
-**Assuming** the file stores its floats in Gothic's own native
-`(X, Y, Z)` order (a reasonable assumption, not proven by this code
-alone), inverting gives:
+`KrxMshImp.py`'s `__read_vertices()` - the code that reads a
+**compiled** world mesh's raw vertex chunk back into Blender - implies:
 
 ```
 Gothic_X = Blender_X   <- agrees with current code
@@ -82,99 +96,145 @@ Gothic_Z = Blender_Y   <- DISAGREES: current code says -Blender_Y
 
 X and Y match. **Z is a real, direct contradiction.**
 
-### Dead end checked and ruled out: `Krx3dsExp.py`
+`Krx3dsExp.py` was checked as a possible independent cross-check and
+ruled out: its vertex writer emits Blender's raw x/y/z with **zero axis
+conversion** - `.3ds` is a generic, Gothic-agnostic interchange format,
+the real conversion only happens later inside Spacer's own compiler.
+Don't retry this route.
 
-Hoped this would give an independent check via a fresh `.3ds` export,
-but its vertex writer does this:
+## The remaining possible transformations (not an open-ended space)
 
-```python
-vert = vert @ self._current_data["transform"]
-self.__file.WriteFloat(vert.x * self.__scale_coef)
-self.__file.WriteFloat(vert.y * self.__scale_coef)
-self.__file.WriteFloat(vert.z * self.__scale_coef)
-```
+Given `Gothic_X = Blender_X` and `Gothic_Y = Blender_Z` are locked, and
+every formula seen anywhere in this investigation - the original buggy
+code, the generic Verge3D reference, and the KrxMshImp reader - has been
+a **clean axis permutation with sign changes only, never a mixed/rotated
+combination** - it's reasonable (though an assumption, not a proof) to
+constrain the remaining hypothesis space to that same form.
 
-Writes Blender's raw x/y/z with **zero axis conversion**. `.3ds` is a
-generic, Gothic-agnostic interchange format - the real Blender->Gothic
-conversion only happens later, inside Spacer's own compiler. A fresh
-`.3ds` export can't answer this question; ruled out, don't retry it.
+Under that constraint the math is rigid: `Blender_X` is already claimed
+by `Gothic_X`, `Blender_Z` is already claimed by `Gothic_Y`. For the
+mapping to be a valid bijection, **`Blender_Y` is the only axis left for
+`Gothic_Z`** - there is no remaining freedom in *which* axis, only in
+its *sign*. Exactly two candidates exist:
 
-## Real data already extracted, ready to finish the comparison
+- **Candidate A (current code):** `Gothic_Z = -Blender_Y`. Determinant
+  **+1** (proper rotation, assuming both sides right-handed).
+- **Candidate B (KrxMshImp-implied):** `Gothic_Z = +Blender_Y`.
+  Determinant **-1** under the same assumption - meaning either Gothic
+  is actually **left-handed** (in which case this is the correct,
+  shape-preserving map and *our* sign flip is the bug), or something
+  else differs between compiled mesh vertices and vob positions.
 
-Using the compiled `LEVEL_001_COMP.ZEN` you uploaded earlier (from the
-"can we compile without Spacer" investigation), its `0xB030 VERTICES`
-chunk (file offset 9005, 48 vertices) decodes to real, clean-number
-room geometry - clearly the `exports/LEVEL_001.blend` source mesh,
-compiled by Spacer. `field1`'s range (-30, 0, 300, 330) is obviously a
-floor-to-ceiling height, confirming it's the vertical axis as expected.
+## Important correction: rotation conjugation is NOT guaranteed to work the same way for both candidates
 
-A representative non-symmetric vertex to check:
+Earlier guidance in this project stated that a rotation quaternion's
+scalar part `w` "never changes sign for any coordinate change." **That
+claim is only true for proper (determinant +1) transforms.**
 
-```
-vertex 30: field0=415.0  field1=300.0  field2=430.0
-```
+- If **Candidate A** is confirmed: the current rotation formula's
+  derivation (permute the vector part the same way as position, negate
+  it, leave `w` alone) remains valid *in form* - though see above, it
+  has never actually been re-verified in Spacer since being applied, and
+  should still be tested (Phase 2 below).
+- If **Candidate B** is confirmed: the position transform is a
+  determinant -1 map under a right-handed assumption, which most likely
+  means Gothic is left-handed. Converting a rotation across a
+  **handedness change** (not just a proper rotation) follows genuinely
+  different conjugation rules than the ones used to derive the current
+  formula - simply "permute and negate the vector part, keep w" is a
+  proper-transform-only trick, and w is *not* guaranteed to stay
+  unchanged when the transform includes a handedness flip. The whole
+  rotation formula would need re-deriving from first principles for the
+  left-handed case, not patched by flipping one more sign. This is real
+  additional work, not a footnote - budget for it if Candidate B wins.
 
-## The exact test to run on Mac
+## Step-by-step test plan
 
-1. Open `exports/LEVEL_001.blend`.
-2. Find the real mesh vertex whose Blender **X** is close to `4.15` and
-   whose Blender **Z** is close to `3.00` (dividing the field0/field1
-   values above by the 100 scale).
-3. Read that vertex's Blender **Y**, multiply by 100.
-   - Result **+430** -> current formula's negation on Z is wrong, needs
-     fixing.
-   - Result **-430** -> current formula is correct as-is, no change.
+### Design principles (why the test is built this way)
 
-Full decoded vertex list (all 48, for cross-checking more than one
-point if the first one is ambiguous e.g. due to symmetry):
+1. **Isolate one axis at a time.** Each test object should have exactly
+   one non-zero coordinate. A combined point like `(3, 7, 2)` (used
+   earlier) works but forces you to mentally decompose the result -
+   single-axis offsets make a sign error immediately, visually obvious
+   with no arithmetic required.
+2. **Avoid any symmetric geometry for visual judgment.** A cube or
+   symmetric room can look "correct" whether mirrored or not. Anything
+   requiring a visual (not numeric) check needs a genuinely asymmetric
+   shape or a single clear directional cue.
+3. **Self-describing names.** Name each test object after exactly what
+   it tests (e.g. `TEST_Y_AXIS`), so there's no ambiguity re-matching
+   Spacer's vob list back to your prediction table.
+4. **Write predictions down before looking at the result.** Compute
+   both candidates' predicted values first (tables below already do
+   this), so there's no risk of unconsciously reading the result as
+   whichever one you expected.
+5. **Position before rotation, always.** The rotation formula's
+   correctness depends on which position candidate wins (see the
+   correction above) - testing rotation first risks having to redo it.
 
-```
-0:  (-400, 330, 400)    1:  (400, 330, -400)   2:  (400, 330, 400)
-3:  (-400, 330, -400)   4:  (430, 300, 415)    5:  (430, 0, 415)
-6:  (430, 0, -415)      7:  (430, 300, -415)   8:  (400, 300, -415)
-9:  (400, 0, 415)       10: (400, 0, -415)     11: (400, 300, 415)
-12: (415, 0, 400)       13: (-415, 0, 430)     14: (-415, 0, 400)
-15: (415, 0, 430)       16: (415, 300, 400)    17: (-415, 300, 400)
-18: (-400, 0, -400)     19: (400, 0, -400)     20: (-400, 0, 400)
-21: (400, 0, 400)       22: (-400, -30, 400)   23: (-400, -30, -400)
-24: (400, -30, 400)     25: (400, -30, -400)   26: (400, 300, 400)
-27: (400, 300, -400)    28: (-400, 300, 400)   29: (-400, 300, -400)
-30: (415, 300, 430)     31: (-415, 300, 430)   32: (-430, 0, 415)
-33: (-400, 300, 415)    34: (-400, 0, 415)     35: (-430, 300, 415)
-36: (-430, 0, -415)     37: (-430, 300, -415)  38: (-400, 300, -415)
-39: (-400, 0, -415)     40: (415, 0, -400)     41: (415, 0, -430)
-42: (-415, 0, -400)     43: (-415, 0, -430)    44: (415, 300, -430)
-45: (-415, 300, -430)   46: (415, 300, -400)   47: (-415, 300, -400)
-```
-(each row: `field0, field1, field2`)
+### Phase 1: Position (resolves Candidate A vs. B)
 
-## Important: this isn't just "one sign to flip" if Z turns out wrong
+Create three separate objects (e.g. `zCVobStartpoint`, via the Add VOB
+dialog), each with exactly one non-zero Blender coordinate:
 
-If the test shows `Gothic_Z = +Blender_Y` (no negation), that changes
-the position transform's determinant from +1 to **-1** under a
-right-handed assumption for both systems - meaning either:
+| Object name | Blender location | Tests |
+|---|---|---|
+| `TEST_X_AXIS` | `(5, 0, 0)` | `Gothic_X = Blender_X` (uncontested - sanity check) |
+| `TEST_Y_AXIS` | `(0, 5, 0)` | **The actual open question** |
+| `TEST_Z_AXIS` | `(0, 0, 5)` | `Gothic_Y = Blender_Z` (uncontested - sanity check) |
 
-- Gothic is actually **left-handed**, and a plain axis swap with no
-  extra sign flip is the *correct*, shape-preserving conversion (in
-  which case the "generic Verge3D formula" assumption that started this
-  whole investigation was wrong to apply here), or
-- something else is different between how compiled mesh vertices and
-  vob positions are stored (less likely, but not ruled out).
+Export to an uncompiled ZEN (no compiling needed - Spacer can open and
+display vob properties directly, as already done for every earlier test
+in this project). Predicted `trafoOSToWSPos` for each:
 
-Either way, **the rotation-quaternion formula would need re-deriving
-from scratch**, not just a sign tweak - it was built assuming the
-current (det=+1, right-handed-preserving) position matrix, using
-conjugation logic specific to that assumption. A different position
-matrix needs the rotation formula re-derived to match it, the same way
-`blender_quaternion_to_gothic()` was originally derived to match
-`blender_position_to_gothic()`.
+| Object | Candidate A predicts | Candidate B predicts |
+|---|---|---|
+| `TEST_X_AXIS` | `500, 0, 0` | `500, 0, 0` (both agree) |
+| `TEST_Y_AXIS` | `0, 0, -500` | `0, 0, +500` |
+| `TEST_Z_AXIS` | `0, 500, 0` | `0, 500, 0` (both agree) |
 
-## Bottom line
+**How to spot success/error:**
+- `TEST_X_AXIS` or `TEST_Z_AXIS` NOT matching their (agreed) prediction
+  means something is broken beyond this investigation - stop and
+  re-check the export pipeline itself before going further.
+- `TEST_Y_AXIS`'s third number is the entire answer: **-500 confirms
+  Candidate A** (no code change needed), **+500 confirms Candidate B**
+  (position formula needs the Z-sign fixed, and the rotation formula
+  needs re-deriving per the correction above).
 
-- X and Y axis mappings: solid, corroborated by an independent source,
-  not in question.
-- Z axis sign: genuinely unresolved, real contradicting evidence now
-  exists, resolvable with one concrete Mac-side check (above).
-- Rotation direction: separately unresolved, weakest evidence in the
-  project, and its correctness is entangled with whatever the Z-axis
-  answer turns out to be.
+### Phase 2: Rotation (only run after Phase 1 is resolved)
+
+Only proceed once Candidate A or B is confirmed - the correct rotation
+formula depends on that answer, and testing rotation first risks wasted
+work.
+
+1. Create one more test object, rotated exactly **90 degrees about
+   Blender's Z axis** (matching the original real-world bug report, so
+   there's a known prior data point to sanity-check against) and
+   nothing else - no position offset, no other rotation.
+2. Export it. Before opening anything else, **decode the raw
+   `trafoOSToWSRot` hex value directly** (the same `hex_to_float`/
+   `decode_rotation_matrix_hex` functions already in
+   `coordinate_transform.py` can do this) to get the exact resulting
+   3x3 matrix as pure numbers - no Spacer needed for this numeric step.
+3. Separately, open the export in Spacer (or, better, an actual
+   in-game/compiled test if practical) and visually note which way the
+   object's forward direction actually points, relative to the room/
+   reference geometry.
+4. Cross-reference: does the *numeric* matrix from step 2 correspond to
+   a rotation that visually matches step 3's real-world observation?
+   This closes the loop between pure math and observable behavior, which
+   is what actually settles the rotation question - internal
+   self-consistency (which the current formula already has, verified via
+   round-trip export/import testing) is not the same as being correct
+   against Gothic's real convention.
+
+**How to spot success/error:** if the object visually faces the
+direction implied by a proper +90 degree turn matching Blender's own
+rotation direction (mentally compare: which way would this object face
+if you'd rotated it +90 degrees in Blender and looked at it from
+Blender's own default view), that's success. Facing the opposite way -
+matching the original bug report exactly - is the error state; if that
+happens even after Phase 1 and Phase 2 fixes, the rotation formula needs
+the full re-derivation described in the correction above, not another
+single sign flip.
