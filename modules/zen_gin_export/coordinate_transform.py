@@ -20,7 +20,7 @@ story - the point of this module existing on its own is so that mistake
 can't happen silently again.
 """
 
-
+# TODO: investigate different sign conventions for y-axis rotation in Blender vs Gothic. The current code is wrong
 def blender_position_to_gothic(x, y, z, scale=100):
     """Convert a Blender-space position to ZenGin-space, in centimeters
     by default (scale=100 converts Blender's meters to Gothic's cm).
@@ -36,6 +36,21 @@ def blender_quaternion_to_gothic(w, x, y, z):
     matching Blender's own mathutils.Quaternion component order) to the
     equivalent quaternion in ZenGin space.
 
+    W = cos(θ / 2)
+    X = ax × sin(θ / 2)
+    Y = ay × sin(θ / 2)
+    Z = az × sin(θ / 2)
+No rotation:
+(W, X, Y, Z) = (1, 0, 0, 0)
+
+180° around X:
+(0, 1, 0, 0)
+
+180° around Y:
+(0, 0, 1, 0)
+
+180° around Z:
+(0, 0, 0, 1)
     The vector part uses the same per-axis permutation as
     blender_position_to_gothic (X->X, Z->Y, Y->-Z), but NEGATED - i.e.
     the rotation angle is inverted while the rotation axis stays the
@@ -61,6 +76,35 @@ def blender_quaternion_to_gothic(w, x, y, z):
     is the first place to revisit.
 
     Returns (gw, gx, gy, gz) in the same (w, x, y, z) order.
+
+    IF GOTHIC IS LEFT-HANDED:
+    The important consequence is that this is a reflection, not just a rotation of the coordinate system. It changes handedness:
+
+    B system: right-handed
+    G system: left-handed
+
+    Because of that, you cannot simply do this to the quaternion:
+
+    (w, x, y, z) → (w, x, z, y)   ← WRONG
+
+    Why? The (x,y,z) part of a quaternion represents a rotation axis, and when you reflect the coordinate system, the meaning of positive rotation also reverses.
+
+    So you need an additional sign reversal.
+
+    If:
+
+    qB = (w, x, y, z)
+
+    then one valid representation in G is:
+
+    qG = (w, -x, -z, -y)
+
+    So:
+
+    B: (w,  x,  y,  z)
+            ↓   ↓   ↓
+
+    G: (w, -x, -z, -y)
     """
     return (w, -x, -z, y)
 
