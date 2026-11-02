@@ -12,6 +12,7 @@ from .coordinate_transform import (
 from .archive_parser import parse_archive, find_block, parse_vec3, ArchiveBlock
 from .light_conversion import (
     gothic_range_to_blender_distance,
+    gothic_range_to_blender_power,
     blender_distance_to_gothic_range,
     gothic_cone_angle_to_blender_spot_size,
     blender_spot_size_to_gothic_cone_angle,

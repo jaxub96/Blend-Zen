@@ -17,6 +17,7 @@ from . import waypoint_ops
 from . import vob_types
 from . import mesh_catalog
 from . import vob_ops
+from . import gothic_sky
 from . import mesh_preview
 from . import export_ops
 from . import quick_export
@@ -39,6 +40,7 @@ classes = (
     waypoint_ops.ZEN_OT_unlink_waypoints,
     waypoint_ops.ZEN_OT_toggle_waypoint_links,
     vob_ops.ZEN_OT_add_vob,
+    gothic_sky.ZEN_OT_use_gothic_sky,
     export_ops.ZEN_OT_export_zen,
     export_ops.ZEN_OT_import_zen,
     quick_export.ZEN_OT_quick_export_package,

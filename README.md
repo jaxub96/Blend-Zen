@@ -95,6 +95,12 @@ The "ZenGin" sidebar tab has:
   for `oCItem` it autocompletes against item instance names. For the
   interactive `oCMob*` types, selecting the new object shows a properties
   box in the same tab (see [Interactive objects](#interactive-objects-the-ocmob-family)).
+- **Use Gothic Sky Lighting** - installs `asset_catalog/sky/gothic_sky.hdr`
+  as a Blender studio light and selects it in the viewport (Material Preview,
+  Standard view transform). The HDR is Gothic's own skydome (colour dome +
+  cloud layer from `Skydome_*.3ds` and the SkyDay textures) rendered to a
+  panorama by `tooling/pipeline/build_gothic_sky.py`; Gothic has no HDRI. The
+  gradient colours are sampled from a Spacer screenshot, not read from game data.
 - **Export Uncompiled ZEN** - writes the scene out; every export is
   automatically verified for structural correctness (object-index
   contiguity) before reporting success.

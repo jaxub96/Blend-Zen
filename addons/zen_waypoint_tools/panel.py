@@ -85,6 +85,7 @@ class ZEN_PT_zen_add_vob(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("zen.refresh_mesh_catalog", text="", icon='FILE_REFRESH')
         layout.operator("zen.add_vob", icon='ADD')
+        layout.operator("zen.use_gothic_sky", icon='LIGHT_SUN')
 
 
 class ZEN_PT_zen_export(bpy.types.Panel):

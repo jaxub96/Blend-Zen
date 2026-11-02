@@ -22,7 +22,7 @@ VOB_TYPE_ITEMS = (
     ('oCMobContainer', "Interactive: Container",
      "Lootable chest/barrel/sack - name is this instance's unique vobName, "
      "not its mesh. Configure via Custom Properties after adding - see "
-     "README.md "Interactive objects""),
+     "README.md, Interactive objects"),
     ('oCMobDoor', "Interactive: Door",
      "A door - name is this instance's unique vobName, not its mesh. "
      "Configure via Custom Properties after adding"),
