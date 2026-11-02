@@ -5,12 +5,15 @@ and `jeanKoby-MAC`).
 
 To prevent unsynced work, follow the checklist before work.
 
+The remote is named `github` (not `origin`). The sibling `KIT` repo is separate
+and uses the usual `origin`; the same checklist applies to it.
+
 ## Before starting work on a machine
 
 1. `git status` - if anything is uncommitted from last time, deal with it
    first (commit, stash, or discard on purpose). Don't start new work on
    top of unknown local state.
-2. `git fetch origin` then `git log HEAD..origin/main --oneline` -
+2. `git fetch github` then `git log HEAD..github/main --oneline` -
    see what's incoming *before* pulling. If it's non-empty, this machine
    was behind.
 3. `git pull` (or `merge`/`rebase`, your call) and actually read the
@@ -33,9 +36,9 @@ To prevent unsynced work, follow the checklist before work.
 
 ## Periodically
 
-7. `git branch -a` - check `backup-before-reset` (or any other stray
-   branch) isn't quietly diverging further from `main`; delete or merge
-   it once it's no longer needed rather than letting it linger.
+7. `git branch -a` - check that no stray branch is quietly diverging from
+   `main`; delete or merge it once it's no longer needed rather than
+   letting it linger. This repo is meant to live on `main` alone.
 8. If a machine turns out to have been behind for a while, don't just
    pull and move on - grep the commits you missed for anything that
    should have changed how you'd been working locally in the meantime
