@@ -111,7 +111,7 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
 
         # 1. Export the level mesh. use_local_cs is forced False regardless
         # of object count - a level mesh needs absolute world-space
-        # vertex coordinates (matching WORKFLOW.md's explanation of how
+        # vertex coordinates (matching README.md "Blender -> Spacer workflow"'s explanation of how
         # zCVobLevelCompo's own position is vestigial - the compiled
         # world's placement comes entirely from the mesh's own baked
         # coordinates), not the per-object local origin used for

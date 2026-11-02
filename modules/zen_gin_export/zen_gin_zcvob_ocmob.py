@@ -27,8 +27,8 @@ class OCMob(ZCVob):
     zen_waypoint_tools/item_mesh_map.py) - here it's resolved with a
     per-instance "visual_name" custom property instead of a lookup
     table, since there's no fixed global mapping the way there is for
-    items. See documentation/VOB_TYPES.md for the full picture and
-    documentation/USAGE_interactive_objects.md for a worked example.
+    items. See README.md "VOB types" for the full picture and
+    README.md "Interactive objects" for a worked example.
 
     All fields are read as flat custom (ID) properties on the Blender
     object via `ZCVob._custom()` - the same addon-independent mechanism

@@ -4,7 +4,7 @@ bl_info = {
     "version": (2, 5, 0),
     "blender": (5, 2, 0),
     "location": "View3D > Sidebar > ZenGin",
-    "description": "Place, link, and visualize zCWaypoint objects, add other ZenGin VOBs, preview their meshes, and export to an uncompiled ZEN",
+    "description": "Place, link, and visualize zCWaypoint objects, add other ZenGin VOBs, and export to an uncompiled ZEN",
     "category": "Object",
 }
 
@@ -20,7 +20,6 @@ from . import vob_ops
 from . import mesh_preview
 from . import export_ops
 from . import quick_export
-from . import asset_library
 from . import panel
 
 
@@ -43,16 +42,9 @@ classes = (
     export_ops.ZEN_OT_export_zen,
     export_ops.ZEN_OT_import_zen,
     quick_export.ZEN_OT_quick_export_package,
-    asset_library.ZEN_OT_populate_asset_library_file,
-    asset_library.ZEN_OT_populate_props_from_catalog,
-    mesh_preview.ZEN_OT_load_vob_mesh,
-    mesh_preview.ZEN_OT_load_all_vob_meshes,
-    mesh_preview.ZEN_OT_clear_vob_previews,
     panel.ZEN_PT_waypoint_tools,
     panel.ZEN_PT_zen_add_vob,
     panel.ZEN_PT_zen_export,
-    panel.ZEN_PT_zen_mesh_preview,
-    panel.ZEN_PT_zen_asset_library,
 )
 
 

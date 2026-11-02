@@ -2,7 +2,7 @@
 Structural self-check for an exported ZenGin archive.
 
 Every object block in the ASCII archive format needs a globally unique
-sequential index (see ARCHITECTURE.md's "object-index thread" section -
+sequential index (see README.md "Architecture"'s "object-index thread" section -
 this is flagged there as the highest-risk spot for future extension
 bugs). This module verifies that invariant holds, and that the header's
 claimed object count actually matches what's in the file.

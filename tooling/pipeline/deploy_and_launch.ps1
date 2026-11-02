@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-    Automates the part of documentation/E2E_TEST_PLAN.md's pipeline that
+    Automates the part of README.md "End-to-end test plan"'s pipeline that
     comes AFTER Spacer has produced a compiled ZEN: deploy it into a real
     Gothic II install, point the startup world at it, launch the game,
     and do a best-effort check of the engine's log for known problems.
 
     Spacer's "compile world" / "compile light" step itself has no known
-    scripting interface (see E2E_TEST_PLAN.md's automation table) and is
+    scripting interface (see README.md "End-to-end test plan"'s automation table) and is
     NOT covered here - this script starts from "I already have a
     compiled ZEN file on disk".
 
@@ -26,7 +26,7 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     # The compiled ZEN produced by Spacer's File -> Save As (Phase 6 of
-    # E2E_TEST_PLAN.md). Required.
+    # README.md "End-to-end test plan"). Required.
     [Parameter(Mandatory = $true)]
     [string]$CompiledZenPath,
 
@@ -175,7 +175,7 @@ function Start-GothicAndCheckLog {
     }
 
     if ($hits.Count -gt 0) {
-        Write-Warning "Log contains possible error patterns since launch: $($hits -join ', ') - check $LogPath by hand (Phase 8/9 of E2E_TEST_PLAN.md)."
+        Write-Warning "Log contains possible error patterns since launch: $($hits -join ', ') - check $LogPath by hand (Phase 8/9 of README.md "End-to-end test plan")."
     } else {
         Write-Host "No known error patterns found in the log since launch - not a guarantee, just a first-pass smoke signal. Still do the manual checks in Phase 8/9."
     }

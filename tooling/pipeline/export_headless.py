@@ -1,6 +1,6 @@
 """Run the addon's own Export Uncompiled ZEN / Export Level Package
 operators from Blender's command line, with no UI - the automatable
-leg of documentation/E2E_TEST_PLAN.md's pipeline (everything up to
+leg of README.md "End-to-end test plan"'s pipeline (everything up to
 Spacer, which has no known scripting interface).
 
 Requires "Zen Waypoint Tools" to already be enabled for the Blender
@@ -8,7 +8,7 @@ profile this runs under (enabled-addon state is stored in Blender's
 user preferences, which --background mode loads the same as a normal
 session) - this script does not enable it for you.
 
-Usage (zen-only export, always safe - see E2E_TEST_PLAN.md's
+Usage (zen-only export, always safe - see README.md "End-to-end test plan"'s
 automation table on why the mesh-export leg below is unconfirmed):
 
     blender <path-to.blend> --background --python export_headless.py -- \
@@ -16,7 +16,7 @@ automation table on why the mesh-export leg below is unconfirmed):
 
 Usage (full level package - mesh .3DS + zCVobLevelCompo + zen, same as
 clicking "Export Level Package" - UNCONFIRMED headless-safe, see
-E2E_TEST_PLAN.md, because it also drives KrxImpExp's mesh exporter):
+README.md "End-to-end test plan", because it also drives KrxImpExp's mesh exporter):
 
     blender <path-to.blend> --background --python export_headless.py -- \
         package <level_name> <mod_name>

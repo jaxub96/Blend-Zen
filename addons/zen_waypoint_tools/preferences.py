@@ -15,7 +15,7 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
     mesh_directories: bpy.props.CollectionProperty(
         name="Mesh directories",
         description="Directories searched for .MRM mesh files, used by "
-                    "'Load Mesh Preview' and the Add VOB mesh-name search",
+                    "the Add VOB mesh-name search",
         type=ZenMeshDirectory,
     )
 
@@ -23,15 +23,6 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
         name="Selected mesh directory",
         default=-1,
         min=-1,
-    )
-
-    asset_library_root: bpy.props.StringProperty(
-        name="Asset Library Root",
-        description="Root folder of your Gothic asset library (contains "
-                    "blender_assets.cats.txt and the category .blend files). "
-                    "Used by 'Populate Asset Previews' to know where to write "
-                    "catalog definitions.",
-        subtype='DIR_PATH',
     )
 
     gothic_game_folder: bpy.props.StringProperty(
@@ -53,7 +44,6 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         layout = self.layout
 
-        layout.prop(self, "asset_library_root")
         layout.prop(self, "gothic_game_folder")
         layout.prop(self, "gothic_command")
         layout.separator()
@@ -91,12 +81,6 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
 class ZEN_UL_mesh_directories(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_property, index=0, flt_flag=0):
         layout.label(text=item.name, icon='FILE_FOLDER')
-
-
-def get_asset_library_root(context=None):
-    context = context or bpy.context
-    prefs = context.preferences.addons[__package__].preferences
-    return prefs.asset_library_root or None
 
 
 def get_gothic_settings(context=None):

@@ -13,7 +13,7 @@ plain Python/pytest. This module is only what CREATES those properties
 Object Properties > Custom Properties panel is self-documenting) when a
 VOB of one of these types is added.
 
-See documentation/USAGE_interactive_objects.md for the end-to-end guide
+See README.md "Interactive objects" for the end-to-end guide
 this schema is designed around.
 """
 

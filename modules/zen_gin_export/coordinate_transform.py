@@ -7,8 +7,7 @@ pytest. Matrix/quaternion construction that needs mathutils lives in
 zen_gin_zcvob.py / zen_gin_waynet.py, which just feed numbers in.
 
 Blender is right-handed and Z-up; ZenGin is Y-up AND LEFT-HANDED
-(confirmed by the "Compass Cross" test, documentation/
-transform_investigation.md - don't re-derive this again). So the
+(confirmed by the "Compass Cross" test, README.md "Coordinate transform" - don't re-derive this again). So the
 conversion is a plain Y<->Z axis swap with NO sign flip - determinant
 -1, a handedness flip, not a rotation. See the doc for how that was
 verified (an independent, non-circular comparison against real compiled

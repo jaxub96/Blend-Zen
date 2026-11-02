@@ -17,7 +17,7 @@ from modules.zen_gin_export.coordinate_transform import (
 
 def test_position_known_regression_value():
     """Locks in the axis mapping confirmed against real Spacer geometry
-    by the "Compass Cross" test (documentation/transform_investigation.md)."""
+    by the "Compass Cross" test (README.md "Coordinate transform")."""
     bx, by, bz = 2, 3, 5
     gx, gy, gz = blender_position_to_gothic(bx, by, bz)
 

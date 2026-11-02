@@ -1,10 +1,8 @@
 """Answers a real question: does the exported uncompiled ZEN differ
 between a vob created via the addon's "Add VOB" dialog (an Empty, no
-mesh preview loaded - mesh preview is obsolete now that props/items are
-placed from the Blender asset library instead) and the same vob placed
+no mesh child) and the same vob placed
 by dragging a real asset out of Items_ITMW.blend/Props.blend (a real
-Mesh object, transform/name transferred by asset_library.py's
-populate_asset_with_mesh - see ASSET_LIBRARY_HANDOFF.md)?
+Mesh object)?
 """
 import pytest
 from mathutils import Matrix, Quaternion
@@ -21,8 +19,8 @@ class FakeAssetDragObject:
     level scene: the placed object itself IS the mesh (type='MESH', real
     bound_box) - unlike the Add VOB flow's empty. rotation_mode is
     irrelevant to the fake (the exporter only ever reads
-    rotation_quaternion directly), but real asset_library.py objects are
-    always left in 'QUATERNION' mode (see populate_asset_with_mesh)."""
+    rotation_quaternion directly), but real asset-library objects are
+    always left in 'QUATERNION' mode."""
     type = "MESH"
     children = ()
 

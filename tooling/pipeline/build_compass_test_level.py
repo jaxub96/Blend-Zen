@@ -1,5 +1,5 @@
 """Builds the "Compass Cross" scene for verifying the Blender<->Gothic
-coordinate transform in Spacer. See documentation/transform_investigation.md
+coordinate transform in Spacer. See README.md "Coordinate transform"
 for why this design (mesh-anchored, not freepoint-only) is the one that
 actually proves anything.
 
@@ -19,7 +19,7 @@ Level Package". Or headless, exporting in the same step:
     blender <file.blend> --background --python build_compass_test_level.py -- <level_name> <mod_name>
 
 After exporting: copy into the Gothic install, open the uncompiled ZEN
-in Spacer, compile world + light (E2E_TEST_PLAN.md Phase 6), then check:
+in Spacer, compile world + light (README.md "End-to-end test plan" Phase 6), then check:
 each tip freepoint should sit exactly on its same-length arm, and
 TEST_ROTATION_PLUS90Z should point from wherever TEST_ROTATION_REFERENCE
 points towards the +Y arm.
