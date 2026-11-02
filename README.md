@@ -74,8 +74,6 @@ ZEN is the right handoff format rather than a limitation to work around.
   utility script.
 - **`GIT_CHECKLIST.md`** - pre/post-session checklist for working across
   two machines on this repo, so a checkout can't silently fall behind.
-- **`.claude/skills/gothic-terrain-piece/`** - Claude Code skill for
-  building Gothic-style terrain pieces in Blender, matching `G2ISLAND_WEB`.
 
 ## Related project: KIT
 
