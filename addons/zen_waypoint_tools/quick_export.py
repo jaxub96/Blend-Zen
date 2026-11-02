@@ -12,13 +12,24 @@ dragged directly into a Gothic II installation:
         Data/
           Meshes/Level/<mod>/<level_name>.3DS
           Worlds/<mod>/<level_name>_uncompiled.zen
+
+With "Gothic Game Folder" set in the add-on preferences the same two files
+go straight into that game folder's _work/Data instead, and "Open in
+Spacer" then runs `gothic spacernet <mod>/<level_name>` (gothic-wine):
+Spacer.NET starts with File > Open ZEN in the world's folder (it cannot
+open a world by itself; opening the uncompiled ZEN compiles it), and the
+compiled save you make there becomes the mod's world.
 """
 
 import os
+import subprocess
 import bpy
 
 from .krximpexp_bridge import get_krx_3ds_exporter
 from .export_ops import export_zen_to_path
+from .preferences import get_gothic_settings
+
+SPACER_LOG = os.path.expanduser("~/Library/Logs/gothic-spacernet.log")
 
 
 class ZEN_OT_quick_export_package(bpy.types.Operator):
@@ -33,6 +44,14 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
 
     level_name: bpy.props.StringProperty(name="Level Name", default="LEVEL_001")
     mod_name: bpy.props.StringProperty(name="Mod Folder", default="MOD")
+    open_in_spacer: bpy.props.BoolProperty(
+        name="Open in Spacer",
+        description="After the export, run 'gothic spacernet <level>': Spacer.NET starts with "
+                    "File > Open ZEN in the world's folder (opening the uncompiled ZEN compiles it); "
+                    "your compiled save becomes the mod's world. Needs Gothic Game Folder in the "
+                    "add-on preferences",
+        default=False,
+    )
 
     @classmethod
     def poll(cls, context):
@@ -62,6 +81,11 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
         layout.separator()
         layout.prop(self, "level_name")
         layout.prop(self, "mod_name")
+        game_folder, _ = get_gothic_settings(context)
+        layout.label(text="Into: " + (os.path.join(game_folder, "_work", "Data") if game_folder else "export/ next to this .blend"))
+        row = layout.row()
+        row.enabled = game_folder is not None
+        row.prop(self, "open_in_spacer")
 
     def execute(self, context):
         mesh_objs = [o for o in context.selected_objects if o.type == 'MESH']
@@ -69,8 +93,14 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
             self.report({'ERROR'}, "Select at least one mesh object to use as the level mesh")
             return {'CANCELLED'}
 
-        blend_dir = os.path.dirname(bpy.data.filepath)
-        export_root = os.path.join(blend_dir, "export")
+        game_folder, gothic_command = get_gothic_settings(context)
+        if game_folder:
+            if not os.path.isdir(os.path.join(game_folder, "_work", "Data")):
+                self.report({'ERROR'}, f"Gothic Game Folder has no _work/Data: {game_folder}")
+                return {'CANCELLED'}
+            export_root = game_folder
+        else:
+            export_root = os.path.join(os.path.dirname(bpy.data.filepath), "export")
         meshes_dir = os.path.join(export_root, "_work", "Data", "Meshes", "Level", self.mod_name)
         worlds_dir = os.path.join(export_root, "_work", "Data", "Worlds", self.mod_name)
         os.makedirs(meshes_dir, exist_ok=True)
@@ -113,12 +143,38 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
             created_level_compo = True
 
         # 3. Export the scene to the uncompiled ZEN, same verified path
-        # as the regular Export Uncompiled ZEN button.
-        report_type, message = export_zen_to_path(zen_path)
+        # as the regular Export Uncompiled ZEN button - minus the level
+        # compos of other level names. Each export under a new name adds
+        # one to the .blend, and each points at its own .3DS: Spacer
+        # would load all of those meshes on top of this one.
+        other_compos = [o.name for o in bpy.data.objects
+                        if o.name.startswith("zCVobLevelCompo:") and o.name != level_compo_name]
+        objects = [o for o in bpy.data.objects if o.name not in other_compos]
+        report_type, message = export_zen_to_path(zen_path, objects)
 
         prefix = f"Created {level_compo_name} at world origin. " if created_level_compo else ""
+        if other_compos:
+            prefix += f"Left out other level compos (you can delete them): {', '.join(other_compos)}. "
+        spacer = ""
+        if report_type != 'ERROR' and self.open_in_spacer and game_folder:
+            spacer = "\n" + self._open_in_spacer(gothic_command)
         self.report(
             {report_type},
-            f"{prefix}3DS: {mesh_path}\nZEN: {message}",
+            f"{prefix}3DS: {mesh_path}\nZEN: {message}{spacer}",
         )
         return {'CANCELLED'} if report_type == 'ERROR' else {'FINISHED'}
+
+    def _open_in_spacer(self, gothic_command):
+        # Runs on after Blender returns: it waits for the compiled save in Spacer,
+        # so its output goes to a log and it ends with a macOS notification.
+        if not os.path.isfile(gothic_command):
+            return f"Not opened in Spacer: gothic command not found: {gothic_command}"
+        os.makedirs(os.path.dirname(SPACER_LOG), exist_ok=True)
+        with open(SPACER_LOG, "w") as log:
+            subprocess.Popen(
+                ["/bin/zsh", gothic_command, "spacernet", f"{self.mod_name}/{self.level_name}"],
+                stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+        return (f"Starting Spacer.NET: File > Open ZEN, pick {self.level_name}_uncompiled.zen "
+                f"(log: {SPACER_LOG})")

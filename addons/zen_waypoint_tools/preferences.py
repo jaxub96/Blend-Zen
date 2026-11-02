@@ -34,10 +34,28 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
         subtype='DIR_PATH',
     )
 
+    gothic_game_folder: bpy.props.StringProperty(
+        name="Gothic Game Folder",
+        description="The game folder (holds _work and system). When set, Export Level "
+                    "Package writes the .3DS and the uncompiled ZEN straight into its "
+                    "_work/Data folders instead of export/ next to the .blend",
+        subtype='DIR_PATH',
+    )
+
+    gothic_command: bpy.props.StringProperty(
+        name="gothic Command",
+        description="The gothic command (gothic-wine/gothic). 'Open in Spacer' runs "
+                    "'gothic spacernet <level>' with it",
+        subtype='FILE_PATH',
+        default=os.path.expanduser("~/Creativity/Gothic-Mod/gothic-wine/gothic"),
+    )
+
     def draw(self, context):
         layout = self.layout
 
         layout.prop(self, "asset_library_root")
+        layout.prop(self, "gothic_game_folder")
+        layout.prop(self, "gothic_command")
         layout.separator()
 
         total = f"Mesh directories: {len(self.mesh_directories)}"
@@ -79,6 +97,13 @@ def get_asset_library_root(context=None):
     context = context or bpy.context
     prefs = context.preferences.addons[__package__].preferences
     return prefs.asset_library_root or None
+
+
+def get_gothic_settings(context=None):
+    """(game folder or None, gothic command path) for Export Level Package."""
+    context = context or bpy.context
+    prefs = context.preferences.addons[__package__].preferences
+    return (bpy.path.abspath(prefs.gothic_game_folder) or None), bpy.path.abspath(prefs.gothic_command)
 
 
 def get_mesh_directories(context=None):

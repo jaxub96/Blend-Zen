@@ -3,11 +3,14 @@ import bpy
 from bpy_extras.io_utils import ExportHelper
 
 
-def export_zen_to_path(filepath):
+def export_zen_to_path(filepath, objects=None):
     """Shared export + verify logic, used by both the Export Uncompiled
     ZEN button and the quick level-package export. Returns
     (report_type, message) where report_type is 'INFO' or 'WARNING'/
     'ERROR' for use directly with operator.report().
+
+    objects: the Blender objects to export; all of bpy.data.objects
+    when None.
     """
     try:
         from zen_gin_export import ZenArchive, FilePrinter
@@ -19,7 +22,7 @@ def export_zen_to_path(filepath):
         )
 
     printer = FilePrinter(filepath)
-    archive = ZenArchive(bpy.data.objects, printer)
+    archive = ZenArchive(bpy.data.objects if objects is None else objects, printer)
     archive.print()
     printer.close()
 

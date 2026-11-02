@@ -8,3 +8,5 @@ __pycache__/
 # Python virtual env / test cache (also self-ignored via their own .gitignore)
 .venv/
 .pytest_cache/
+blender_work_dir/
+
