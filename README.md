@@ -34,8 +34,6 @@ ZEN is the right handoff format rather than a limitation to work around.
   - `USAGE_interactive_objects.md` - how to configure a chest/door/bed/
     switch/etc. (the oCMOB family) so it's actually usable in-game, not
     just exported.
-  - `GIT_CHECKLIST.md` - pre/post-session checklist for working across
-    two machines on this repo, so a checkout can't silently fall behind.
   - `E2E_TEST_PLAN.md` - the manual test procedure for the full
     pipeline this repo is one part of: Blender through Spacer to a
     playable Gothic II level, plus what of that is (and isn't)
@@ -67,6 +65,26 @@ ZEN is the right handoff format rather than a limitation to work around.
   Browser rather than editing the script per-asset.
 - **`tests/`** - pytest suite for the Blender-independent parts of
   `zen_gin_export`.
+- **`tooling/pipeline/`** - headless helpers around the addon: export a
+  level without the UI, build the compass test level, and deploy/launch
+  Gothic II for the end-to-end test (see `documentation/E2E_TEST_PLAN.md`).
+- **`blender_work_dir/`** - sample and test scenes used while developing
+  the addon (`G2ISLAND_WEB`, `compass_test_level`, the room scenes, and a
+  few reference ZENs), plus `select_material_boundary.py`, a small Blender
+  utility script.
+- **`GIT_CHECKLIST.md`** - pre/post-session checklist for working across
+  two machines on this repo, so a checkout can't silently fall behind.
+- **`.claude/skills/gothic-terrain-piece/`** - Claude Code skill for
+  building Gothic-style terrain pieces in Blender, matching `G2ISLAND_WEB`.
+
+## Related project: KIT
+
+The Gothic modular building kit lives in its own repo, `KIT`
+(`https://github.com/jaxub96/KIT`), not here. It expects to be checked out
+as a sibling of this repo and reads two things from it:
+`asset_catalog/materials_levels.blend` (the shared level-texture library)
+and `blender_work_dir/G2ISLAND_WEB.blend` (a style reference). Keep those
+paths stable, or update KIT's README and `kit_lib.py` if they move.
 
 ## Setup
 
