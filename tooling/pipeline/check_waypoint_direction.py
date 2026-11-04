@@ -6,7 +6,7 @@ Needs "Zen Waypoint Tools" enabled. Safe to run in an open file: in the
 UI it works in a temporary scene and removes everything it created; the
 exported ZEN goes to a temp folder that is deleted afterwards.
 
-    blender --background --python tooling/pipeline/test_waypoint_direction.py
+    blender --background --python tooling/pipeline/check_waypoint_direction.py
 
 or paste/run it in Blender's Text Editor (or through an MCP "run python"
 tool). Prints one PASS/FAIL line per check and a summary; in background
@@ -96,9 +96,9 @@ def _run_checks(scene, tmp_dir):
     view_layer.objects.active = None
 
     # --- 1. add waypoints via the real operator --------------------------
-    yaws = (0.0, 90.0, 37.0)
+    # A chain along Blender +X: WP1 -> WP2 -> WP3.
     waypoints = []
-    for i, yaw in enumerate(yaws):
+    for i in range(3):
         scene.cursor.location = (i * 3.0, 0.0, 0.0)
         assert bpy.ops.zen.add_waypoint() == {'FINISHED'}
         wp = bpy.context.view_layer.objects.active
@@ -109,8 +109,43 @@ def _run_checks(scene, tmp_dir):
             check("new waypoint uses Euler XYZ", wp.rotation_mode == 'XYZ', wp.rotation_mode)
             check("new waypoint locks X/Y rotation", tuple(wp.lock_rotation) == (True, True, False),
                   str(tuple(wp.lock_rotation)))
-            check("new waypoint faces Blender +Y",
+            check("new unlinked waypoint faces Blender +Y",
                   close(Vector(y_axis(wp)).normalized(), (0, 1, 0)), str(y_axis(wp)))
+    view_layer.update()
+    wp1, wp2, wp3 = waypoints
+
+    # --- 1b. auto-aim -----------------------------------------------------
+    check("adding a chained waypoint aims the previous one at it (+X)",
+          close(y_axis(wp1), (1, 0, 0)), str(y_axis(wp1)))
+    check("chained waypoint stays level after aiming",
+          close(wp1.rotation_euler[:2], (0, 0)), str(tuple(wp1.rotation_euler)))
+    check("new chained waypoint continues the previous heading (+X)",
+          close(y_axis(wp3), (1, 0, 0)), str(y_axis(wp3)))
+
+    # Link Selected Waypoints: active -> other turns the active one.
+    view_layer.objects.active = None
+    for o in view_layer.objects:
+        o.select_set(False)
+    scene.cursor.location = (0.0, 5.0, 2.0)  # higher up: heading only
+    assert bpy.ops.zen.add_waypoint() == {'FINISHED'}
+    wp4 = view_layer.objects.active
+    wp1.select_set(True)
+    wp4.select_set(True)
+    res = bpy.ops.zen.link_waypoints()
+    view_layer.update()
+    check("Link Selected aims the active waypoint at the other (-Y), level",
+          res == {'FINISHED'} and close(y_axis(wp4), (0, -1, 0)), f"{res}, {y_axis(wp4)}")
+
+    # Dragging into a link slot in the panel = setting the property.
+    wp2.zen_waypoint_links.link_b = wp4
+    view_layer.update()
+    expected = Vector((-3.0, 5.0, 0.0)).normalized()
+    check("setting a link slot aims the owner at the target",
+          close(y_axis(wp2), expected), f"expected {tuple(expected)}, got {y_axis(wp2)}")
+
+    # Explicit yaws for the export/import round trip (overrides the aim).
+    yaws = (0.0, 90.0, 37.0)
+    for wp, yaw in zip(waypoints, yaws):
         wp.rotation_euler = Euler((0.0, 0.0, math.radians(yaw)))
     view_layer.update()
 
@@ -141,7 +176,7 @@ def _run_checks(scene, tmp_dir):
         name = wp.name.removeprefix("zCWaypoint:")
         imp = imported.get(name)
         ok = imp is not None and close(y_axis(imp), y_axis(wp)) and imp.empty_display_type == 'ARROWS'
-        check(f"import {name} keeps facing and csys display", ok,
+        check(f"import {name} keeps ZEN facing (not re-aimed) and csys display", ok,
               f"original {y_axis(wp)}, imported {y_axis(imp) if imp else None}")
 
     # --- 4. old-style waypoint conversion ---------------------------------

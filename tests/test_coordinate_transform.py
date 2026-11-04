@@ -16,6 +16,7 @@ from modules.zen_gin_export.coordinate_transform import (
     gothic_direction_to_blender,
     waypoint_direction_from_matrix,
     waypoint_rotation_from_blender_direction,
+    waypoint_yaw_towards,
 )
 
 
@@ -161,3 +162,14 @@ def test_import_rotation_identity_for_default_facing():
     rotation = waypoint_rotation_from_blender_direction(0, 1, 0)
     flat = [v for row in rotation for v in row]
     assert flat == pytest.approx([1, 0, 0, 0, 1, 0, 0, 0, 1])
+
+
+@pytest.mark.parametrize("dx, dy", [(1, 0), (0, 1), (-2, 0), (0, -3), (3, -4)])
+def test_yaw_towards_turns_local_y_onto_the_offset(dx, dy):
+    t = waypoint_yaw_towards(dx, dy)
+    length = math.hypot(dx, dy)
+    assert (-math.sin(t), math.cos(t)) == pytest.approx((dx / length, dy / length))
+
+
+def test_yaw_towards_target_straight_above_has_no_heading():
+    assert waypoint_yaw_towards(0, 0) is None

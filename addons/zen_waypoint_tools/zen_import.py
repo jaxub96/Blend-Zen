@@ -34,7 +34,7 @@ from zen_gin_export import (
 )
 
 from .vob_types import VOB_DISPLAY
-from .waypoint_links import add_directed_link, setup_waypoint_empty
+from .waypoint_links import add_directed_link, setup_waypoint_empty, auto_aim_suppressed
 from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
 from .mesh_preview import get_preview_collection
 from .light_props import create_light_object
@@ -282,10 +282,13 @@ def import_zen(context, filepath, encoding="windows-1250"):
                     report["waypoints_created"] += 1
                 way_pairs.append(obj)
 
-            for i in range(0, len(way_pairs) - 1, 2):
-                left, right = way_pairs[i], way_pairs[i + 1]
-                if left is not None and right is not None:
-                    add_directed_link(left, right)
-                    report["ways_linked"] += 1
+            # Keep each waypoint's direction from the ZEN rather than
+            # re-aiming it at its links.
+            with auto_aim_suppressed():
+                for i in range(0, len(way_pairs) - 1, 2):
+                    left, right = way_pairs[i], way_pairs[i + 1]
+                    if left is not None and right is not None:
+                        add_directed_link(left, right)
+                        report["ways_linked"] += 1
 
     return report

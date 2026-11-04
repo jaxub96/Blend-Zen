@@ -10,6 +10,7 @@ from .coordinate_transform import (
     decode_rotation_matrix_hex,
     gothic_direction_to_blender,
     waypoint_rotation_from_blender_direction,
+    waypoint_yaw_towards,
 )
 from .archive_parser import parse_archive, find_block, parse_vec3, ArchiveBlock
 from .light_conversion import (

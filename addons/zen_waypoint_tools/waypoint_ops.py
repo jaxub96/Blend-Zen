@@ -46,10 +46,14 @@ class ZEN_OT_add_waypoint(bpy.types.Operator):
         target_collection.objects.link(obj)
 
         if prev is not None:
+            # Linking turns prev to face the new waypoint (see
+            # waypoint_links.py, auto-aim)...
             if not add_directed_link(prev, obj):
                 bpy.data.objects.remove(obj, do_unlink=True)
                 self.report({'ERROR'}, "Unable to allocate waypoint link slot")
                 return {'CANCELLED'}
+            # ...and the new one continues in that direction of travel.
+            obj.rotation_euler = (0.0, 0.0, prev.matrix_world.to_euler('XYZ').z)
 
         for selected_obj in context.view_layer.objects:
             selected_obj.select_set(False)
@@ -65,7 +69,10 @@ class ZEN_OT_add_waypoint(bpy.types.Operator):
 class ZEN_OT_link_waypoints(bpy.types.Operator):
     bl_idname = "zen.link_waypoints"
     bl_label = "Link Selected Waypoints"
-    bl_description = "Connect the active waypoint to the other selected waypoint"
+    bl_description = (
+        "Connect the active waypoint to the other selected waypoint and "
+        "turn the active one to face it"
+    )
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod

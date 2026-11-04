@@ -126,8 +126,17 @@ else. In Blender the `direction` is the empty's local **+Y** axis (green
 arrow) in world space - the same forward axis as freepoints and other vobs
 (Gothic's local +Z). Export reads it from `matrix_world`, so rotation
 mode and parent rotation don't matter. Import rebuilds the rotation from
-`direction`, so a round trip keeps it. New waypoints start facing Blender
-+Y, with X/Y rotation locked so `R` only turns them around Z (unlock in
+`direction`, so a round trip keeps it.
+
+**Auto-aim:** linking a waypoint to another turns the first one to face
+the second. This applies to Link Selected Waypoints (the active one turns),
+Add Waypoint at Cursor (the waypoint it chains from turns to face the new
+one, and the new one continues that heading) and dragging an object into
+a link slot. Only the heading changes, so waypoints stay level even if the
+target is higher or lower. Each new link re-aims, so set a hand-picked
+heading (e.g. a guard post) after linking. Importing a ZEN doesn't re-aim.
+
+An unlinked new waypoint starts facing Blender +Y, with X/Y rotation locked so `R` only turns them around Z (unlock in
 the N panel if ever needed). Waypoints from older files (single-arrow
 display) are converted by **Show Waypoint Directions**, which appears in
 the panel while any remain. It keeps their current orientation, and the
@@ -155,8 +164,8 @@ in-game for this exporter):
   faces the square, not a wall.
 - Keep it level (the rotation lock does this). Only the heading matters
   for NPCs.
-- Transit-only waypoints along roads don't need care. Pointing along the
-  path is a tidy default.
+- Transit-only waypoints along roads don't need care; auto-aim already
+  points them along the path.
 - Freepoints (`zCVobSpot`) are vobs with a full rotation and are aligned
   with `AI_AlignToFP`. Their forward is the same Blender local **+Y**
   (green arrow).
@@ -662,10 +671,10 @@ Blender-free parts testable).
   `bpy` dependency, imported directly).
 
 In Blender (needs the addon enabled):
-`tooling/pipeline/test_waypoint_direction.py` adds waypoints with the real
+`tooling/pipeline/check_waypoint_direction.py` adds waypoints with the real
 operator, rotates them, exports, checks `direction`, re-imports and checks
 the old-style conversion. Run it with
-`blender --background --python tooling/pipeline/test_waypoint_direction.py`
+`blender --background --python tooling/pipeline/check_waypoint_direction.py`
 or from the Text Editor; it cleans up after itself.
 
 There is no CI; nothing runs the suite automatically yet.

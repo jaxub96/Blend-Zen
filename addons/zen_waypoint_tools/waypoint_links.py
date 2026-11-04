@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import bpy
 
 
@@ -38,10 +40,69 @@ LINK_SLOT_COUNT = len(LINK_SLOT_NAMES)
 # regardless of which side a given connection happened to be stored on.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Auto-aim: storing a link source -> target turns source to face target.
+#
+# Done in the slot's update callback, so every way of linking gets it -
+# Link Selected Waypoints, Add Waypoint at Cursor (chaining from the active
+# one) and dragging an object into a slot in the panel. Only the heading
+# (rotation about Z) changes: waypoints stay level, see setup_waypoint_empty.
+# The importer suppresses it so directions read from a ZEN are kept.
+# ---------------------------------------------------------------------------
+
+_auto_aim_suppressed = 0
+
+
+@contextmanager
+def auto_aim_suppressed():
+    global _auto_aim_suppressed
+    _auto_aim_suppressed += 1
+    try:
+        yield
+    finally:
+        _auto_aim_suppressed -= 1
+
+
+def aim_waypoint_at(source, target):
+    """Turn source about Z so its local +Y (facing axis) points at target.
+    Keeps location and scale, and works for parented objects. Returns
+    False if target is straight above/below source (no heading)."""
+    from mathutils import Euler, Matrix
+    from zen_gin_export import waypoint_yaw_towards
+
+    # A just-created/moved object's matrix_world is stale until the
+    # depsgraph updates.
+    bpy.context.view_layer.update()
+    src_loc, _, src_scale = source.matrix_world.decompose()
+    dst_loc = target.matrix_world.translation
+    yaw = waypoint_yaw_towards(dst_loc.x - src_loc.x, dst_loc.y - src_loc.y)
+    if yaw is None:
+        return False
+    source.matrix_world = Matrix.LocRotScale(
+        src_loc, Euler((0.0, 0.0, yaw)).to_quaternion(), src_scale,
+    )
+    return True
+
+
+def _on_link_slot_changed(slot):
+    def update(self, context):
+        if _auto_aim_suppressed:
+            return
+        source = self.id_data
+        target = getattr(self, slot, None)
+        if target is None or target == source or not is_waypoint(target):
+            return
+        aim_waypoint_at(source, target)
+    return update
+
+
 class ZenWaypointLinks(bpy.types.PropertyGroup):
-    link_a: bpy.props.PointerProperty(type=bpy.types.Object, name="Link A")
-    link_b: bpy.props.PointerProperty(type=bpy.types.Object, name="Link B")
-    link_c: bpy.props.PointerProperty(type=bpy.types.Object, name="Link C")
+    link_a: bpy.props.PointerProperty(type=bpy.types.Object, name="Link A",
+                                      update=_on_link_slot_changed("link_a"))
+    link_b: bpy.props.PointerProperty(type=bpy.types.Object, name="Link B",
+                                      update=_on_link_slot_changed("link_b"))
+    link_c: bpy.props.PointerProperty(type=bpy.types.Object, name="Link C",
+                                      update=_on_link_slot_changed("link_c"))
 
 
 def is_waypoint(obj):

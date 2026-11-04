@@ -197,3 +197,15 @@ def waypoint_rotation_from_blender_direction(x, y, z):
         (sy, fy, uy),
         (sz, fz, uz),
     )
+
+
+def waypoint_yaw_towards(dx, dy):
+    """Rotation about Blender Z (radians) that turns a waypoint's local +Y
+    (its facing axis) towards a horizontal offset (dx, dy). After a yaw t
+    local +Y is (-sin t, cos t), so t = atan2(-dx, dy). Returns None when
+    the offset is (near) zero - the target is directly above/below, so
+    there is no heading to aim at."""
+    import math
+    if dx * dx + dy * dy < 1e-12:
+        return None
+    return math.atan2(-dx, dy)
