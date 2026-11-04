@@ -8,6 +8,8 @@ from .coordinate_transform import (
     gothic_position_to_blender,
     gothic_matrix_to_blender_matrix,
     decode_rotation_matrix_hex,
+    gothic_direction_to_blender,
+    waypoint_rotation_from_blender_direction,
 )
 from .archive_parser import parse_archive, find_block, parse_vec3, ArchiveBlock
 from .light_conversion import (

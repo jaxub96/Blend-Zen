@@ -44,6 +44,10 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
         text = "Hide Link Display" if context.scene.zen_show_waypoint_links else "Show Link Display"
         row.operator("zen.toggle_waypoint_links", text=text, icon=icon)
 
+        # Only offered while older-style (pre-csys) waypoints remain.
+        if any(o.type == 'EMPTY' and o.empty_display_type != 'ARROWS' for o in waypoints):
+            layout.operator("zen.update_waypoint_display", icon='ORIENTATION_GLOBAL')
+
         active = context.active_object
         if is_waypoint(active):
             layout.separator()

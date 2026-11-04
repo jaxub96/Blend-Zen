@@ -89,7 +89,9 @@ one (rolled-back) build.
 The "ZenGin" sidebar tab has:
 
 - **Waypoint tools** - add (chaining from the active waypoint), link,
-  unlink, and toggle the in-viewport link display.
+  unlink, and toggle the in-viewport link display. Waypoints are csys
+  (`ARROWS`) empties: the **red X arrow is the waypoint's facing
+  direction** - see [Waypoint direction](#waypoint-direction).
 - **Add Other VOBs** - create any supported VOB type at the 3D cursor. For
   `zCVob` props the name field autocompletes against your mesh directories;
   for `oCItem` it autocompletes against item instance names. For the
@@ -116,6 +118,47 @@ For props and items, you can add an Empty via Add VOB (exported by name and
 transform only) or drag real geometry from the Gothic asset libraries
 (`Props.blend`, `Items_*.blend`). Empties give a degenerate bounding box; a
 vob with mesh geometry parented under it gets a real one.
+
+### Waypoint direction
+
+A `zCWaypoint` stores a position and a `direction` vector, and nothing
+else. In Blender the `direction` is the empty's local **+X** axis (red
+arrow) in world space. Export reads it from `matrix_world`, so rotation
+mode and parent rotation don't matter. Import rebuilds the rotation from
+`direction`, so a round trip keeps it. New waypoints start facing Blender
++X, with X/Y rotation locked so `R` only turns them around Z (unlock in
+the N panel if ever needed). Waypoints from older files (single-arrow
+display) are converted by **Show Waypoint Directions**, which appears in
+the panel while any remain. It keeps their current orientation, so an
+unrotated old waypoint now exports facing Blender +X instead of +Y.
+
+**What it does in game** (from the Gothic II script API, not yet checked
+in-game for this exporter):
+
+- **Not used for pathfinding.** Routes (`AI_GotoWP`, waynet A*) use only
+  positions and links. An NPC walking through a waypoint ignores its
+  direction.
+- **Used when an NPC ends up standing on it:** `AI_AlignToWP` turns the
+  NPC to face the direction. Routine states typically do
+  `AI_GotoWP(self, self.wp)` and then `AI_AlignToWP(self)`, so this is
+  where guards, idlers and `TA_Stand_*` NPCs look while at their routine
+  waypoint.
+- **Spawning/teleporting:** NPCs inserted with `Wld_InsertNpc` at a
+  waypoint, or moved with `AI_Teleport`, are placed there with it as their
+  heading. Monsters at their spawn waypoint turn back to it when idle.
+
+**How to orient them while designing:**
+
+- Point X where the NPC should *look* while it stands there: a guard at
+  a gate faces outward, a merchant faces across the counter, an idler
+  faces the square, not a wall.
+- Keep it level (the rotation lock does this). Only the heading matters
+  for NPCs.
+- Transit-only waypoints along roads don't need care. Pointing along the
+  path is a tidy default.
+- Freepoints (`zCVobSpot`) are vobs with a full rotation and are aligned
+  with `AI_AlignToFP`. Their forward is the vob's Gothic +Z, i.e. Blender
+  local **+Y** (green arrow), not X like waypoints.
 
 ## Scene naming conventions
 
@@ -571,7 +614,8 @@ converting back to a quaternion gives the formula above (derivation in
 `blender_quaternion_to_gothic`'s docstring). Covered by
 `tests/test_coordinate_transform.py`. All four call sites route through
 these two functions: `ZCVob.__location`/`__rotation` and
-`WayNet.__waypoint_location`/`__waypoint_rotation_vec3`.
+`WayNet.__waypoint_location`, plus `blender_direction_to_gothic` for
+`WayNet.__waypoint_direction_vec3`.
 
 ### How it was verified: the "Compass Cross" test
 
@@ -634,9 +678,7 @@ boxes); pure-Python test suite.
 
 - **No compiled-ZEN writing** - BSP construction and lightmap baking are
   proprietary algorithms; Spacer is required for compiling.
-- Import doesn't reconstruct waypoint *facing direction* (position only;
-  deliberately deferred) and only searches the ZEN's own directory for the
-  level mesh.
+- Import only searches the ZEN's own directory for the level mesh.
 - `zCVobLight`'s `lightType`/`lightQuality` enum ordinals are inferred from
   documented names, not confirmed against a real compiled light.
 - **oCMOB in-game behavior is unverified** - the property schema and the

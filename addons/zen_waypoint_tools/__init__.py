@@ -39,6 +39,7 @@ classes = (
     waypoint_ops.ZEN_OT_link_waypoints,
     waypoint_ops.ZEN_OT_unlink_waypoints,
     waypoint_ops.ZEN_OT_toggle_waypoint_links,
+    waypoint_ops.ZEN_OT_update_waypoint_display,
     vob_ops.ZEN_OT_add_vob,
     gothic_sky.ZEN_OT_use_gothic_sky,
     export_ops.ZEN_OT_export_zen,

@@ -1,7 +1,10 @@
 from .printer import Printer
-from mathutils import Quaternion
 from .zen_gin_data_printer import ZenGinDataPrinter
-from .coordinate_transform import blender_position_to_gothic, blender_quaternion_to_gothic
+from .coordinate_transform import (
+    blender_position_to_gothic,
+    blender_direction_to_gothic,
+    waypoint_direction_from_matrix,
+)
 
 
 class WayNet:
@@ -65,16 +68,13 @@ class WayNet:
         return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
 
     @staticmethod
-    def __waypoint_rotation_vec3(waypoint):
-        # The downstream "which local axis counts as facing direction"
-        # choice (matrix column 2, x negated) is a separate design
-        # decision from the coordinate-frame conversion itself, so it
-        # stays here rather than moving into coordinate_transform.py.
-        qt: Quaternion = waypoint.rotation_quaternion
-        gw, gx, gy, gz = blender_quaternion_to_gothic(qt[0], qt[1], qt[2], qt[3])
-        new_qt = Quaternion((gw, gx, gy, gz))
-        vector = new_qt.to_matrix()[2]
-        return "{x} {y} {z}".format(x=-vector.x, y=vector.y, z=vector.z)
+    def __waypoint_direction_vec3(waypoint):
+        # Facing direction = the empty's local +X axis in world space (the
+        # red arrow of its ARROWS/csys display) - see
+        # coordinate_transform.waypoint_direction_from_matrix.
+        bx, by, bz = waypoint_direction_from_matrix(waypoint.matrix_world)
+        gx, gy, gz = blender_direction_to_gothic(bx, by, bz)
+        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
 
     def __print_waypoint(self, waypoint, side, way_index, object_index, defined_waypoints):
         waypoint_definition = None
@@ -100,7 +100,7 @@ class WayNet:
             self.__data_printer.print_int_property("waterDepth", 0)
             self.__data_printer.print_int_property("underWater", 0)
             self.__data_printer.print_vec3_property("position", self.__waypoint_location(waypoint))
-            self.__data_printer.print_vec3_property("direction", self.__waypoint_rotation_vec3(waypoint))
+            self.__data_printer.print_vec3_property("direction", self.__waypoint_direction_vec3(waypoint))
             self.__data_printer.end_object_block()
             defined_waypoints.append((waypoint.name, object_index))
             return object_index + 1

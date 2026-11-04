@@ -12,6 +12,10 @@ from modules.zen_gin_export.coordinate_transform import (
     blender_position_to_gothic,
     blender_quaternion_to_gothic,
     is_proper_rotation,
+    blender_direction_to_gothic,
+    gothic_direction_to_blender,
+    waypoint_direction_from_matrix,
+    waypoint_rotation_from_blender_direction,
 )
 
 
@@ -121,3 +125,33 @@ def test_quaternion_output_is_always_a_proper_rotation(w, x, y, z):
     gw, gx, gy, gz = blender_quaternion_to_gothic(w, x, y, z)
     matrix = _quaternion_to_matrix(gw, gx, gy, gz)
     assert is_proper_rotation(matrix)
+
+
+# --- waypoint facing direction ---------------------------------------------
+
+def test_direction_uses_position_axis_swap_and_normalizes():
+    assert blender_direction_to_gothic(0, 2, 0) == pytest.approx((0, 0, 1))
+    assert blender_direction_to_gothic(3, 0, 4) == pytest.approx((0.6, 0.8, 0))
+
+
+def test_zero_direction_falls_back_instead_of_dividing_by_zero():
+    assert blender_direction_to_gothic(0, 0, 0) == pytest.approx((0, 0, 1))
+
+
+@pytest.mark.parametrize("yaw_deg", [0, 37, 90, 180, 271])
+def test_direction_round_trips_through_import_rotation(yaw_deg):
+    """Import builds a rotation from `direction`; exporting that rotation's
+    local X axis must reproduce the same direction."""
+    yaw = math.radians(yaw_deg)
+    gothic_dir = blender_direction_to_gothic(math.cos(yaw), math.sin(yaw), 0)
+    rotation = waypoint_rotation_from_blender_direction(*gothic_direction_to_blender(*gothic_dir))
+    exported = blender_direction_to_gothic(*waypoint_direction_from_matrix(rotation))
+    assert exported == pytest.approx(gothic_dir, abs=1e-9)
+
+
+@pytest.mark.parametrize("direction", [(1, 0, 0), (0.3, -0.8, 0.2), (0, 0, 1), (0, 0, 0)])
+def test_import_rotation_is_proper_and_has_no_roll(direction):
+    rotation = waypoint_rotation_from_blender_direction(*direction)
+    assert is_proper_rotation(rotation)
+    # local Y (column 1) stays horizontal: no roll around the facing axis
+    assert rotation[2][1] == pytest.approx(0.0)

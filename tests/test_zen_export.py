@@ -1,5 +1,5 @@
 from modules import zen_gin_export
-from mathutils import Quaternion
+from mathutils import Quaternion, Matrix
 
 
 class DummyBlenderLocation:
@@ -22,6 +22,7 @@ class FakeWaypointLinks:
 class DummyBlenderObject:
     rotation_quaternion = Quaternion((0.0, 0.0, 0.0, 0.0))
     location = DummyBlenderLocation()
+    matrix_world = Matrix.Identity(4)
     zen_waypoint_links = None
 
     def __init__(self, name):
@@ -96,3 +97,37 @@ def test_unlinked_waypoint_does_not_inflate_the_header_count(tmp_path):
 
     result = zen_gin_export.verify_archive_file(output_path)
     assert result.ok, result.issues
+
+
+def _waypoint_directions(zen_text):
+    return [
+        line.split("vec3:", 1)[1].strip()
+        for line in zen_text.splitlines()
+        if line.strip().startswith("direction=")
+    ]
+
+
+def test_waypoint_direction_is_the_empty_local_x_axis(tmp_path):
+    """The red X arrow of the waypoint's csys empty is what gets written as
+    `direction`: identity faces Blender +X (Gothic +X); a 90 degree turn
+    about Blender Z faces Blender +Y (Gothic +Z)."""
+    wp_1 = DummyBlenderObject("zCWaypoint:WP1")
+    wp_2 = DummyBlenderObject("zCWaypoint:WP2")
+    wp_2.matrix_world = Matrix((
+        (0.0, -1.0, 0.0, 0.0),
+        (1.0, 0.0, 0.0, 0.0),
+        (0.0, 0.0, 1.0, 0.0),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
+    wp_1.link_to(wp_2)
+
+    output_path = tmp_path / "DIR.ZEN"
+    printer = zen_gin_export.FilePrinter(str(output_path))
+    zen_gin_export.ZenArchive(blender_objects=[wp_1, wp_2], printer=printer).print()
+    printer.close()
+
+    directions = _waypoint_directions(output_path.read_text(encoding="windows-1250"))
+    assert [tuple(float(v) for v in d.split()) for d in directions] == [
+        (1.0, 0.0, 0.0),
+        (0.0, 0.0, 1.0),
+    ]

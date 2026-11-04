@@ -5,9 +5,9 @@ off as they land; the README stays the only documentation file.
 
 ## P1 - Correctness bugs
 
-- [ ] **Export world-space transforms.** `ZCVob.__rotation` /
-  `WayNet.__waypoint_rotation_vec3` read only `rotation_quaternion`, so
-  Euler-mode objects export with identity rotation. `__location` /
+- [ ] **Export world-space transforms.** `ZCVob.__rotation` reads only
+  `rotation_quaternion`, so Euler-mode vobs export with identity rotation
+  (waypoint direction already uses `matrix_world`). `__location` /
   `__waypoint_location` use local `location`, wrong for parented objects.
   Use `matrix_world` (translation + `to_quaternion()`); add tests for
   Euler rotation and parented objects.
@@ -49,7 +49,9 @@ off as they land; the README stays the only documentation file.
   only the base vob block, so the vob does nothing in-game).
 - [ ] Lights: verify the calibrated power against Spacer (and `lightStatic`/`lightQuality` baking); handle SUN/AREA explicitly (warn instead of silent POINT),
   make `lightQuality` configurable, decide how energy maps to range/color.
-- [ ] Importer: reconstruct waypoint facing direction.
+- [x] Importer: reconstruct waypoint facing direction.
+- [ ] Verify waypoint `direction` in Spacer/in-game (NPC with `AI_AlignToWP`
+  faces the red X arrow).
 - [ ] "Add Level Compo" operator (Export Level Package covers the main path).
 - [ ] More VOB types: trigger family, zones, cutscene cameras (see README
   "VOB types").

@@ -9,6 +9,7 @@ from .waypoint_links import (
     remove_directed_link,
     get_waypoint_display_name,
     LINK_SLOT_COUNT,
+    setup_waypoint_empty,
 )
 from .viewport_draw import tag_viewports_redraw, start_draw_handler, stop_draw_handler
 
@@ -38,10 +39,8 @@ class ZEN_OT_add_waypoint(bpy.types.Operator):
         name = find_next_waypoint_name()
 
         obj = bpy.data.objects.new(name, None)
-        obj.empty_display_type = 'SINGLE_ARROW'
-        obj.empty_display_size = 1.0
+        setup_waypoint_empty(obj)
         obj.location = cursor_loc
-        obj.rotation_mode = 'QUATERNION'
 
         target_collection = context.collection or context.scene.collection
         target_collection.objects.link(obj)
@@ -132,6 +131,34 @@ class ZEN_OT_unlink_waypoints(bpy.types.Operator):
             tag_viewports_redraw()
             self.report({'INFO'}, f"Removed {removed} link(s)")
 
+        return {'FINISHED'}
+
+
+class ZEN_OT_update_waypoint_display(bpy.types.Operator):
+    bl_idname = "zen.update_waypoint_display"
+    bl_label = "Show Waypoint Directions"
+    bl_description = (
+        "Switch every waypoint in the file to the csys (ARROWS) display, "
+        "where the red X arrow is the exported facing direction, and lock "
+        "X/Y rotation. Orientation is kept as it is; for waypoints from "
+        "older files that means facing Blender +X instead of +Y"
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
+
+    def execute(self, context):
+        count = 0
+        for obj in bpy.data.objects:
+            if obj.type == 'EMPTY' and is_waypoint(obj):
+                # Setting rotation_mode converts the existing rotation, so
+                # the world orientation doesn't change.
+                setup_waypoint_empty(obj)
+                count += 1
+        tag_viewports_redraw()
+        self.report({'INFO'}, f"Updated {count} waypoint(s)")
         return {'FINISHED'}
 
 

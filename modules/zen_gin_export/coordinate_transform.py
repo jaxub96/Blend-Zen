@@ -118,3 +118,83 @@ def decode_rotation_matrix_hex(hex_string):
         tuple(floats[3:6]),
         tuple(floats[6:9]),
     )
+
+
+# ---------------------------------------------------------------------------
+# Waypoint facing direction.
+#
+# A zCWaypoint has no rotation matrix in the archive - only a `direction`
+# vec3 (the waypoint's "at" vector: where an NPC faces after
+# AI_AlignToWP, or after being spawned/teleported onto it). In Blender a
+# waypoint is an ARROWS ("csys") empty whose local +X axis IS that
+# direction, so the visible red X arrow is what gets exported.
+#
+# A direction is an ordinary (polar) vector, so it converts with the same
+# verified Y<->Z swap as a position, just unscaled and normalized.
+# ---------------------------------------------------------------------------
+
+def _normalize(x, y, z):
+    length = (x * x + y * y + z * z) ** 0.5
+    if length < 1e-9:
+        return None
+    return (x / length, y / length, z / length)
+
+
+# Used only when a direction is degenerate (zero-length): Gothic world +Z
+# (Blender +Y), which is also what the previous exporter wrote for an
+# unrotated waypoint.
+_FALLBACK_GOTHIC_DIRECTION = (0.0, 0.0, 1.0)
+
+
+def blender_direction_to_gothic(x, y, z):
+    """Blender world-space direction -> normalized ZenGin direction."""
+    n = _normalize(x, y, z)
+    if n is None:
+        return _FALLBACK_GOTHIC_DIRECTION
+    return blender_position_to_gothic(*n, scale=1)
+
+
+def gothic_direction_to_blender(gx, gy, gz):
+    """Inverse of blender_direction_to_gothic()."""
+    n = _normalize(gx, gy, gz)
+    if n is None:
+        n = _FALLBACK_GOTHIC_DIRECTION
+    return gothic_position_to_blender(*n, scale=1)
+
+
+def waypoint_direction_from_matrix(matrix_world):
+    """Blender world-space facing direction of a waypoint empty: its local
+    +X axis, i.e. column 0 of the world matrix (row-indexable, rows of at
+    least 3 values - a mathutils.Matrix or plain nested tuples). Reading
+    matrix_world rather than rotation_quaternion makes this independent of
+    rotation_mode (Euler or quaternion) and includes parent rotation."""
+    return (matrix_world[0][0], matrix_world[1][0], matrix_world[2][0])
+
+
+def waypoint_rotation_from_blender_direction(x, y, z):
+    """3x3 Blender rotation matrix (3 row tuples) whose local +X axis
+    points along (x, y, z) and whose local +Z stays as close to world up
+    as possible (no roll). Used by the importer to turn a waypoint's
+    `direction` back into a visible orientation. Falls back to Gothic's
+    default facing (Blender +Y) for a zero vector, and keeps local +Y as
+    world +Y for a purely vertical direction (where "no roll" is
+    undefined)."""
+    fx, fy, fz = _normalize(x, y, z) or gothic_position_to_blender(
+        *_FALLBACK_GOTHIC_DIRECTION, scale=1
+    )
+    # side = up x forward, with up = world +Z
+    sx, sy, sz = -fy, fx, 0.0
+    side = _normalize(sx, sy, sz)
+    if side is None:
+        side = (0.0, 1.0, 0.0)
+    sx, sy, sz = side
+    # up = forward x side
+    ux = fy * sz - fz * sy
+    uy = fz * sx - fx * sz
+    uz = fx * sy - fy * sx
+    # columns are (forward, side, up)
+    return (
+        (fx, sx, ux),
+        (fy, sy, uy),
+        (fz, sz, uz),
+    )

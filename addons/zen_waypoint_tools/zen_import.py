@@ -29,10 +29,12 @@ from zen_gin_export import (
     gothic_position_to_blender,
     gothic_matrix_to_blender_matrix,
     decode_rotation_matrix_hex,
+    gothic_direction_to_blender,
+    waypoint_rotation_from_blender_direction,
 )
 
 from .vob_types import VOB_DISPLAY
-from .waypoint_links import add_directed_link
+from .waypoint_links import add_directed_link, setup_waypoint_empty
 from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
 from .mesh_preview import get_preview_collection
 from .light_props import create_light_object
@@ -109,17 +111,15 @@ def _create_vob_object(context, real_type, block):
 
 def _create_waypoint_object(name, position_prop, direction_prop):
     obj = bpy.data.objects.new(f"zCWaypoint:{name}", None)
-    obj.empty_display_type = 'SINGLE_ARROW'
-    obj.empty_display_size = 1.0
-    obj.rotation_mode = 'QUATERNION'
+    rotation = None
+    if direction_prop:
+        bdir = gothic_direction_to_blender(*parse_vec3(direction_prop))
+        rotation = waypoint_rotation_from_blender_direction(*bdir)
+    setup_waypoint_empty(obj, rotation)
     if position_prop:
         gx, gy, gz = parse_vec3(position_prop)
         bx, by, bz = gothic_position_to_blender(gx, gy, gz)
         obj.location = (bx, by, bz)
-    # direction_prop intentionally not reconstructed into a rotation here -
-    # it's a facing vector derived from a specific local-axis convention on
-    # export (see WayNet.__waypoint_rotation_vec3), not a full orientation,
-    # so round-tripping it exactly is left for a later pass if needed.
     bpy.context.scene.collection.objects.link(obj)
     return obj
 

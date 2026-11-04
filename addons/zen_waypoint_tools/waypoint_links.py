@@ -54,6 +54,26 @@ def is_waypoint(obj):
     return obj is not None and obj.name.startswith(WAYPOINT_PREFIX)
 
 
+def setup_waypoint_empty(obj, rotation_matrix=None):
+    """Configure an Empty as a waypoint: ARROWS ("csys") display whose
+    red local +X axis is the exported facing direction (see
+    zen_gin_waynet.py), Euler rotation with X/Y locked so the viewport
+    rotate tool only turns it around Z, keeping the direction level -
+    NPCs only ever use the horizontal heading. The locks only affect
+    interactive editing; unlock them in the N panel if ever needed.
+
+    rotation_matrix: optional 3x3 (row tuples) to start from, e.g. an
+    imported waypoint's direction; identity (facing Blender +X) if None.
+    """
+    obj.empty_display_type = 'ARROWS'
+    obj.empty_display_size = 1.0
+    obj.rotation_mode = 'XYZ'
+    if rotation_matrix is not None:
+        from mathutils import Matrix
+        obj.rotation_euler = Matrix(rotation_matrix).to_euler('XYZ')
+    obj.lock_rotation = (True, True, False)
+
+
 def get_waypoint_display_name(obj):
     return obj.name
 
