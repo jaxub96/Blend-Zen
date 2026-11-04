@@ -107,10 +107,10 @@ def _waypoint_directions(zen_text):
     ]
 
 
-def test_waypoint_direction_is_the_empty_local_x_axis(tmp_path):
-    """The red X arrow of the waypoint's csys empty is what gets written as
-    `direction`: identity faces Blender +X (Gothic +X); a 90 degree turn
-    about Blender Z faces Blender +Y (Gothic +Z)."""
+def test_waypoint_direction_is_the_empty_local_y_axis(tmp_path):
+    """The green Y arrow of the waypoint's csys empty is what gets written
+    as `direction`: identity faces Blender +Y (Gothic +Z); a 90 degree
+    turn about Blender Z faces Blender -X (Gothic -X)."""
     wp_1 = DummyBlenderObject("zCWaypoint:WP1")
     wp_2 = DummyBlenderObject("zCWaypoint:WP2")
     wp_2.matrix_world = Matrix((
@@ -128,6 +128,6 @@ def test_waypoint_direction_is_the_empty_local_x_axis(tmp_path):
 
     directions = _waypoint_directions(output_path.read_text(encoding="windows-1250"))
     assert [tuple(float(v) for v in d.split()) for d in directions] == [
-        (1.0, 0.0, 0.0),
         (0.0, 0.0, 1.0),
+        (-1.0, 0.0, 0.0),
     ]

@@ -51,7 +51,7 @@ off as they land; the README stays the only documentation file.
   make `lightQuality` configurable, decide how energy maps to range/color.
 - [x] Importer: reconstruct waypoint facing direction.
 - [ ] Verify waypoint `direction` in Spacer/in-game (NPC with `AI_AlignToWP`
-  faces the red X arrow).
+  faces the green Y arrow).
 - [ ] "Add Level Compo" operator (Export Level Package covers the main path).
 - [ ] More VOB types: trigger family, zones, cutscene cameras (see README
   "VOB types").

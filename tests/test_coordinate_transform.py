@@ -153,5 +153,11 @@ def test_direction_round_trips_through_import_rotation(yaw_deg):
 def test_import_rotation_is_proper_and_has_no_roll(direction):
     rotation = waypoint_rotation_from_blender_direction(*direction)
     assert is_proper_rotation(rotation)
-    # local Y (column 1) stays horizontal: no roll around the facing axis
-    assert rotation[2][1] == pytest.approx(0.0)
+    # local X (column 0) stays horizontal: no roll around the facing axis
+    assert rotation[2][0] == pytest.approx(0.0)
+
+
+def test_import_rotation_identity_for_default_facing():
+    rotation = waypoint_rotation_from_blender_direction(0, 1, 0)
+    flat = [v for row in rotation for v in row]
+    assert flat == pytest.approx([1, 0, 0, 0, 1, 0, 0, 0, 1])

@@ -139,9 +139,9 @@ class ZEN_OT_update_waypoint_display(bpy.types.Operator):
     bl_label = "Show Waypoint Directions"
     bl_description = (
         "Switch every waypoint in the file to the csys (ARROWS) display, "
-        "where the red X arrow is the exported facing direction, and lock "
-        "X/Y rotation. Orientation is kept as it is; for waypoints from "
-        "older files that means facing Blender +X instead of +Y"
+        "where the green Y arrow is the exported facing direction, and lock "
+        "X/Y rotation. Orientation is kept, so the exported direction "
+        "doesn't change"
     )
     bl_options = {'REGISTER', 'UNDO'}
 

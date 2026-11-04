@@ -90,8 +90,8 @@ The "ZenGin" sidebar tab has:
 
 - **Waypoint tools** - add (chaining from the active waypoint), link,
   unlink, and toggle the in-viewport link display. Waypoints are csys
-  (`ARROWS`) empties: the **red X arrow is the waypoint's facing
-  direction** - see [Waypoint direction](#waypoint-direction).
+  (`ARROWS`) empties: the **green Y arrow is the waypoint's facing
+  direction**, as for freepoints - see [Waypoint direction](#waypoint-direction).
 - **Add Other VOBs** - create any supported VOB type at the 3D cursor. For
   `zCVob` props the name field autocompletes against your mesh directories;
   for `oCItem` it autocompletes against item instance names. For the
@@ -122,15 +122,16 @@ vob with mesh geometry parented under it gets a real one.
 ### Waypoint direction
 
 A `zCWaypoint` stores a position and a `direction` vector, and nothing
-else. In Blender the `direction` is the empty's local **+X** axis (red
-arrow) in world space. Export reads it from `matrix_world`, so rotation
+else. In Blender the `direction` is the empty's local **+Y** axis (green
+arrow) in world space - the same forward axis as freepoints and other vobs
+(Gothic's local +Z). Export reads it from `matrix_world`, so rotation
 mode and parent rotation don't matter. Import rebuilds the rotation from
 `direction`, so a round trip keeps it. New waypoints start facing Blender
-+X, with X/Y rotation locked so `R` only turns them around Z (unlock in
++Y, with X/Y rotation locked so `R` only turns them around Z (unlock in
 the N panel if ever needed). Waypoints from older files (single-arrow
 display) are converted by **Show Waypoint Directions**, which appears in
-the panel while any remain. It keeps their current orientation, so an
-unrotated old waypoint now exports facing Blender +X instead of +Y.
+the panel while any remain. It keeps their current orientation, and the
+exported direction is the same as before.
 
 **What it does in game** (from the Gothic II script API, not yet checked
 in-game for this exporter):
@@ -149,7 +150,7 @@ in-game for this exporter):
 
 **How to orient them while designing:**
 
-- Point X where the NPC should *look* while it stands there: a guard at
+- Point the green Y arrow where the NPC should *look* while it stands there: a guard at
   a gate faces outward, a merchant faces across the counter, an idler
   faces the square, not a wall.
 - Keep it level (the rotation lock does this). Only the heading matters
@@ -157,8 +158,8 @@ in-game for this exporter):
 - Transit-only waypoints along roads don't need care. Pointing along the
   path is a tidy default.
 - Freepoints (`zCVobSpot`) are vobs with a full rotation and are aligned
-  with `AI_AlignToFP`. Their forward is the vob's Gothic +Z, i.e. Blender
-  local **+Y** (green arrow), not X like waypoints.
+  with `AI_AlignToFP`. Their forward is the same Blender local **+Y**
+  (green arrow).
 
 ## Scene naming conventions
 

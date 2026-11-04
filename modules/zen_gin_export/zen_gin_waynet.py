@@ -69,8 +69,8 @@ class WayNet:
 
     @staticmethod
     def __waypoint_direction_vec3(waypoint):
-        # Facing direction = the empty's local +X axis in world space (the
-        # red arrow of its ARROWS/csys display) - see
+        # Facing direction = the empty's local +Y axis in world space (the
+        # green arrow of its ARROWS/csys display) - see
         # coordinate_transform.waypoint_direction_from_matrix.
         bx, by, bz = waypoint_direction_from_matrix(waypoint.matrix_world)
         gx, gy, gz = blender_direction_to_gothic(bx, by, bz)
