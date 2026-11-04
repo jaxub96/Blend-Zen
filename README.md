@@ -661,6 +661,13 @@ Blender-free parts testable).
 - `tests/test_mob_props.py` - `mob_props.py`'s custom-property schema (no
   `bpy` dependency, imported directly).
 
+In Blender (needs the addon enabled):
+`tooling/pipeline/test_waypoint_direction.py` adds waypoints with the real
+operator, rotates them, exports, checks `direction`, re-imports and checks
+the old-style conversion. Run it with
+`blender --background --python tooling/pipeline/test_waypoint_direction.py`
+or from the Text Editor; it cleans up after itself.
+
 There is no CI; nothing runs the suite automatically yet.
 
 ## Status, limitations and roadmap
