@@ -24,10 +24,10 @@ versions matched to real Spacer worlds; dead preview/catalog code and the
 - [x] Spacer loads lockable mobs with real models; `DOOR_NW_NORMAL_01`
   opens in-game (2026-11-09). A missing mob model crashes Spacer - now an
   export warning.
-- [ ] Bed with `SLEEPABIT` opens the sleep dialog (`oCMobBed`; vanilla
-  mostly saves beds as `oCMobDoor` - try that if `oCMobBed` doesn't work).
-- [ ] Each preset in `mob_props.MOB_PRESETS` works in-game; find vanilla
-  models for switch, wheel and fire.
+- [x] Bed (`oCMobBed` + `SLEEPABIT`) opens the sleep dialog, lockable
+  chest/door and the alchemy table work in-game (2026-11-09).
+- [ ] The remaining presets in `mob_props.MOB_PRESETS` in-game; find
+  vanilla models for switch, wheel and fire.
 - [ ] `zCVobSound` settings (mode, radius, volume) play as expected.
 - [ ] Lights: calibrated viewport power vs. Spacer, `lightType` /
   `lightQuality` ordinals, `lightStatic` baking; make `lightQuality`

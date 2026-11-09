@@ -255,8 +255,8 @@ fire have no vanilla model on record yet - set Visual Name yourself.
 **Export warnings** catch the three silent failures above: a mob without
 Visual Name, a lock nothing can open, and a bed without `SLEEPABIT`.
 
-**Verified in Spacer and in-game (2026-11-09):** `DOOR_NW_NORMAL_01`
-opens; chests and doors with real models load. NPC sleeping schedules are
+**Verified in Spacer and in-game (2026-11-09):** doors, lockable chests,
+the bed's sleep dialog and the alchemy table. NPC sleeping schedules are
 separate (the NPC's `TA_Sleep` routine).
 
 ### Field reference
@@ -563,7 +563,7 @@ in CI.
 **Known limitations**
 
 - **No compiled-ZEN writing** - Spacer is required for compiling.
-- **Not yet confirmed in-game:** beds with `SLEEPABIT`, the other presets,
+- **Not yet confirmed in-game:** the presets not listed as verified above,
   switches/wheels/fires; `zCVobSound` settings;
   `zCVobLight` `lightType`/`lightQuality` ordinals; waypoint `direction`
   with `AI_AlignToWP`. Class versions for `oCMobSwitch`/`oCMobWheel`/
