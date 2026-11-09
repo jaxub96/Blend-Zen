@@ -1,14 +1,12 @@
 import math
-import sys
-from pathlib import Path
 
 import pytest
 
-# Keep the tests importable when the project is opened/run outside an
-# installed environment (for example, by the editor's test analyzer).
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 from modules.zen_gin_export.coordinate_transform import (
+    blender_matrix_to_gothic,
+    decode_rotation_matrix_hex,
+    encode_rotation_matrix_hex,
+    float_to_hex,
     blender_position_to_gothic,
     blender_quaternion_to_gothic,
     is_proper_rotation,
@@ -126,6 +124,43 @@ def test_quaternion_output_is_always_a_proper_rotation(w, x, y, z):
     gw, gx, gy, gz = blender_quaternion_to_gothic(w, x, y, z)
     matrix = _quaternion_to_matrix(gw, gx, gy, gz)
     assert is_proper_rotation(matrix)
+
+
+@pytest.mark.parametrize("w,x,y,z", [
+    (1.0, 0.0, 0.0, 0.0),
+    (math.cos(math.radians(45)), 0.0, 0.0, math.sin(math.radians(45))),
+    (0.5, 0.5, 0.5, 0.5),
+    (0.1, 0.6, -0.2, 0.7),
+])
+def test_world_matrix_path_matches_the_spacer_verified_quaternion_formula(w, x, y, z):
+    """The exporter reads matrix_world (any rotation mode, parents
+    included); its rotation must equal the quaternion formula that was
+    verified in Spacer, and scale must not leak into the rotation."""
+    norm = math.sqrt(w*w + x*x + y*y + z*z)
+    w, x, y, z = w / norm, x / norm, y / norm, z / norm
+    rot = _quaternion_to_matrix(w, x, y, z)
+    scale = (2.0, 0.5, 3.0)
+    world = tuple(
+        tuple(rot[i][j] * scale[j] for j in range(3)) + ((7.0, -2.0, 1.5)[i],)
+        for i in range(3)
+    ) + ((0.0, 0.0, 0.0, 1.0),)
+
+    position, gothic_rot = blender_matrix_to_gothic(world)
+
+    expected = _quaternion_to_matrix(*blender_quaternion_to_gothic(w, x, y, z))
+    for row, expected_row in zip(gothic_rot, expected):
+        assert row == pytest.approx(expected_row, abs=1e-9)
+    assert position == pytest.approx((700.0, 150.0, -200.0))
+
+
+def test_rotation_hex_matches_a_real_spacer_value_and_round_trips():
+    # Identity, as written by Spacer in blender_work_dir/G2ISLAND_WEB.ZEN.
+    identity = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+    encoded = encode_rotation_matrix_hex(identity)
+    assert encoded.startswith("0000803f0000000000000000000000000000803f")
+    assert decode_rotation_matrix_hex(encoded) == identity
+    assert float_to_hex(-0.0) == "00000080"
+    assert float_to_hex(1e-9) == "00000000"
 
 
 # --- waypoint facing direction ---------------------------------------------

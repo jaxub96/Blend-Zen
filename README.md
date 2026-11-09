@@ -1,17 +1,17 @@
 # Blend-Zen: Blender <-> ZenGin (Gothic II) Toolkit
 
 A Blender addon and Python export/import library for building Gothic II
-levels in Blender, instead of placing every VOB and waypoint by hand in
-Spacer. Originally a single-script prototype for exporting vob metadata
-(by jaxub); now a full addon covering VOB authoring, native lights, export,
-and reading an uncompiled ZEN back into Blender.
+levels in Blender instead of placing every VOB and waypoint by hand in
+Spacer. It covers waypoint and VOB authoring, native lights, sound and
+interactive-object settings, export to an uncompiled ZEN, and importing a
+ZEN back into Blender.
 
-This README is the single documentation file for the repo.
+This README is the single documentation file for the repo (open work is
+tracked in `TODO.md`).
 
 **Contents:** [Repo layout](#whats-in-this-repo) - [Setup](#setup) -
 [Using the addon](#using-the-addon) - [Naming conventions](#scene-naming-conventions) -
-[Mesh directories & catalogs](#mesh-directories-and-searchable-name-catalogs) -
-[Interactive objects](#interactive-objects-the-ocmob-family) -
+[Interactive objects & sounds](#interactive-objects-and-sounds) -
 [VOB types](#vob-types) - [Blender -> Spacer workflow](#blender---spacer-workflow) -
 [End-to-end test plan](#end-to-end-test-plan) - [Architecture](#architecture) -
 [Coordinate transform](#coordinate-transform) - [Testing](#testing) -
@@ -19,36 +19,39 @@ This README is the single documentation file for the repo.
 
 ## What's in this repo
 
-- **`addons/zen_waypoint_tools/`** - the Blender addon (adds a "ZenGin"
-  tab to the 3D viewport sidebar), split into focused modules.
-- **`modules/zen_gin_export/`** - the underlying export/import library.
-  Usable independently of the addon; the parts with no Blender dependency
-  (coordinate math, archive parsing/verification) can be tested outside
-  Blender entirely.
-- **`asset_catalog/`** - `gothic2_meshes.json` is a one-time generated
-  snapshot of available Gothic meshes, superseded at runtime by the live
-  directory scan in Preferences and kept only as a static reference.
-  `item_mesh_map.json` is different: the actively-read, hand-maintained
-  instance-name -> mesh-filename lookup the `oCItem` name search depends
-  on. `materials_levels.blend` + `blender_assets.cats.txt` are a generated
-  Blender material asset library: one material per NewWorld/OldWorld level
-  texture (from `GothicBlenderAssets-master/TEXTURES/LEVELS`), each marked
-  as an asset and filed into a catalog guessed from its filename
-  (Wood/Stone/Wall/Roof/Nature/etc. - see `texture_classify.py`). Regenerate
-  with `blender --background --python generate_material_catalog.py` (edit
-  `TEXTURE_ROOT` at the top first if your checkout lives elsewhere). To
-  browse it, add `asset_catalog/` as an Asset Library in Preferences > File
-  Paths > Asset Libraries, then select-all + "Generate Previews" in the
-  Asset Browser. Texture images are linked, not packed - use File >
-  External Data > Find Missing Files if the path moves. Classification is a
-  best-effort heuristic (~5% land in `Misc`); re-file in the Asset Browser
-  rather than editing the script.
-- **`tests/`** - pytest suite for the Blender-independent parts.
-- **`tooling/pipeline/`** - headless helpers: `export_headless.py` (export
-  without the UI), `build_compass_test_level.py`, `deploy_and_launch.ps1`.
-- **`blender_work_dir/`** - sample/test scenes (`G2ISLAND_WEB`,
-  `compass_test_level`, room scenes, reference ZENs) plus
-  `select_material_boundary.py`.
+- **`addons/zen_waypoint_tools/`** - the Blender addon (a "ZenGin" tab in
+  the 3D viewport sidebar).
+- **`modules/zen_gin_export/`** - the export/import library. It has no
+  dependency on Blender or `mathutils`: it reads plain attributes of the
+  objects it's given, so the whole library runs and is tested outside
+  Blender.
+- **`asset_catalog/`**
+  - `materials_levels.blend` + `blender_assets.cats.txt` - a generated
+    material asset library: one material per NewWorld/OldWorld level
+    texture (from `GothicBlenderAssets-master/TEXTURES/LEVELS`), filed into
+    catalogs guessed from the filename (Wood/Stone/Wall/Roof/Nature/...,
+    see `texture_classify.py`; ~5% land in `Misc` - re-file those in the
+    Asset Browser). Regenerate with
+    `blender --background --python generate_material_catalog.py` (edit
+    `TEXTURE_ROOT` first). To browse it, add `asset_catalog/` as an Asset
+    Library (Preferences > File Paths > Asset Libraries) and Generate
+    Previews in the Asset Browser. Textures are linked, not packed (File >
+    External Data > Find Missing Files if the path moves).
+  - `sky/gothic_sky.hdr` - the Gothic skydome as an HDR panorama, used by
+    **Use Gothic Sky Lighting**.
+  - `item_mesh_map.json` (item script instance -> mesh filename, 869
+    entries) and `gothic2_meshes.json` (a snapshot of the Gothic mesh list)
+    - reference data. Nothing in the addon reads them any more.
+- **`tests/`** - pytest suite (runs in CI on every push/PR to `main`).
+- **`tooling/pipeline/`** - scripts run with Blender or on the game
+  machine: `export_headless.py`, `check_waypoint_direction.py`,
+  `build_compass_test_level.py`, `build_gothic_sky.py`,
+  `deploy_and_launch.ps1`.
+- **`blender_work_dir/`** - sample scenes (`G2ISLAND_WEB`,
+  `compass_test_level`, room scenes), two real Spacer-saved worlds used as
+  format references and test fixtures (`G2ISLAND_WEB.ZEN`,
+  `DieGestrandeten.zen`), and `select_material_boundary.py`. The folder is
+  in `.gitignore` so scratch files stay out; the tracked files stay tracked.
 
 ### Related project: KIT
 
@@ -61,28 +64,34 @@ KIT's README and `kit_lib.py` if they move.
 ## Setup
 
 1. Check out this repo somewhere on disk.
-2. In Blender: Preferences > File Paths > Script Directories, add this
-   repo's root (it has the `addons/` and `modules/` subfolders Blender
+2. In Blender (5.2+): Preferences > File Paths > Script Directories, add
+   this repo's root (it has the `addons/` and `modules/` subfolders Blender
    expects).
 3. Restart Blender, then enable **Zen Waypoint Tools** in Preferences >
-   Add-ons.
-4. Also install and enable **KrxImpExp** (needed for mesh import/export).
-5. In Preferences > Add-ons > Zen Waypoint Tools, add your Gothic II
-   install's mesh directory under **Mesh directories**.
+   Add-ons. If `zen_gin_export` can't be found, the addon still enables and
+   the export/import buttons say what's wrong.
+4. Install and enable **KrxImpExp** (used for the level mesh `.3DS` export
+   and for loading meshes on import).
+5. Optional, in Preferences > Add-ons > Zen Waypoint Tools:
+   - **Gothic Game Folder** - Export Level Package then writes straight into
+     its `_work/Data` instead of `export/` next to the `.blend`.
+   - **gothic Command** - the `gothic`/`gothic-wine` launcher used by
+     *Open in Spacer*.
+   - **Mesh directories** - extra folders the importer searches for the
+     level mesh. **Add path with subpaths** adds a whole tree at once.
 
-Preferences are per-machine and not stored in git - repeat on each machine.
+Preferences are per machine and not stored in git.
 
 ### KrxImpExp version note
 
-There isn't one canonical KrxImpExp: at least two meaningfully different
-versions are in circulation, with different operator names (`krxmrmimp` vs.
-GUI-wrapped `krxmrmimpgui`) and different format support (a working raw
-`.3ds` importer exists in one, not the other). The addon resolves the
-installed module dynamically and calls the plain Python functions each
-exposes (`Krx3dsImp`, `KrxMrmImp`) instead of a specific `bpy.ops` name -
-see `krximpexp_bridge.py`. If mesh import breaks after updating KrxImpExp,
-check that bridge first. The bridge has only been thoroughly tested against
-one (rolled-back) build.
+At least two meaningfully different KrxImpExp versions are in circulation,
+with different operator names (`krxmrmimp` vs. GUI-wrapped `krxmrmimpgui`)
+and format support. The addon finds the installed module by name prefix and
+calls the plain Python functions it exposes (`Krx3dsExp`, `Krx3dsImp`,
+`KrxMrmImp`) instead of a specific `bpy.ops` name - see
+`krximpexp_bridge.py`. If mesh export/import breaks after updating
+KrxImpExp, check that bridge first; it has only been tested against one
+build.
 
 ## Using the addon
 
@@ -90,520 +99,394 @@ The "ZenGin" sidebar tab has:
 
 - **Waypoint tools** - add (chaining from the active waypoint), link,
   unlink, and toggle the in-viewport link display. Waypoints are csys
-  (`ARROWS`) empties: the **green Y arrow is the waypoint's facing
-  direction**, as for freepoints - see [Waypoint direction](#waypoint-direction).
-- **Add Other VOBs** - create any supported VOB type at the 3D cursor. For
-  `zCVob` props the name field autocompletes against your mesh directories;
-  for `oCItem` it autocompletes against item instance names. For the
-  interactive `oCMob*` types, selecting the new object shows a properties
-  box in the same tab (see [Interactive objects](#interactive-objects-the-ocmob-family)).
+  (`ARROWS`) empties: the **green Y arrow is the facing direction** - see
+  [Waypoint direction](#waypoint-direction). With a waypoint active, the
+  panel shows its three link slots (drag objects in) and everything it is
+  connected to.
+- **Settings box for the active object** - for `oCMob*` and `zCVobSound`
+  vobs, their per-instance settings (see
+  [Interactive objects & sounds](#interactive-objects-and-sounds)). Objects
+  renamed by hand or made with an older version get an **Add Missing
+  Properties** button.
+- **Add Other VOBs** - creates a level compo, startpoint, freepoint, light,
+  sound or any interactive `oCMob*` type at the 3D cursor; interactive
+  objects start from a working vanilla preset. Props (`zCVob`)
+  and items (`oCItem`) are not in this dialog: drag real assets in from the
+  `Props.blend` / `Items_*.blend` asset libraries (they export with a real
+  bounding box), or name an Empty yourself (see the naming table).
 - **Use Gothic Sky Lighting** - installs `asset_catalog/sky/gothic_sky.hdr`
-  as a Blender studio light and selects it in the viewport (Material Preview,
-  Standard view transform). The HDR is Gothic's own skydome (colour dome +
-  cloud layer from `Skydome_*.3ds` and the SkyDay textures) rendered to a
-  panorama by `tooling/pipeline/build_gothic_sky.py`; Gothic has no HDRI. The
-  gradient colours are sampled from a Spacer screenshot, not read from game data.
-- **Export Uncompiled ZEN** - writes the scene out; every export is
-  automatically verified for structural correctness (object-index
-  contiguity) before reporting success.
-- **Export Level Package** - one click produces a ready-to-drop
-  `_work/Data/Meshes/Level/<mod>/` + `_work/Data/Worlds/<mod>/` structure
-  (mesh + uncompiled ZEN), auto-creating the `zCVobLevelCompo:` reference
-  if missing.
-- **Import Uncompiled ZEN** - reads an uncompiled ZEN (produced by this
-  exporter) back into Blender: vobs, waypoints and links, and best-effort
-  loading of the level mesh if found next to the file.
-
-For props and items, you can add an Empty via Add VOB (exported by name and
-transform only) or drag real geometry from the Gothic asset libraries
-(`Props.blend`, `Items_*.blend`). Empties give a degenerate bounding box; a
-vob with mesh geometry parented under it gets a real one.
+  as a Blender studio light and selects it in the viewport (Material
+  Preview, Standard view transform). The HDR is Gothic's own skydome
+  rendered to a panorama by `tooling/pipeline/build_gothic_sky.py`; the
+  gradient colours are sampled from a Spacer screenshot.
+- **Export Uncompiled ZEN** - writes the **current scene** (objects in other
+  scenes are not exported). Every export is verified for structural
+  correctness (object-index contiguity vs. the header count), and the
+  report also warns about likely mistakes: unknown type prefixes (typos),
+  duplicate names where names must be unique (freepoints, startpoints,
+  named mobs), mobs without a model, locks nothing can open, beds without
+  `SLEEPABIT`, sun/area lights (exported as point lights) and a missing
+  `zCVobLevelCompo`. A failed export writes nothing and leaves an existing
+  file untouched.
+- **Export Level Package** - with the level mesh selected: writes
+  `_work/Data/Meshes/Level/<mod>/<level>.3DS` (via KrxImpExp, world space)
+  and `_work/Data/Worlds/<mod>/<level>_uncompiled.zen`, creates the
+  `zCVobLevelCompo:<level>` reference if missing and leaves other levels'
+  compos out of the ZEN. With **Open in Spacer** (needs Gothic Game Folder)
+  it then runs `gothic spacernet <mod>/<level>`; the log goes to
+  `~/Library/Logs/gothic-spacernet.log` on macOS, the temp folder elsewhere.
+- **Import Uncompiled ZEN** - rebuilds vobs (with their light/mob/sound
+  settings), waypoints with their facing direction, and links. Also reads
+  Spacer-saved worlds: unnamed vobs take their name from `visual`/
+  `itemInstance`/`sndName`, unsupported vob types (zones, triggers, ...)
+  are skipped and listed in the report, the vob hierarchy is flattened.
+  The level mesh is loaded (into a "Zen Level Mesh" collection, parented
+  to the level compo and unselectable) if found next to the ZEN, in the
+  sibling `_work/Data/Meshes/Level/*/` folders, or in the configured mesh
+  directories.
 
 ### Waypoint direction
 
 A `zCWaypoint` stores a position and a `direction` vector, and nothing
 else. In Blender the `direction` is the empty's local **+Y** axis (green
 arrow) in world space - the same forward axis as freepoints and other vobs
-(Gothic's local +Z). Export reads it from `matrix_world`, so rotation
-mode and parent rotation don't matter. Import rebuilds the rotation from
+(Gothic's local +Z). Export reads it from `matrix_world`, so rotation mode
+and parent rotation don't matter. Import rebuilds the rotation from
 `direction`, so a round trip keeps it.
 
 **Auto-aim:** linking a waypoint to another turns the first one to face
 the second. This applies to Link Selected Waypoints (the active one turns),
 Add Waypoint at Cursor (the waypoint it chains from turns to face the new
-one, and the new one continues that heading) and dragging an object into
-a link slot. Only the heading changes, so waypoints stay level even if the
-target is higher or lower. Each new link re-aims, so set a hand-picked
-heading (e.g. a guard post) after linking. Importing a ZEN doesn't re-aim.
+one, and the new one continues that heading) and dragging an object into a
+link slot. Only the heading changes, so waypoints stay level. Each new link
+re-aims, so set a hand-picked heading (e.g. a guard post) after linking.
+Importing a ZEN doesn't re-aim.
 
-An unlinked new waypoint starts facing Blender +Y, with X/Y rotation locked so `R` only turns them around Z (unlock in
-the N panel if ever needed). Waypoints from older files (single-arrow
-display) are converted by **Show Waypoint Directions**, which appears in
-the panel while any remain. It keeps their current orientation, and the
-exported direction is the same as before.
+A new unlinked waypoint faces Blender +Y, with X/Y rotation locked so `R`
+only turns it around Z (unlock in the N panel if needed). Waypoints from
+older files (single-arrow display) are converted by **Show Waypoint
+Directions**, which appears in the panel while any remain; it keeps their
+orientation.
+
+A waypoint with no links is still exported (in the waynet's `waypointN`
+list, like Spacer does). A connection stored on both ends is written once,
+and links to waypoints outside the exported scene are skipped.
 
 **What it does in game** (from the Gothic II script API, not yet checked
 in-game for this exporter):
 
 - **Not used for pathfinding.** Routes (`AI_GotoWP`, waynet A*) use only
-  positions and links. An NPC walking through a waypoint ignores its
-  direction.
-- **Used when an NPC ends up standing on it:** `AI_AlignToWP` turns the
-  NPC to face the direction. Routine states typically do
-  `AI_GotoWP(self, self.wp)` and then `AI_AlignToWP(self)`, so this is
-  where guards, idlers and `TA_Stand_*` NPCs look while at their routine
-  waypoint.
+  positions and links.
+- **Used when an NPC ends up standing on it:** `AI_AlignToWP` turns the NPC
+  to face the direction - this is where guards, idlers and `TA_Stand_*`
+  NPCs look while at their routine waypoint.
 - **Spawning/teleporting:** NPCs inserted with `Wld_InsertNpc` at a
-  waypoint, or moved with `AI_Teleport`, are placed there with it as their
-  heading. Monsters at their spawn waypoint turn back to it when idle.
+  waypoint, or moved with `AI_Teleport`, take it as their heading.
 
-**How to orient them while designing:**
-
-- Point the green Y arrow where the NPC should *look* while it stands there: a guard at
-  a gate faces outward, a merchant faces across the counter, an idler
-  faces the square, not a wall.
-- Keep it level (the rotation lock does this). Only the heading matters
-  for NPCs.
-- Transit-only waypoints along roads don't need care; auto-aim already
-  points them along the path.
-- Freepoints (`zCVobSpot`) are vobs with a full rotation and are aligned
-  with `AI_AlignToFP`. Their forward is the same Blender local **+Y**
-  (green arrow).
+So point the green arrow where the NPC should *look* (a guard at a gate
+faces outward, a merchant faces across the counter). Transit-only waypoints
+along roads don't need care; auto-aim already points them along the path.
+Freepoints (`zCVobSpot`) have a full rotation, aligned with `AI_AlignToFP`;
+their forward is the same Blender local **+Y**.
 
 ## Scene naming conventions
 
-Object names encode the VOB type and its data via the prefix before the
-first colon. A dot (`.`) and everything after it is ignored, so a duplicate
-(`zCVob:NW_CITY_DECO_SWORDFISH_01.001`) exports like the original. Objects
-with no matching prefix (e.g. the level mesh) are ignored by the exporter,
-so level mesh and vob empties can share a `.blend`.
+Object names encode the VOB type and its data: `Prefix:Name`. Blender's
+duplicate suffix (`.001`, `.002`, ...) is ignored, so a duplicate
+(`zCVob:NW_CITY_DECO_SWORDFISH_01.001`) exports like the original; other
+dots in the name are kept. Objects with no known prefix (e.g. the level
+mesh) are not exported, so level mesh and vobs can share a `.blend`. A
+prefix that *looks* like a ZenGin class but isn't supported (e.g. a typo)
+is reported in the export message.
 
 | Prefix | Object name means... | Notes |
 |---|---|---|
-| `zCVob:` | Mesh filename, no extension | e.g. `zCVob:NW_CITY_DECO_SWORDFISH_01` uses `NW_CITY_DECO_SWORDFISH_01.3DS`/`.MRM` |
-| `oCItem:` | The item's script instance name | e.g. `oCItem:ITMI_BROOM`. Instance name generally differs from the mesh filename - see `item_mesh_map.json` below |
-| `zCVobSpot:` | Freepoint name | Used by NPCs during `TA_Stand_*` routines |
-| `zCVobStartpoint:` | Player/NPC start position name | Only one per playable world |
-| `zCVobLevelCompo:` | World mesh filename, no extension | Reference only - see the Spacer workflow |
-| `zCWaypoint:` | Waypoint name | Links edited via the addon's link slots, not by name |
-| `zCVobLight:` | Light name | A real Blender Light - edit type/range/cone/color in Blender's Light Properties tab |
-| `zCVobSound:` | The sound's script instance name | |
-| `oCMobContainer:`, `oCMobDoor:`, `oCMobBed:`, `oCMobSwitch:`, `oCMobLadder:`, `oCMobWheel:`, `oCMobFire:`, `oCMobInter:` | This instance's unique in-game name (`vobName`) | **Not** a mesh name - the model is a separate "Visual Name" property |
+| `zCVob:` | Mesh filename, no extension | e.g. `zCVob:NW_CITY_DECO_SWORDFISH_01` -> visual `NW_CITY_DECO_SWORDFISH_01.3DS` |
+| `oCItem:` | The item's script instance name | e.g. `oCItem:ITMI_BROOM`. Not the mesh filename - the game resolves the mesh from the script (confirmed in Spacer) |
+| `zCVobSpot:` | Freepoint name | Used by NPC routines (`TA_Stand_*`, work spots). Must be unique |
+| `zCVobStartpoint:` | Start position name | One per playable world |
+| `zCVobLevelCompo:` | World mesh filename, no extension | Reference to the `.3DS` Spacer compiles in |
+| `zCWaypoint:` | Waypoint name | Links are edited via the link slots, not by name. A `.001` suffix is kept in `wpName` (waypoint names must be unique) |
+| `zCVobLight:` | Light name | A real Blender Light - edit type/range/cone/color in Blender's Light Properties |
+| `zCVobSound:` | The sound's script instance name | Written as `sndName`; volume/mode/radius in the sidebar |
+| `oCMobContainer:`, `oCMobDoor:`, `oCMobBed:`, `oCMobSwitch:`, `oCMobLadder:`, `oCMobWheel:`, `oCMobFire:`, `oCMobInter:` | This instance's in-game name (`vobName`) | **Not** a mesh name - the model is the **Visual Name** setting. May be empty (many vanilla mobs are unnamed); otherwise must be unique |
 
-The Add VOB dialog builds `Prefix:Name` for you; the table matters if
-you rename things by hand or read an existing scene.
+## Interactive objects and sounds
 
-## Mesh directories and searchable name catalogs
+### oCMOB objects
 
-**Preferences > Add-ons > Zen Waypoint Tools** has a directory list
-(`ZenWaypointToolsPreferences` in `preferences.py`): **Add path**,
-**Add path with subpaths** (recursively adds every subdirectory - the fast
-way to register a whole `_compiled` tree), **Remove path**, **Remove all
-paths**.
+How to make a chest, door, bed, ladder, alchemy table and so on *work*
+in-game, not just export.
 
-The Add VOB Name field autocompletes against three window-manager
-collections populated by scanning those directories (not a static file):
+A plain `zCVob` prop's name doubles as its mesh filename. **oCMOB objects
+don't:**
 
-- `wm.zen_mesh_catalog` - every non-item `.MRM`, for `zCVob:` prop names.
-- `wm.zen_item_catalog` - every `.MRM` matching Gothic's `ITxx_...` item
-  naming, kept separate so item meshes don't clutter the prop dropdown.
-- `wm.zen_item_instance_catalog` - every key in `item_mesh_map.json`, for
-  `oCItem:` **instance names** (not mesh names).
+1. The name is the object's in-game identity (`vobName`) - what a
+   trigger's `triggerTarget` addresses. It may stay empty (many vanilla
+   mobs are unnamed); otherwise it must be unique.
+2. The model is a **shared game asset** named in **Visual Name**: an
+   animated `.MDS` (extension optional, e.g. `CHESTBIG_NW_NORMAL_LOCKED`),
+   an `.ASC` model (`BEDHIGH_NW_NORMAL_01.ASC`) or a static `.3DS` mesh -
+   give the extension for anything but `.MDS`. **The model must exist in
+   the game: Spacer crashes loading a mob whose model is missing**
+   (`oCMobInter::Reset` access violation). Blend-Zen can't create or
+   preview these models; you place an Empty.
+3. What happens on use is **script-driven**: the engine calls the
+   **On State Func** with `_S1` appended. A bed needs `SLEEPABIT`
+   (`SLEEPABIT_S1` opens the sleep dialog), an alchemy table
+   `POTIONALCHEMY`, a rune table `MAKERUNE`, a shrine `PrayShrine` (see
+   `Story/Dialog_Mobsis/` in the scripts). **Use With Item** is the item
+   the player must carry (e.g. `ITMI_FLASK` for alchemy). **Focus Name**
+   is a script text constant such as `MOBNAME_CHEST`.
+4. **Locked** chests and doors need a **Key Instance** and/or a
+   **Picklock Str** (e.g. `RLRRLL`); locked with neither shows "can't be
+   opened" in-game.
 
-Click the refresh icon next to "Add Other VOBs" (`ZEN_OT_refresh_mesh_catalog`,
-`mesh_catalog.py`) whenever the directory list or its contents change -
-there's no file-watching.
+**Presets.** Add VOB fills in a working vanilla setup for each type
+(chest `CHESTBIG_NW_NORMAL_LOCKED`, door `DOOR_NW_NORMAL_01`, bed
+`BEDHIGH_NW_NORMAL_01.ASC` + `SLEEPABIT`, ladder `LADDER_3.ASC`) and has a
+**Preset** dropdown; the sidebar box has **Apply Preset** for existing
+objects. Presets are copied from vanilla worlds: big/small chests, two
+doors, three beds, ladder, alchemy table, rune table, Innos shrine,
+cauldron, stove, campfire pan, tree saw, water pipe, bench, chair (the
+generic ones are "Interactive: Generic" / `oCMobInter`). Switch, wheel and
+fire have no vanilla model on record yet - set Visual Name yourself.
 
-`item_mesh_map.json` is the actively-read source of truth for item
-instance -> mesh resolution (see `item_mesh_map.py` for the accepted JSON
-shape). It starts empty and grows as you discover mappings; it can't be
-derived automatically since it comes from Gothic's compiled Daedalus
-scripts. The instance name and mesh filename are genuinely different
-namespaces (confirmed in Spacer) - don't confuse them when checking an
-item in-game.
+**Export warnings** catch the three silent failures above: a mob without
+Visual Name, a lock nothing can open, and a bed without `SLEEPABIT`.
 
-## Interactive objects (the oCMOB family)
-
-How to make a chest, door, bed, switch, ladder, wheel or fire source
-*behave* in-game, not just export.
-
-### What makes these different from a plain prop
-
-A plain `zCVob` prop's object name doubles as its mesh filename. **oCMOB
-objects don't:**
-
-1. The name is the object's unique in-game identity (`vobName`) - what a
-   trigger's `triggerTarget` addresses. Five chests need five names.
-2. The appearance comes from a **shared, already-animated model** - a
-   `.MDS` (ModelScript), e.g. every chest can use
-   `CHESTBIG_OCCRATELARGE.MDS`, every human bed `BED_HUM.MDS`. The MDS
-   defines the object's states (`s_S0` closed, `s_S1` open) and the
-   transition animation (`t_S0_2_S1`).
-
-Same split as `oCItem`, resolved differently: each oCMOB instance has its
-own **Visual Name** custom property naming the MDS. Blank = falls back to
-the object's own name (only correct for a one-off asset named after
-itself).
-
-Blend-Zen can place these objects but **cannot create the animated
-model** (that's a 3ds Max + Gothic animation SDK workflow). In practice you
-reuse one of the game's existing assets. The addon also can't import
-skeletal MDS models, so you won't see the real shape in the viewport - you
-place/orient an Empty and trust the Visual Name; double-check its spelling
-against a real file.
-
-**Finding an MDS name:** browse `_work\Data\Anims\_compiled\` (or unpacked
-`Anims.vdf`) for `<NAME>.MDS` (`BED_HUM`, `CHESTBIG_OCCRATELARGE`,
-`DOOR_WOOD_01`, `SWITCH_LEVER_01`, `MINEWHEEL_01`, ...), or open a vanilla
-world in Spacer/a decompiler and read an existing object's `visual` field.
-
-### Placing one
-
-1. **Add Other VOBs > Type**, pick e.g. "Interactive: Bed". Give it a
-   unique instance name (e.g. `BED_TAVERN_ROOM_01`), not a mesh name.
-2. With it selected, the sidebar shows an "oCMobBed properties" box. Set
-   **Visual Name** to the real MDS base name, e.g. `BED_HUM`.
-3. Fill in other fields as needed (table below); defaults give a plain
-   working object.
-4. Position/orient the Empty. With no mesh parented the exported bbox is a
-   degenerate point, which is fine (cosmetic/LOD only).
-5. Export, open in Spacer, compile, test.
-
-### Worked example: a sleepable bed
-
-1. A plain `zCVob:` is never interactive (no state machine). Rename/re-add
-   it as `oCMobBed:BED_TAVERN_ROOM_01`.
-2. Set **Visual Name** to `BED_HUM` (or another real bed MDS).
-3. Leave everything else default - `oCMobBed` adds no fields beyond the
-   generic ones, and you do **not** need `trigger_target` for plain
-   sleeping.
-4. Export, compile, test: the player should be able to use the bed via the
-   engine's built-in `oCMobInter` logic plus the MDS's baked animations -
-   no Daedalus needed.
-5. Getting an *NPC* to sleep there on a schedule is separate: it's the
-   NPC's routine script (`Rtn_ExchangeRoutine` / `TA_Sleep`) referencing
-   the bed by name.
-
-This is inferred from ZenGin documentation and **not yet confirmed** with a
-real Spacer/in-game round-trip; verify with one object before building
-several.
+**Verified in Spacer and in-game (2026-11-09):** doors, lockable chests,
+the bed's sleep dialog and the alchemy table. NPC sleeping schedules are
+separate (the NPC's `TA_Sleep` routine).
 
 ### Field reference
 
-Plain custom (ID) properties, editable from the sidebar box or Object
-Properties > Custom Properties. Defaults/descriptions live in
-`mob_props.py`; mapping to archive properties in `zen_gin_zcvob_ocmob*.py`.
+Plain custom (ID) properties, edited in the sidebar box (or Object
+Properties > Custom Properties). Descriptions live in `mob_props.py`; the
+mapping to archive properties in `modules/zen_gin_export/vob_fields.py`
+(a test keeps the two in sync).
 
 | Field | Applies to | Meaning |
 |---|---|---|
-| Visual Name | all | Base filename (no extension) of the shared MDS model |
-| Focus Name | all | Text shown when the player looks at it |
-| Hitpoints / Damage | all | Leave 0 for ordinary furniture |
-| Moveable / Takeable | all | Can the player drag / pick it up |
-| Sound Material | all | WOOD, STONE, METAL, LEATHER, CLAY, GLAS |
-| Owner / Owner Guild | all | Script instance/guild that owns it, for theft detection |
-| Trigger Target | all | Vob name to send OnTrigger to when used (e.g. switch -> door) |
-| Use With Item | all | Item instance that must be *held* to interact |
-| Condition/On-State Function | all | Daedalus function names, for custom scripted behavior |
-| State Count | all | Leave 0 unless the MDS defines a different count |
-| Rewind | all | Fire the trigger every use, not only the first |
-| Locked / Key Item / Picklock Combination | Chest, Door | Key Item opens it; Picklock Combination (e.g. `RRLRL`) enables lockpicking, empty disables |
+| Visual Name | all mobs | Game model: `NAME` (= `NAME.MDS`) or `NAME.ASC` / `NAME.3DS`. Must exist |
+| Focus Name | all mobs | Text shown when the player looks at it; usually a `MOBNAME_*` constant |
+| Hitpoints / Damage | all mobs | Vanilla uses 10 / 0 |
+| Moveable / Takeable | all mobs | Can the player drag / pick it up |
+| Sound Material | all mobs | WOOD, STONE, METAL, LEATHER, CLAY, GLAS |
+| Owner / Owner Guild | all mobs | Script instance/guild that owns it, for theft detection |
+| Trigger Target | all mobs | Vob name to send OnTrigger to when used (e.g. switch -> door) |
+| Use With Item | all mobs | Item instance the player must carry to use it |
+| Condition Func / On State Func | all mobs | Script functions; On State Func is called as `<name>_S1` on use (bed: `SLEEPABIT`) |
+| State Num | all mobs | Default 1, as in vanilla worlds (108 of 109 mobs) |
+| Rewind | all mobs | Fire the trigger every use, not only the first |
+| Locked / Key Instance / Picklock Str | Chest, Door | Locked needs a key and/or a picklock combination (e.g. `RRLRL`), or it never opens |
 | Contains | Chest | `ITEM_INSTANCE:count` comma list, e.g. `ITFO_APPLE:3,ITMW_1H_SHORTSWORD1` |
-| Fire Slot / Fire Vobtree | Fire | Bone name for the flame, and fire-effect template ZEN (e.g. `FIRETREE_MEDIUM.ZEN`) |
+| Fire Slot / Fire Vobtree Name | Fire | Bone name for the flame, and fire-effect template ZEN (e.g. `FIRETREE_MEDIUM.ZEN`) |
+| Sound Volume / Mode / Random Delay | Sound | 0-100; LOOP, ONCE or RANDOM; seconds between RANDOM repeats |
+| Sound Start On / Ambient 3D | Sound | Playing from the start; ambient 3D sound |
+| Sound Radius | Sound | Audible radius in cm (default 1500, as in vanilla) |
 
 ## VOB types
 
-Researched from ZenKit's docs (`zk.gothickit.dev`) and the OpenGothic VOB
-reference, cross-checked against `OCVobTree.__create_vob()` and `WayNet`.
+Researched from ZenKit's docs (`zk.gothickit.dev`), the OpenGothic VOB
+reference, and checked against the two real Spacer-saved worlds in
+`blender_work_dir/` (class chains, class versions, field order).
 
 ### Implemented
 
 | VOB | Definition | In-game application |
 |---|---|---|
-| `zCVob` | Generic base, used for a plain static mesh instance | World decoration: rocks, furniture, crates, barrels |
-| `oCItem` | Pickupable item tied to a Daedalus script instance | Loot hand-placed in the world |
-| `zCVobSpot` | Named position/orientation marker, no mesh | NPC routine targets - `TA_Stand`, `TA_Sit`, work spots, guard posts |
-| `zCVobStartpoint` | A named spawn transform | Where the player/NPC appears on load |
-| `zCVobLevelCompo` | Reference to the level's compiled mesh/BSP | Wrapper vob for the world geometry, needed for a valid archive |
-| `zCWaypoint` (+ `WayNet`) | Navigation graph node linked via "ways" | NPC pathing backbone |
-| `zCVobLight` | Static/dynamic point/spot light | Torches, lamps, magic glow |
-| `zCVobSound` | Ambient sound emitter | Environmental audio (volume/radius/cone fields not yet exported) |
-| `oCMobInter` | Generic interactive object | Base for the below; custom "use" props |
-| `oCMobContainer` | Lootable container, contents, optional lock | Chests, barrels, sacks |
-| `oCMobDoor` | Door with lock, key, picklock difficulty | Doors, gates |
-| `oCMobBed` | Sleepable bed | NPC sleep schedules; player resting |
-| `oCMobSwitch` | Activatable lever/switch | Puzzle levers, gate releases |
+| `zCVob` | Generic base, a static mesh instance | Decoration: rocks, furniture, crates, barrels |
+| `oCItem` | Pickupable item tied to a Daedalus instance | Loot placed in the world |
+| `zCVobSpot` | Named position/orientation marker | NPC routine targets, guard posts |
+| `zCVobStartpoint` | Named spawn transform | Where the player appears |
+| `zCVobLevelCompo` | Reference to the level mesh | Needed for Spacer to compile the world |
+| `zCWaypoint` (+ `zCWayNet`) | Navigation graph node linked by ways | NPC pathing |
+| `zCVobLight` | Static/dynamic point/spot light | Torches, lamps |
+| `zCVobSound` | Ambient sound emitter (name, volume, mode, radius) | Environmental audio |
+| `oCMobInter` | Generic interactive object | Custom "use" objects |
+| `oCMobContainer` | Lootable container, contents, optional lock | Chests, barrels |
+| `oCMobDoor` | Door with lock, key, picklock | Doors, gates |
+| `oCMobBed` | Sleepable bed | Player rest, NPC sleep |
+| `oCMobSwitch` | Lever/switch | Puzzles, gate releases |
 | `oCMobLadder` | Climbable ladder | Vertical connections |
-| `oCMobWheel` | Rotating wheel | Winches, waterwheels |
-| `oCMobFire` | Usable fire source with NPC seating slots | Campfires |
+| `oCMobWheel` | Rotating wheel | Winches |
+| `oCMobFire` | Usable fire with NPC slots | Campfires, forges |
 
 ### Not yet implemented
 
-**Triggers / level logic:** `zCTrigger` (generic relay: pressure plates,
-area-entry), `zCTriggerList`, `zCCodeMaster` (multi-switch puzzles),
-`zCMover` (drawbridges, elevators) + `zCMoverController`,
-`oCTriggerScript` (calls a Daedalus function), `oCTriggerChangeLevel`
-(world transitions), `zCTriggerWorldStart`, `zCTriggerUntouch`,
-`zCTriggerTeleport`, `zCMessageFilter`, `zCTouchDamage`/`oCTouchDamage`
-(lava, traps).
+**Triggers / level logic:** `zCTrigger`, `zCTriggerList`, `zCCodeMaster`,
+`zCMover` (+ `zCMoverController`), `oCTriggerScript`,
+`oCTriggerChangeLevel`, `zCTriggerWorldStart`, `zCTriggerUntouch`,
+`zCTriggerTeleport`, `zCMessageFilter`, `zCTouchDamage`/`oCTouchDamage`.
 
 **Zones / atmosphere:** `oCZoneMusic(Default)`, `zCZoneZFog(Default)`,
-`zCZoneVobFarPlane(Default)`.
+`zCZoneVobFarPlane(Default)` (all three appear in `G2ISLAND_WEB.ZEN`, so
+that file is a ready format reference).
 
 **Cinematics & effects:** `zCCSCamera` (+ `zCCamTrj_KeyFrame`),
-`zCPFXController` (particles), `zCVobAnimate`, `zCVobLensFlare`,
-`zCEarthquake`, `zCVobScreenFX`.
-
-**Sound variant:** `zCVobSoundDaytime` (separate day/night instances).
-
-**NPC:** `oCNpc` - usually spawned via Daedalus (`Wld_InsertNpc`) and only
-a vob in save-game state, so a weak fit for this tool.
-
-Sources: ZenKit docs (`zk.gothickit.dev/engine/objects/` - zCVob, zCTrigger,
-oCMOB, oCMobInter, oCMobLockable, oCMobContainer, oCMobBed, oCMobFire),
-the OpenGothic wiki "VOBS & Triggers", and the Gothic Modding Community
-pages for zCVob, oCMobInter and ModelScript (MDS).
+`zCPFXController`, `zCVobAnimate`, `zCVobLensFlare`, `zCEarthquake`,
+`zCVobScreenFX`, decals (`zCDecal` visuals). **Sound variant:**
+`zCVobSoundDaytime`. **NPC:** `oCNpc` (spawned by scripts, a weak fit).
 
 ## Blender -> Spacer workflow
 
 ### Compiled vs. uncompiled ZEN
 
 * **Compiled ZEN** - game-ready: baked world mesh, BSP tree, lightmaps,
-  materials, VOB tree, waynet.
-* **Uncompiled ZEN** - everything *except* the baked geometry: VOB tree,
-  waynet, and (via `zCVobLevelCompo`) a *reference* to the `.3ds` mesh to
-  compile in. No BSP tree; not loadable as a playable world.
+  VOB tree, waynet.
+* **Uncompiled ZEN** - the VOB tree and waynet plus (via
+  `zCVobLevelCompo`) a *reference* to the `.3DS` mesh to compile in.
 
-`zen_gin_export` only produces the **uncompiled** kind, and that is the
-intended handoff format, not a limitation: Spacer's "Compile World" takes
-an uncompiled ZEN, resolves the referenced mesh, bakes the geometry, and
-**merges it with the VOB tree and waynet already in that file** - nothing
-placed in Blender is lost. Nobody outside Piranha Bytes has published a way
-to write baked BSP/lightmap data (even ZenKit only writes VOB-tree data),
-so compiling always happens in Spacer.
+The exporter only writes the **uncompiled** kind, and that is the intended
+handoff: Spacer's "Compile World" resolves the referenced mesh, bakes the
+geometry and merges it with the VOB tree and waynet already in the file.
+Nobody outside Piranha Bytes has published a way to write baked BSP/
+lightmap data, so compiling always happens in Spacer.
 
 ### Manual path to a playable level
 
-1. **Model the level mesh** in Blender (no prefix needed).
-2. **Export the mesh to `.3ds`** with KrxImpExp into
+1. **Model the level mesh** in Blender (no prefix).
+2. **Export the mesh to `.3DS`** with KrxImpExp into
    `<Gothic II>\_work\Data\Meshes\...`.
-3. In the same `.blend` add a `zCVobLevelCompo:<meshname>` empty (matching
-   the `.3ds` name), your `zCWaypoint:` chain, a `zCVobStartpoint:`, and
-   any other vobs. (**Export Level Package** automates steps 2-4.)
-4. **Export** to an uncompiled ZEN (default `UNCOMPILED_EXPORT.ZEN`) in
-   `_work\Data\Worlds\Plugin` or wherever configured.
-5. **Spacer -> File -> Open** the uncompiled ZEN directly (not "Import
-   mesh" - the file references the mesh via `zCVobLevelCompo`).
+3. Add a `zCVobLevelCompo:<meshname>` (matching the `.3DS` name), your
+   waypoints, a `zCVobStartpoint:` and other vobs. (**Export Level
+   Package** automates steps 2-4.)
+4. **Export** the uncompiled ZEN, e.g. into `_work\Data\Worlds\`.
+5. **Spacer -> File -> Open** the uncompiled ZEN (not "Import mesh").
 6. **World -> Compile World** (Outdoor/Indoor), Editor mode **off**.
 7. **World -> Compile Light.**
 8. **File -> Save as** a compiled ZEN into `_work\Data\Worlds\`.
 9. Point the mod's startup world at it and launch Gothic II.
 
-Limits: triangle limits per Gothic rules (submeshes under ~50k; split and
-use Spacer's macro system to join); a vob with no mesh child exports a
-degenerate bbox.
-
-Possible future integration: one-click "Add Level Compo Reference"
-operator; more VOB types; investigating whether Spacer's compile step
-can be scripted from outside its UI (unconfirmed).
+Gothic triangle limits apply (keep submeshes under ~50k; split and use
+Spacer's macros to join). Whether Spacer's compile step can be scripted is
+unknown.
 
 ## End-to-end test plan
 
-Manual test of the whole pipeline: Blender -> Spacer -> deployed ->
-playable. It needs Windows with Gothic II and Spacer, so it can't run in
-CI. Prerequisites: Gothic II with Spacer.exe, KrxImpExp and this addon set
-up, and a mod/`_work` folder you can overwrite.
+Manual test of the whole pipeline (Blender -> Spacer -> deployed ->
+playable). Needs Windows with Gothic II and Spacer, so it can't run in CI.
 
-**Tiers.** *Smoke* (~10-15 min): phases 1-6 with a trivial scene (one small
-mesh, one waypoint pair, one prop, one item, one oCMob). Run after changes
-to `zen_gin_export`, `panel.py`, or `viewport_draw.py`. *Full regression*
-(~1-2 hrs): every phase, every vob/oCMob type, both placement methods.
-Run before a release or after touching coordinate transforms, bbox code or
-the archive format. Keep one reusable test-level `.blend`.
+**Tiers.** *Smoke* (~10-15 min): phases 1-6 with one small mesh, one
+waypoint pair, one prop, one item, one oCMob. Run after changes to
+`zen_gin_export` or the panels. *Full regression* (~1-2 hrs): every phase,
+every vob type, both placement methods; before a release or after touching
+transforms, bounding boxes or the archive format.
 
 1. **Level mesh & materials.** Use materials from
-   `asset_catalog/materials_levels.blend` so texture names round-trip via
-   KrxImpExp. Check: every face has a Gothic-named material.
-2. **VOBs, mobs, items, assets.** Place at least one each of:
-   `zCVobStartpoint:`; a `zCVob:` prop via Add VOB and one dragged from
-   `Props.blend`; an `oCItem:` via Add VOB and one from `Items_ITMW.blend`;
-   a `zCVobSpot:`; a `zCVobLight:` with real type/range/color; every
-   `oCMob*` type with a real Visual Name (smoke tier: one, Bed is
-   simplest); a `zCVobSound:` if relevant. Check: the oCMob properties box
-   shows correct fields per type and values persist after reselecting.
-3. **Waynet.** Chain a few `zCWaypoint:`s, link/unlink a pair by hand,
-   toggle link display and orbit. Check: lines match the sidebar link
-   slots and don't stutter.
-4. **Uncompiled export.** Select the level mesh, run **Export Level
-   Package**. Check the report says "verified OK" (stop if not) and the
-   layout is `<blend dir>\export\_work\Data\Meshes\Level\<mod>\<level>.3DS`
-   + `...\Worlds\<mod>\<level>_uncompiled.zen`.
-5. **Round-trip import** (optional): in a fresh scene, import the ZEN from
-   step 4; check vob/waypoint/link counts match and the mesh status is
-   `imported` or a clearly explained `found_not_importable`/`not_found`.
-6. **Spacer compile.** Copy `export\_work\...` into the install, open the
-   uncompiled ZEN, Compile World (Editor mode off), check the log for
-   missing-texture/degenerate warnings, Compile Light, Save As compiled.
-   Spot-check vob order in the object list.
-7. **Deploy & startup world.** Place the compiled ZEN (and new assets) in
-   the real `Data\Worlds\...` (or `_work` override), set `ZSTART=` under
-   `[INFO]` in the ini your loader reads (`Gothic.ini`, `SystemPack.ini`,
-   `Union.ini`). Back up the ini first.
-8. **Launch & verify load.** Correct level loads, no pink missing-texture
-   checkerboards, no new errors in the engine log vs. a known-good baseline.
-9. **In-game control.** Walk the waynet; interact with every `oCMob*`
-   (chest **Contains**, door, bed sleep, switch **Trigger Target**, ladder,
-   wheel, fire); pick up the `oCItem:` and check its in-game name matches
-   the real instance (not the `item_mesh_map.json` mesh name); check light
-   type/range/color/cone; confirm collision on static props.
+   `asset_catalog/materials_levels.blend` so texture names round-trip.
+2. **VOBs.** Place at least one `zCVobStartpoint:`; a `zCVob:` via an Empty
+   and one dragged from `Props.blend`; an `oCItem:` both ways; a
+   `zCVobSpot:`; a `zCVobLight:` with real type/range/color; each `oCMob*`
+   with a real Visual Name (smoke: just a bed); a `zCVobSound:`. Check the
+   sidebar box shows the right fields and values persist.
+3. **Waynet.** Chain waypoints, link/unlink a pair, leave one unlinked,
+   toggle link display and orbit.
+4. **Export Level Package** with the level mesh selected. The report must
+   say "verified OK"; read any "Check:" warnings.
+5. **Round-trip import** (optional): import the ZEN into an empty scene,
+   compare counts and settings, re-export.
+6. **Spacer compile.** Open the uncompiled ZEN, Compile World (Editor mode
+   off), check the log for missing-texture/degenerate warnings, Compile
+   Light, Save As compiled. Spot-check the object list.
+7. **Deploy & startup world.** Put the compiled ZEN in `Data\Worlds\...`
+   (or `_work`), set `ZSTART=` under `[INFO]` in the ini your loader reads.
+   Back up the ini first.
+8. **Launch.** Correct level loads, no pink textures, no new engine log
+   errors.
+9. **In-game.** Walk the waynet; use every `oCMob*` (chest contents, door,
+   bed, switch trigger target, ladder, wheel, fire); pick up the item and
+   check its name; check lights and sounds; confirm prop collision.
 
-**Regression checklist:** `OCVobTree` sort order (`zCVobLevelCompo` first,
-`oCItem`/`zCVobSpot`/`zCVobSound` grouped, in Spacer's object list); panel
-layout after reload (every button fires its operator); viewport link-draw
-cache (orbiting is smooth, add/unlink updates lines immediately); Add VOB
-vs. asset-drag parity (identical in-game except the dragged asset has real
-collision geometry where the empty has a degenerate bbox - expected).
-
-**Streamlining.** Keep one canonical test `.blend`; point the export root at
-the real `_work` folder so Export Level Package writes in place; keep a
-known-good ini backup; default to the smoke tier.
-
-**Automation.**
-
-| Step | Automatable? | How |
-|---|---|---|
-| Blender export | Yes | `export_zen_to_path()` (`export_ops.py`) has no UI dependency; run via `blender --background --python`. Confirm KrxImpExp's mesh export doesn't hit a GUI-only path before trusting it headless. |
-| Spacer compile | No known way | Closed source, no CLI/scripting; compiled-ZEN writing can't be reimplemented. Community forks may have a batch flag - check. UI automation is fragile. |
-| Deploy compiled ZEN + assets | Yes | File copy |
-| Set `ZSTART=` | Yes | Targeted line replace (don't round-trip the ini through a generic parser) |
-| Launch game | Yes | Process launch |
-| Confirm level loaded | Partially | Grep the engine log; filename/patterns vary - best-effort only |
-| Play the level | No | That's the actual test |
-
-Starter scripts in `tooling/pipeline/`: `export_headless.py` and
-`deploy_and_launch.ps1` (copies assets, patches `ZSTART=`, launches, tails
-the log). Both are unverified starting points - fill in the config block,
-dry-run the `.ps1` with `-WhatIf`, and refine the log patterns.
+**Automation.** `tooling/pipeline/export_headless.py` runs the export
+operators via `blender --background`; `deploy_and_launch.ps1` copies
+assets, patches `ZSTART=`, launches and tails the log (both unverified
+starting points - fill in the config block, dry-run the `.ps1` with
+`-WhatIf`). Spacer's compile step and playing the level stay manual.
 
 ## Architecture
 
-Internals of `zen_gin_export`, as a starting point for extensions. More on
-the format: https://zk.gothickit.dev/engine/overview/
-
-### Layers
+The library in `modules/zen_gin_export/`. Format background:
+https://zk.gothickit.dev/engine/overview/
 
 ```
-ZenArchive                     <- top-level document: header + one oCWorld block
-    |-- OCVobTree              <- walks all Blender objects, builds the vob list
-    |     |-- ZCVob subclasses <- one class per supported vob type
-    |-- WayNet                 <- walks all Blender objects, builds the waynet
-ZenGinDataPrinter               <- generic ASCII block/property syntax
-Printer (Console/File)          <- where the text actually goes
+ZenArchive  (zen_gin_zen_archive.py)  header + one oCWorld block
+  |-- OCVobTree (zen_gin_ocvobtree.py)  name prefix -> vob class, sorted flat list
+  |     |-- ZCVob and simple subtypes   (zen_gin_zcvob.py)
+  |     |-- ZCVobLight                  (zen_gin_zcvob_light.py)
+  |     |-- ZCVobSound                  (zen_gin_zcvob_sound.py)
+  |     |-- OCMobInter and subtypes     (zen_gin_zcvob_ocmob.py)
+  |-- WayNet    (zen_gin_waynet.py)     free waypoints + ways
+ZenGinDataPrinter (zen_gin_data_printer.py)  [type1 type2 version index] ... [] / name=type:value
+Printer / ConsolePrinter / FilePrinter (printer.py)
+
+vob_fields.py           custom property <-> archive field tables (mobs, sound)
+coordinate_transform.py Blender <-> Gothic positions/rotations/directions, raw hex
+light_conversion.py     Blender light <-> zCVobLight range/color/cone
+archive_parser.py       ASCII archive -> block tree (importer, tests)
+archive_verifier.py     object-index check run after every export
+export_checks.py        pre-export scene warnings
 ```
 
-**Layer 1 - `Printer` / `ZenGinDataPrinter`.** `Printer` is a one-method
-interface (`print(*content)`) with `ConsolePrinter` and `FilePrinter`.
-`ZenGinDataPrinter` knows only the generic ZenGin ASCII syntax -
-`[type1 type2 trianglesLimit objectIndex]` ... `[]` blocks and
-`name=type:value` properties, with automatic indentation.
+**Input objects.** Anything with `name`, `matrix_world` (4x4, indexable as
+`m[row][col]`), and optionally `type`, `children`, `bound_box`, `data`,
+`get(key, default)` for custom properties, and `zen_waypoint_links` for
+waypoints. That is all the library touches, which is why the tests can use
+small fakes (`tests/conftest.py`). Transforms come from `matrix_world`, so
+rotation mode, parents and object scale are all handled.
 
-**Layer 2 - the `ZCVob` hierarchy** (the layer you'll touch most). `ZCVob`
-(`zen_gin_zcvob.py`) does the Blender-to-ZenGin translation: reads
-name/location/rotation, converts coordinates and rotation, and writes the
-standard vob block (`pack`, `bbox3DWS`, `trafoOSToWSRot`, `trafoOSToWSPos`,
-`vobName`, `visual`, `showVisual`, collision flags, ...) plus a nested
-`visual` sub-block and an empty `ai` sub-block. Subclasses override:
+**`ZCVob`** writes the base block (`pack`, `bbox3DWS`, `trafoOSToWSRot`,
+`trafoOSToWSPos`, `vobName`, `visual`, flags), a `visual` sub-block, an
+empty `ai` sub-block, then `_print_additional_data()`. Subclasses set:
 
-* `_type_name` - the class name in the block header, e.g.
-  `"zCVobStartpoint:zCVob"`.
-* `_visual()` - the `visual` property (default `vobName + ".3DS"`; return
-  `""` for non-visual vobs).
-* `_show_visual`, `_static`, `_collision` - flag overrides.
-* `_print_additional_data()` - extra type-specific properties (`OCItem`'s
-  `itemInstance`, `ZCVobLight`'s light struct, the oCMOB fields). Call
-  `super()` first in multi-level hierarchies (see
-  `zen_gin_zcvob_ocmob_inter.py` / `_lockable.py`).
+* `_type_name` - the class chain as Spacer writes it, most-derived first,
+  e.g. `"oCMobDoor:oCMobInter:oCMOB:zCVob"` (abstract bases such as
+  `oCMobLockable` and `oCVob` are not part of it).
+* `_class_version` - the number after the chain in the block header (e.g.
+  52224 for `zCVob`, 64513 for `oCMobContainer`); `_visual_type` /
+  `_visual_version` for the visual sub-block.
+* `_visual()`, `_printed_vob_name()`, `_static`, `_show_visual`,
+  `_collision`, `_print_additional_data()`.
 
-`NoVisualObjectVob` is the intermediate base for vobs with no mesh
-(`ZCVobSpot`, `ZCVobStartpoint`, `OCItem`): `_visual_object_type_2 = "%"`,
-no separate object index for the visual sub-block.
+`NoVisualObjectVob` is the base for vobs without a mesh (`[visual % 0 0]`,
+one index slot). Per-instance data is read with `self._custom(key,
+default)` (flat custom properties, never addon PropertyGroups), keeping the
+library addon-independent. For mobs and sounds the fields are tables in
+`vob_fields.py`, which the importer also uses in reverse.
 
-**Layer 3 - `OCVobTree` / `WayNet`.** Two independent trees, each taking the
-whole Blender object list and filtering itself:
+**The object-index thread.** Every object block needs a unique sequential
+index. Each vob claims `_objects_count` slots (2 with a visual, 1
+without), `OCVobTree` and `WayNet` continue the count, and `ZenArchive`
+writes the total in the header. A subclass that writes a different number
+of indexed blocks than `_objects_count` shifts every later index - the
+verifier catches that on every export.
 
-* `OCVobTree.__create_vob()` matches name prefixes against a
-  `prefix -> class` dict, constructs the class, silently drops anything
-  unmatched, sorts, and prints a flat list of children under one implicit
-  root (no real nesting despite the name).
-* `WayNet` (`zen_gin_waynet.py`) filters `zCWaypoint:` objects and reads
-  links from the `zen_waypoint_links` PropertyGroup registered by the
-  `zen_waypoint_tools` addon - the one runtime dependency of
-  `zen_gin_export` on the addon.
+**Adding a VOB type:** subclass `ZCVob` / `NoVisualObjectVob`, set the
+chain and version from a real Spacer-saved world if you can find one,
+register the prefix in `VOB_CLASSES` (`zen_gin_ocvobtree.py`), and add it
+to `vob_types.py` (Add VOB dialog) and `SUPPORTED_TYPES` in
+`zen_import.py`. For settings, add a field table to `vob_fields.py` and
+matching descriptions to `mob_props.py`.
 
-**Layer 4 - `ZenArchive`.** The entry point: builds the header (format
-markers, fixed fake date, object count), wraps one `oCWorld:zCWorld` block
-around the vob tree + waynet, and closes with an `EndMarker`.
+**Bounding boxes.** The world-space AABB of the object itself if it is a
+mesh plus every mesh in its children, converted to Gothic space. With no
+mesh (an Empty, a freepoint) it is a single point at the vob.
 
-### The object-index thread
-
-Every object block needs a globally unique sequential index, threaded
-through all layers as an integer passed in and a new value returned:
-`ZCVob.print(object_index)` -> `updated_object_index()` ->
-`OCVobTree.print()` accumulates -> `ZenArchive` adds the world object and
-the waynet's count. **Easy to get subtly wrong:** if a new subclass emits a
-different number of `[type ...]...[]` blocks than `_objects_count` claims,
-every later index is off and Spacer/the game may misparse or drop objects.
-The per-export verifier checks contiguity against the header count.
-
-### Adding a new VOB type
-
-1. New file; subclass `ZCVob` or `NoVisualObjectVob` (no mesh).
-2. Set `_type_name` to the real ZenGin class string: `"YourType:zCVob"` for
-   a direct child of `zCVob`, or the full most-derived-first chain, e.g.
-   `"oCMobInter:oCMOB:zCVob"` (`oCVob` is NOT part of the persisted chain).
-3. Override `_visual()`, `_show_visual`, `_static`, `_collision`.
-4. For extra properties, override `_print_additional_data()` and bump
-   `_objects_count` if you add sub-blocks.
-5. Register the prefix in `OCVobTree.__create_vob()` (and the addon's
-   `vob_types.py` for the Add VOB dialog).
-
-For per-instance tunable data (a light's color, an oCMOB's lock state),
-read a flat custom (ID) property via `self._custom(key, default)` on the
-`ZCVob` base - NOT through `zen_waypoint_tools` PropertyGroups. That keeps
-`zen_gin_export` usable from plain Python with a test double (see
-`tests/test_ocmob_export.py`); the addon side (`mob_props.py`,
-`light_props.py`) only populates defaults and UI descriptions.
-
-### Bounding boxes
-
-`ZCVob.__bounding_box()` walks the vob object's children recursively,
-collects `bound_box` corners (world space via `matrix_world`) from every
-mesh, and reports the true min/max extent in Gothic space. Every vob is
-authored as an Empty, so a real box only appears once a mesh is parented
-under it. A vob with no mesh child - and always `zCVobSpot`/
-`zCVobStartpoint`, which are visual-less - falls back to a single-point box
-(`start == end`).
-
-### Present but not fully solid
-
-* **`FilePrinter` writes on `__del__`**, relying on GC to flush rather than
-  an explicit `save()`/`close()` - testing needed a manual `del` and
-  `gc.collect()`.
-* **No export-time validation** of malformed/duplicate names or
-  unmatched prefixes - silently accepted or ignored, with no report to the
-  user about what was skipped.
-* The archive header hardcodes `date 1.1.1970 12:0:0` (cosmetic `# TODO`).
-* `OCVobTree`'s per-type sort ordering was reported not to fully work (an
-  `isinstance` check order issue) - doesn't corrupt output; the E2E
-  regression checklist verifies the current order in Spacer.
-* `zCVobSound` writes only the base vob block - no sound-specific fields.
+**Addon side** (`addons/zen_waypoint_tools/`): `waypoint_links.py` (link
+slots, auto-aim), `waypoint_ops.py`, `vob_ops.py` / `vob_types.py` (Add VOB),
+`mob_props.py` (settings schema), `light_props.py`, `panel.py`,
+`viewport_draw.py` (link lines; the connection list is cached and rebuilt
+after depsgraph updates, the handlers survive file loads),
+`export_ops.py`, `quick_export.py`, `zen_import.py`, `krximpexp_bridge.py`,
+`gothic_sky.py`, `preferences.py`. Only the export/import operators and
+the light creation need `zen_gin_export`; they import it lazily.
 
 ## Coordinate transform
 
 Blender is right-handed, Z-up. ZenGin is Y-up and **left-handed** relative
-to Blender - confirmed empirically 2026-09-16, overturning an earlier
-assumption. Both formulas are empirically confirmed in Spacer, not just
-derived. In `modules/zen_gin_export/coordinate_transform.py`:
+to Blender (confirmed empirically 2026-09-16). In
+`modules/zen_gin_export/coordinate_transform.py`:
 
 ```
 Gothic_X = Blender_X * 100
@@ -616,138 +499,113 @@ Gothic_y = -Blender_z
 Gothic_z = -Blender_y
 ```
 
-The position map is a pure Y<->Z swap (determinant -1: a handedness flip,
-not a rotation). The rotation formula is derived from it: a rotation matrix
-conjugates across any orthogonal change of basis as
-`M_gothic = R @ M_blender @ R.T`; expanding that for the Y<->Z swap and
-converting back to a quaternion gives the formula above (derivation in
-`blender_quaternion_to_gothic`'s docstring). Covered by
-`tests/test_coordinate_transform.py`. All four call sites route through
-these two functions: `ZCVob.__location`/`__rotation` and
-`WayNet.__waypoint_location`, plus `blender_direction_to_gothic` for
-`WayNet.__waypoint_direction_vec3`.
+The position map is a pure Y<->Z swap R (determinant -1: a handedness
+flip, not a rotation). A rotation converts as `M_gothic = R @ M_blender @
+R` (R is its own inverse), which is what the exporter does with the world
+matrix (`blender_matrix_to_gothic`, scale removed); the quaternion formula
+above is the same thing and is what was verified in Spacer - a test checks
+the two agree. The rotation is written as 9 little-endian floats in hex
+(`trafoOSToWSRot`), row-major. Waypoint `direction` uses the position map
+without scale.
 
 ### How it was verified: the "Compass Cross" test
 
-A freepoint-only export test can't work: an uncompiled ZEN is plain text,
-so Spacer just parses back whatever our exporter wrote - there's no
-independent check. The fix is a second, independent conversion in the same
-compile: KrxImpExp's `.3ds` export applies zero axis conversion, and the
-real Blender->Gothic conversion for geometry happens inside Spacer's own
-Compile World step - a different code path from `coordinate_transform.py`.
+An uncompiled ZEN is plain text, so Spacer just parses back what we wrote
+- no independent check. The fix is a second, independent conversion in the
+same compile: KrxImpExp's `.3ds` export applies no axis conversion, and the
+real conversion for geometry happens inside Spacer's Compile World.
 
-The scene is a plaza with 5 arms of 5 different lengths (3/5/7/9/11 m), one
-per direction (+X/-X/+Y/-Y/+Z), with a freepoint at each tip. After
-compiling, each freepoint must land on its same-length arm. This settled
-the axis-sign question: two freepoints computed with the old formula landed
-clearly wrong, in exactly the pattern the fix predicts.
-
-**Rotation** uses the same scene, checked differently: both rotation test
-freepoints sit at the plaza center and use our formula either way, so the
-arms act as a shared landmark identical in Blender and Spacer - note which
-arm each freepoint points at before export and compare after compiling.
-Confirmed 2026-09-16: `TEST_ROTATION_PLUS90Z` turns 90 degrees
-counterclockwise relative to `TEST_ROTATION_REFERENCE` in both.
-
-Rebuild the scene with `tooling/pipeline/build_compass_test_level.py`
-(see its docstring) and re-check in Spacer whenever the formulas change or
-in-game positioning looks wrong.
+The scene is a plaza with 5 arms of 5 lengths (3/5/7/9/11 m), one per
+direction (+X/-X/+Y/-Y/+Z), with a freepoint at each tip. After compiling,
+each freepoint must land on its same-length arm. Rotation uses the same
+scene: two freepoints at the center, compared against the arms in Blender
+and Spacer (`TEST_ROTATION_PLUS90Z` turns 90 degrees counterclockwise
+relative to `TEST_ROTATION_REFERENCE` in both, confirmed 2026-09-16).
+Rebuild the scene with `tooling/pipeline/build_compass_test_level.py` and
+re-check in Spacer whenever the formulas change or in-game placement looks
+wrong.
 
 ## Testing
 
-Run `pytest` from the repo root (the `mathutils/` fake stub makes the
-Blender-free parts testable).
+```bash
+pip install pytest
+python -m pytest
+```
 
-- `tests/test_coordinate_transform.py`, `tests/test_archive_verifier.py` -
-  pure Python; guard against the mirror-reflection bug that once shipped
-  unnoticed.
-- `tests/test_zen_export.py` - the original prototype's end-to-end export.
-- `tests/test_zcvob_bounding_box.py` - `bbox3DWS`: degenerate-point
-  fallback with no mesh, and a real box from a fake mesh's
-  `bound_box`/`matrix_world`.
-- `tests/test_ocmob_export.py` - oCMOB field mapping and the
-  `oCMobX:oCMOB:zCVob` type-name chains.
-- `tests/test_mob_props.py` - `mob_props.py`'s custom-property schema (no
-  `bpy` dependency, imported directly).
+Runs from the repo root without Blender, and in GitHub Actions
+(`.github/workflows/tests.yml`, Python 3.10 and 3.13) on pushes and PRs to
+`main`. Covers coordinate conversion (incl. the matrix path vs. the
+Spacer-verified quaternion formula), full-scene exports through the
+verifier, the waynet (free waypoints, dedup, world-space positions),
+bounding boxes, class headers and field order against the real Spacer
+worlds, light/mob/sound fields and their export -> parse -> custom
+property round trip, export warnings, failed-export safety, the addon's
+property schema vs. the exporter's tables, and parsing the sample worlds.
 
-In Blender (needs the addon enabled):
-`tooling/pipeline/check_waypoint_direction.py` adds waypoints with the real
-operator, rotates them, exports, checks `direction`, re-imports and checks
-the old-style conversion. Run it with
+In Blender (addon enabled), `tooling/pipeline/check_waypoint_direction.py`
+adds waypoints with the real operators, rotates them, exports, checks
+`direction`, re-imports and checks the old-style conversion:
 `blender --background --python tooling/pipeline/check_waypoint_direction.py`
-or from the Text Editor; it cleans up after itself.
-
-There is no CI; nothing runs the suite automatically yet.
+(or run it from the Text Editor; it cleans up after itself). The addon
+also runs headless with the `bpy` package from PyPI (`pip install
+bpy==5.2.*` on Python 3.13), registering it via `sys.path` +
+`zen_waypoint_tools.register()`.
 
 ## Status, limitations and roadmap
 
-**Built and verified:** export of 16 VOB types (above); tested coordinate
-transform, including two real bugs found and fixed via Spacer round-trips
-(a mirror reflection and a rotation-direction sign); automatic
-object-index self-check on every export; ZEN importer (vobs/waynet with
-links, inverse transform); native Blender Light <-> `zCVobLight` mapping;
-modular addon (waypoint authoring, Add VOB dialog with catalogs and the
-oCMOB properties box, Export Level Package, item instance -> mesh map with
-869 entries, configurable mesh directories, KrxImpExp bridge, real bounding
-boxes); pure-Python test suite.
+**Built and verified:** export of 16 VOB types; coordinate transform
+verified in Spacer (two real bugs found and fixed that way); automatic
+structural check on every export plus scene warnings; ZEN import of our
+own and Spacer-saved worlds (vobs with settings, waynet, level mesh);
+native Blender Light <-> `zCVobLight`; Export Level Package; pytest suite
+in CI.
 
 **Known limitations**
 
-- **No compiled-ZEN writing** - BSP construction and lightmap baking are
-  proprietary algorithms; Spacer is required for compiling.
-- Import only searches the ZEN's own directory for the level mesh.
-- `zCVobLight`'s `lightType`/`lightQuality` enum ordinals are inferred from
-  documented names, not confirmed against a real compiled light.
-- **oCMOB in-game behavior is unverified** - the property schema and the
-  "no scripting needed for basic use" claims come from documentation
-  research, not a Spacer/in-game round-trip.
-- `item_mesh_map.json` only knows instances added by hand so far.
-- **The KrxImpExp Mac/Linux `.TGA` case-sensitivity fix lives outside this
-  repo**, in the installed addon's files, and is lost on reinstall/update;
-  not yet reported upstream.
-- Two-machine git workflow has produced real divergence before (an
-  `oCItem` regression via an independent manual edit; a checkout missing a
-  module entirely) - see the checklist below.
-- The `zCVobLevelCompo` reference has no dedicated button outside Export
-  Level Package.
-- No true nested vob hierarchies (output is one flat generation), and
-  merging Blender vobs into an *existing* Spacer-made ZEN isn't supported -
-  only fresh archives are written.
+- **No compiled-ZEN writing** - Spacer is required for compiling.
+- **Not yet confirmed in-game:** the presets not listed as verified above,
+  switches/wheels/fires; `zCVobSound` settings;
+  `zCVobLight` `lightType`/`lightQuality` ordinals; waypoint `direction`
+  with `AI_AlignToWP`. Class versions for `oCMobSwitch`/`oCMobWheel`/
+  `oCMobFire` are not in the sample worlds and use `oCMobInter`'s.
+- Some vanilla content can't be round-tripped yet (zones, decals,
+  particle effects, light presets/flicker, per-instance flags) - see
+  `TODO.md` "Gaps found in the reference worlds".
+- Output is one flat vob list (no nested hierarchies); imports of nested
+  Spacer worlds are flattened. Only fresh archives are written - merging
+  into an existing Spacer-made ZEN isn't supported.
+- A waypoint has three link slots; links are stored on one end, so a node
+  can have more than three connections in total, but importing a Spacer
+  world where both ends are full drops that link (reported).
+- The KrxImpExp Mac/Linux `.TGA` case-sensitivity fix lives in the
+  installed addon's files (lost on reinstall) and isn't reported upstream.
 
-**Potential directions**
-
-- Report the KrxImpExp `.TGA` bug upstream.
-- More VOB types (triggers, zones, cutscene cameras) following the oCMOB
-  pattern - see [Not yet implemented](#not-yet-implemented).
-- Verify the oCMOB family and the light enums against a real Spacer/in-game
-  round-trip, with the same rigor as the coordinate-transform fixes.
-- CI running pytest; a clearer cross-machine git discipline.
+**Potential directions:** more VOB types (triggers, zones, cameras) -
+`G2ISLAND_WEB.ZEN` has examples of zones; verify the unconfirmed items
+above with a Spacer/in-game round trip; report the KrxImpExp `.TGA` bug.
 
 ## Cross-machine git checklist
 
 Worked on from two machines under one contributor (`jaxub96-WINDOWS`,
 `jeanKoby-MAC`). The remote is named `github` (not `origin`); the sibling
-`KIT` repo is separate and uses `origin`, with the same checklist.
+`KIT` repo uses `origin`, with the same checklist.
 
 **Before starting work**
 
-1. `git status` - deal with leftover uncommitted work first (commit, stash,
-   or discard on purpose).
+1. `git status` - deal with leftover uncommitted work first.
 2. `git fetch github`, then `git log HEAD..github/main --oneline` to see
-   what's incoming; non-empty means this machine was behind.
-3. Pull and read the diff of what came in - especially anything touching
-   `addons/` or `modules/`; an unrecognized new file/module is the
-   missing-module scenario repeating.
+   what's incoming.
+3. Pull and read the diff - especially anything touching `addons/` or
+   `modules/`; an unrecognized new or removed module means this machine
+   was behind.
 
 **Before switching away**
 
-4. Commit or stash (`git stash -u` for untracked files) - never leave real
-   work uncommitted.
-5. `git push` - an unpushed commit is the other machine's next surprise.
+4. Commit or stash (`git stash -u` for untracked files).
+5. `git push`.
 
 **Periodically**
 
 6. `git branch -a` - no stray diverging branches; this repo lives on `main`.
-7. If a machine was behind for a while, grep the missed commits for
-   anything that changes how you work (a renamed API like
-   `zen_waypoint_links` replacing the old `modifiers`-based link storage).
+7. After being behind for a while, read the missed commits for anything
+   that changes how you work (renamed APIs, removed features).

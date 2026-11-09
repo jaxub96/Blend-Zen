@@ -14,8 +14,8 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
 
     mesh_directories: bpy.props.CollectionProperty(
         name="Mesh directories",
-        description="Directories searched for .MRM mesh files, used by "
-                    "the Add VOB mesh-name search",
+        description="Extra directories searched for the level mesh (.MRM/.3DS) "
+                    "when importing a ZEN",
         type=ZenMeshDirectory,
     )
 
@@ -74,8 +74,6 @@ class ZenWaypointToolsPreferences(bpy.types.AddonPreferences):
         col_buttons.operator("zen.remove_mesh_path", text="Remove path", icon='REMOVE')
         col_buttons.operator("zen.remove_all_mesh_paths", text="Remove all paths", icon='X')
 
-        layout.separator()
-        layout.operator("zen.refresh_mesh_catalog", icon='FILE_REFRESH')
 
 
 class ZEN_UL_mesh_directories(bpy.types.UIList):
@@ -83,19 +81,25 @@ class ZEN_UL_mesh_directories(bpy.types.UIList):
         layout.label(text=item.name, icon='FILE_FOLDER')
 
 
+def _prefs(context=None):
+    """This add-on's preferences, or None when it was registered without
+    being enabled as an add-on (e.g. a script calling register())."""
+    addon = (context or bpy.context).preferences.addons.get(__package__)
+    return addon.preferences if addon else None
+
+
 def get_gothic_settings(context=None):
     """(game folder or None, gothic command path) for Export Level Package."""
-    context = context or bpy.context
-    prefs = context.preferences.addons[__package__].preferences
+    prefs = _prefs(context)
+    if prefs is None:
+        return None, ""
     return (bpy.path.abspath(prefs.gothic_game_folder) or None), bpy.path.abspath(prefs.gothic_command)
 
 
 def get_mesh_directories(context=None):
-    """Flat list of configured mesh directory paths (strings), for use by
-    mesh_catalog.py and mesh_preview.py. Single source of truth."""
-    context = context or bpy.context
-    prefs = context.preferences.addons[__package__].preferences
-    return [d.name for d in prefs.mesh_directories]
+    """Configured mesh directory paths (strings), searched by the importer."""
+    prefs = _prefs(context)
+    return [d.name for d in prefs.mesh_directories] if prefs else []
 
 
 def _add_path(context, path):
@@ -113,7 +117,7 @@ def _add_path(context, path):
 class ZEN_OT_add_mesh_path(bpy.types.Operator):
     bl_idname = "zen.add_mesh_path"
     bl_label = "Add Mesh Directory"
-    bl_description = "Add a directory to search for .MRM mesh files"
+    bl_description = "Add a directory to search for level meshes on import"
 
     directory: bpy.props.StringProperty(name="Directory Path", subtype='DIR_PATH')
 
@@ -123,7 +127,6 @@ class ZEN_OT_add_mesh_path(bpy.types.Operator):
 
     def execute(self, context):
         _add_path(context, self.directory)
-        bpy.ops.wm.save_userpref()
         return {'FINISHED'}
 
 
@@ -142,7 +145,6 @@ class ZEN_OT_add_mesh_path_with_subpaths(bpy.types.Operator):
         if self.directory:
             for root, _dirs, _files in os.walk(self.directory, followlinks=True):
                 _add_path(context, root)
-        bpy.ops.wm.save_userpref()
         return {'FINISHED'}
 
 
@@ -158,7 +160,6 @@ class ZEN_OT_remove_mesh_path(bpy.types.Operator):
             prefs.mesh_directories.remove(index)
             if prefs.selected_mesh_dir_entry >= len(prefs.mesh_directories):
                 prefs.selected_mesh_dir_entry = len(prefs.mesh_directories) - 1
-        bpy.ops.wm.save_userpref()
         return {'FINISHED'}
 
 
@@ -171,5 +172,4 @@ class ZEN_OT_remove_all_mesh_paths(bpy.types.Operator):
         prefs = context.preferences.addons[__package__].preferences
         prefs.mesh_directories.clear()
         prefs.selected_mesh_dir_entry = -1
-        bpy.ops.wm.save_userpref()
         return {'FINISHED'}

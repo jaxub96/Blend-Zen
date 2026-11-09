@@ -1,12 +1,10 @@
 import bpy
 
 
-# zCVob (mesh props) and oCItem (items) are deliberately absent from this
-# dialog - Props.blend and Items_ITMW.blend are fully populated Blender
-# asset libraries now, so those are placed by dragging a real asset in from
-# the Asset Browser instead. VOB_DISPLAY/VOB_DEFAULT_LABEL below still carry
-# entries for both types since zen_import.py needs them for objects that
-# already exist with those prefixes (from an imported ZEN, or hand-renamed).
+# zCVob (mesh props) and oCItem (items) are deliberately absent from the Add
+# VOB dialog: they are placed by dragging real assets in from the Props.blend
+# / Items_*.blend asset libraries. VOB_DISPLAY still has entries for them for
+# the importer.
 VOB_TYPE_ITEMS = (
     ('zCVobLevelCompo', "Level Compo (World Mesh Ref)",
      "Reference to the compiled level mesh - name must match the .3ds filename, without extension"),
@@ -18,33 +16,34 @@ VOB_TYPE_ITEMS = (
      "Point or spot light source. Created as a real Blender Light - tune "
      "range/color/type in Blender's own Light Properties tab"),
     ('zCVobSound', "Sound",
-     "Sound source - name must match the sound's script instance name"),
+     "Sound source - name must match the sound's script instance name. "
+     "Volume/mode/radius are in the sidebar after adding"),
     ('oCMobContainer', "Interactive: Container",
      "Lootable chest/barrel/sack - name is this instance's unique vobName, "
-     "not its mesh. Configure via Custom Properties after adding - see "
+     "not its mesh. Configure in the sidebar after adding - see "
      "README.md, Interactive objects"),
     ('oCMobDoor', "Interactive: Door",
      "A door - name is this instance's unique vobName, not its mesh. "
-     "Configure via Custom Properties after adding"),
+     "Configure in the sidebar after adding"),
     ('oCMobBed', "Interactive: Bed",
      "A sleepable bed - name is this instance's unique vobName, not its "
-     "mesh. Configure via Custom Properties after adding"),
+     "mesh. Configure in the sidebar after adding"),
     ('oCMobSwitch', "Interactive: Switch",
      "A two-state switch/lever - name is this instance's unique vobName, "
-     "not its mesh. Configure via Custom Properties after adding"),
+     "not its mesh. Configure in the sidebar after adding"),
     ('oCMobLadder', "Interactive: Ladder",
      "A climbable ladder - name is this instance's unique vobName, not "
-     "its mesh. Configure via Custom Properties after adding"),
+     "its mesh. Configure in the sidebar after adding"),
     ('oCMobWheel', "Interactive: Wheel",
      "A four-state rotating wheel mechanism - name is this instance's "
-     "unique vobName, not its mesh. Configure via Custom Properties after adding"),
+     "unique vobName, not its mesh. Configure in the sidebar after adding"),
     ('oCMobFire', "Interactive: Fire",
      "A usable fire source (campfire/forge) - name is this instance's "
-     "unique vobName, not its mesh. Configure via Custom Properties after adding"),
+     "unique vobName, not its mesh. Configure in the sidebar after adding"),
     ('oCMobInter', "Interactive: Generic",
      "Generic interactive object for anything that doesn't fit the more "
      "specific types above - name is this instance's unique vobName, not "
-     "its mesh. Configure via Custom Properties after adding"),
+     "its mesh. Configure in the sidebar after adding"),
 )
 
 VOB_DISPLAY = {
@@ -90,7 +89,7 @@ def find_next_vob_name(vob_type):
     prefix = f"{vob_type}:{label}_"
     if vob_type == "zCVobStartpoint":
         return label
-    
+
     existing_numbers = set()
     for obj in bpy.data.objects:
         if not obj.name.startswith(prefix):

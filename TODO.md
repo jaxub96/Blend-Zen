@@ -1,82 +1,109 @@
 # TODO
 
-Findings from the code review (2026-11-02). Ordered by priority. Tick items
-off as they land; the README stays the only documentation file.
+Open work, ordered by priority. The README stays the only documentation
+file; tick items off (or delete them) as they land.
 
-## P1 - Correctness bugs
+Done in the 2026-11-09 review: world-space transforms (`matrix_world`) for
+all vobs and waypoints; atomic `FilePrinter` (no partial files, no
+`__del__`); lazy `zen_gin_export` imports; duplicate-suffix handling that
+keeps other dots; importer support for oCMob*/sound settings, Spacer
+`waypointN` entries and skipped-type reporting; isolated waypoints
+exported; pre-export scene warnings; scene-only export; platform-aware
+Spacer launch; draw handler at register time (persistent across file
+loads); no `save_userpref()` side effect; no mesh-directory scan at
+startup; `Counter` in the verifier; `zCVobSound` fields; class chains and
+versions matched to real Spacer worlds; dead preview/catalog code and the
+`mathutils` stub removed; CI.
 
-- [ ] **Export world-space transforms.** `ZCVob.__rotation` reads only
-  `rotation_quaternion`, so Euler-mode vobs export with identity rotation
-  (waypoint direction already uses `matrix_world`). `__location` /
-  `__waypoint_location` use local `location`, wrong for parented objects.
-  Use `matrix_world` (translation + `to_quaternion()`); add tests for
-  Euler rotation and parented objects.
-- [ ] **`FilePrinter` failure handling.** `__del__` writes a partial `.ZEN`
-  if `archive.print()` raises, and raises `AttributeError` if `__init__`
-  failed. Drop the `__del__` write; use `close()` / a context manager.
-  Build output with a list + `join` (currently quadratic `+=`).
-- [ ] **Unreachable import error message.** `export_ops.py` imports
-  `zen_import` (which imports `zen_gin_export`) at module level, so a missing
-  Script Directory breaks addon enable with a raw traceback. Import lazily.
-- [ ] **Duplicate / mangled vob names.** `.001` suffix is stripped so
-  duplicates export with the same `vobName`; `_vob_name()` also truncates
-  names containing `.` or extra `:`. Detect and report duplicates.
-- [ ] **Importer drops oCMob* vobs silently** and doesn't restore their
-  custom properties; isolated waypoints are never exported. Add oCMob types
-  to `_REAL_TYPE_TO_PREFIX`, restore props, count/report skipped blocks.
+## P1 - Verify in Spacer / in-game
 
-## P2 - Robustness
+- [ ] Re-run the smoke tier of the README "End-to-end test plan" after this
+  review: class versions and the `oCMobContainer`/`oCMobDoor` chain
+  changed (now `oCMobX:oCMobInter:oCMOB:zCVob`, as in vanilla worlds), and
+  the `zCModel` visual block version is now 0.
+- [x] Spacer loads lockable mobs with real models; `DOOR_NW_NORMAL_01`
+  opens in-game (2026-11-09). A missing mob model crashes Spacer - now an
+  export warning.
+- [x] Bed (`oCMobBed` + `SLEEPABIT`) opens the sleep dialog, lockable
+  chest/door and the alchemy table work in-game (2026-11-09).
+- [ ] The remaining presets in `mob_props.MOB_PRESETS` in-game; find
+  vanilla models for switch, wheel and fire.
+- [ ] `zCVobSound` settings (mode, radius, volume) play as expected.
+- [ ] Lights: calibrated viewport power vs. Spacer, `lightType` /
+  `lightQuality` ordinals, `lightStatic` baking; make `lightQuality`
+  configurable.
+- [ ] Waypoint `direction`: NPC with `AI_AlignToWP` faces the green Y arrow.
+- [ ] Class versions for `oCMobSwitch` / `oCMobWheel` / `oCMobFire` (not in
+  the sample worlds; currently `oCMobInter`'s 35585).
 
-- [ ] **Pre-export validation pass:** unknown prefixes, duplicate names, no
-  startpoint, no level compo, waypoints without links; report in the export
-  message instead of silently ignoring.
-- [ ] **Quick export object set:** only export objects from the current
-  scene / view layer (skip other scenes, hidden or excluded collections).
-- [ ] **Platform-aware paths:** `SPACER_LOG` (`~/Library/Logs`), `/bin/zsh`
-  and the default gothic command in `preferences.py` are macOS-specific.
-- [ ] **Start the link-draw handler at register time** (currently only
-  started when the panel draws or on toggle).
-- [ ] **Stop `save_userpref()` side effect:** the mesh-directory buttons
-  save all user preferences.
-- [ ] **Startup cost:** `register()` scans all mesh directories
-  synchronously; make it lazy or on-demand.
-- [ ] `archive_verifier`: replace `list.count()` in loop with `Counter`
-  (quadratic on large levels).
+## P2 - Gaps found in the reference worlds
 
-## P3 - Feature gaps
+Survey of `blender_work_dir/G2ISLAND_WEB.ZEN` + `DieGestrandeten.zen`
+(2,952 vobs). Counts are across both files. Import then export of
+G2ISLAND_WEB currently loses everything below.
 
-- [ ] `zCVobSound`: export sound name, volume, radius and mode (currently
-  only the base vob block, so the vob does nothing in-game).
-- [ ] Lights: verify the calibrated power against Spacer (and `lightStatic`/`lightQuality` baking); handle SUN/AREA explicitly (warn instead of silent POINT),
-  make `lightQuality` configurable, decide how energy maps to range/color.
-- [x] Importer: reconstruct waypoint facing direction.
-- [ ] Verify waypoint `direction` in Spacer/in-game (NPC with `AI_AlignToWP`
-  faces the green Y arrow).
+### Unsupported (skipped on import, can't be authored)
+
+- [ ] `oCZoneMusicDefault:oCZoneMusic:zCVob` (2, version 0) - `enabled`,
+  `priority`, `ellipsoid`, `reverbLevel`, `volumeLevel`, `loop`.
+- [ ] `zCZoneZFogDefault:zCZoneZFog:zCVob` (1, version 5505) -
+  `fogRangeCenter`, `innerRangePerc`, `fogColor`, `fadeOutSky`,
+  `overrideColor`.
+- [ ] `zCZoneVobFarPlaneDefault:zCZoneVobFarPlane:zCVob` (1, version 52224)
+  - `vobFarPlaneZ`, `innerRangePerc`.
+- [ ] Decal vobs (21): `zCVob` with a `.TGA` visual, `visualCamAlign=1`
+  and a `[visual zCDecal 53505 n]` sub-block (`name`, `decalDim`,
+  `decalOffset`, `decal2Sided`, `decalAlphaFunc`, `decalTexAniFPS`). We
+  always write `<name>.3DS` + `zCProgMeshProto`.
+- [ ] Particle-effect vobs (6): `zCVob` with a `.pfx` visual (`FIRE.pfx`,
+  `GROUNDFOG1_INDOOR_MID.pfx`, `ORE_GLOW.pfx`) and a
+  `[visual zCParticleFX 0 n]` sub-block.
+- [ ] Props with non-`.3DS` visuals: a `zCVob:` name always becomes
+  `<name>.3DS`, so `.ASC`/`.MDS` static vobs can't be expressed (mobs
+  handle this via Visual Name).
+- [ ] Vob hierarchy: 49 vobs have children (`childsN>0`). Export writes a
+  flat list and import flattens. Parenting could map to Blender parents.
+- [ ] Triggers, movers, cameras and `zCVobSoundDaytime` (none in the
+  samples; see README "Not yet implemented").
+
+### Partly supported (exported with fixed values, lost on import)
+
+- [ ] **Lights:** all 31 vanilla lights use a preset (`presetName` /
+  `lightPresetInUse`, e.g. `FIRESMALL`), 27 flicker (`rangeAniScale`,
+  `rangeAniFPS`, `colorAniList` like `(255 139 83) (255 104 53)`,
+  `colorAniFPS`). We write no preset and no animation, and
+  `lightQuality` is fixed at 2. Sun/area Blender lights become points.
+- [ ] **Base vob fields** written as constants: `zbias` is 1 on every
+  vanilla freepoint (254) and startpoint, 345 items and 38 props (we
+  write 0); `visualAniMode` / `visualAniModeStrength` (wind sway) on 16
+  props; `visualCamAlign` on decals; `dynShadow` on 1 prop.
+- [ ] **Flags per type, not per instance:** `cdStatic`, `cdDyn`,
+  `staticVob`, `showVisual` come from the class. A vanilla prop without
+  collision imports and re-exports with collision.
+- [ ] **zCVobSound:** `sndRandDelayVar`, `sndObstruction`, `sndConeAngle`,
+  `sndVolType` (ellipsoid) are constants; not editable or imported.
+- [ ] **oCMOB:** `focusOverride`, `visualDestroyed`, `isDestroyed` are
+  constants.
+- [ ] **Waypoints:** `waterDepth` / `underWater` always 0 (not imported).
+  Waypoints have 3 link slots, so importing a node whose neighbours are
+  also full drops the link (reported, none in the samples).
+- [ ] **Shared visuals:** Spacer writes repeated visuals as `§` references
+  (1,348 blocks); we write a fresh visual block per vob. Valid, but larger
+  files - low priority.
+
+## P3 - Features
+
+- [ ] Trigger family and cutscene cameras (zones are listed above).
 - [ ] "Add Level Compo" operator (Export Level Package covers the main path).
-- [ ] More VOB types: trigger family, zones, cutscene cameras (see README
-  "VOB types").
-- [ ] Verify against a real Spacer / in-game round-trip: oCMOB behavior
-  (bed, chest, door, switch), `lightType` / `lightQuality` enum ordinals.
+- [ ] Import: keep the Spacer vob hierarchy (parenting) instead of
+  flattening.
 
-## P4 - Cleanup
+## P4 - Cleanup / tooling
 
-- [ ] Delete dead preview code in `mesh_preview.py` (keep only what
-  `zen_import.py` needs, or move `get_preview_collection` there).
-- [ ] Remove dead `build_prop_category_map` / `PROP_FALLBACK_CATEGORY` in
-  `mesh_catalog.py`, and the unused `wm.zen_item_catalog`.
-- [ ] Fix stale docstrings ("mesh preview") in `item_mesh_map.py`,
-  `zen_import.py`, `zen_gin_zcvob.py`, `zen_gin_zcvob_ocitem.py`.
-- [ ] Bump `bl_info` version for the removed panels.
-- [ ] Decide fate of `asset_catalog/gothic2_meshes.json` (static, superseded).
-- [ ] `.gitignore` lists `blender_work_dir/` but ~10 files in it are tracked;
-  untrack the ones not needed, or drop the ignore rule.
-
-## Tests / tooling
-
-- [ ] Round-trip test: export -> import -> export, compare output.
-- [ ] Tests for `archive_parser`, `WayNet` export, `FilePrinter` failure
-  path, and the importer.
-- [ ] CI running `pytest` on push.
+- [ ] Decide whether `asset_catalog/item_mesh_map.json` and
+  `gothic2_meshes.json` are still wanted (nothing reads them now).
+- [ ] Optional CI job running the addon headless with the `bpy` wheel
+  (`tooling/pipeline/check_waypoint_direction.py`).
 - [ ] Report the KrxImpExp `.TGA` case-sensitivity bug upstream.
 
 ## Pending housekeeping

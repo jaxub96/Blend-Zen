@@ -1,69 +1,77 @@
+"""
+The oCMOB family: interactive objects (chests, doors, beds, switches,
+ladders, wheels, fire sources).
+
+The Blender object name is the instance's unique vobName (what a
+triggerTarget addresses); the model is a shared, already-animated .MDS
+named by the `visual_name` custom property (blank = the vob's own name;
+an explicit .ASC/.3DS extension is kept).
+Every other field is a flat custom property - see vob_fields.py.
+
+Class chains and versions are copied from real Spacer-saved worlds:
+oCMobLockable is NOT part of the persisted chain (`oCMobDoor:oCMobInter:
+oCMOB:zCVob`), and the `zCModel` visual block has version 0. Switch,
+wheel and fire don't appear in the sample worlds; they use oCMobInter's
+version (35585), unverified.
+"""
+
 from .zen_gin_zcvob import ZCVob
+from .vob_fields import FIELDS_BY_TYPE, print_fields
 
 
-class OCMob(ZCVob):
-    """
-    Base class for the oCMOB family - the game's moveable/interactive
-    world objects (chests, doors, beds, switches, ladders, wheels, fire
-    sources). Not directly addable in the Blender addon; concrete
-    subclasses (OCMobInter and further down) are what actually get used.
+class OCMobInter(ZCVob):
+    _type_name = "oCMobInter:oCMOB:zCVob"
+    _class_version = 35585
+    _visual_type = "zCModel"
+    _visual_version = 0
 
-    Property names/order match the real archive struct (source:
-    zk.gothickit.dev/engine/objects/oCMOB/):
-
-        string focusName; int hitpoints; int damage; bool moveable;
-        bool takeable; bool focusOverride; enum soundMaterial;
-        string visualDestroyed; string owner; string ownerGuild;
-        bool isDestroyed;
-
-    Unlike a plain `zCVob` prop (whose Blender object name IS the mesh
-    filename), an oCMOB's Blender object name is its unique in-game
-    identity (the `vobName` other triggers address it by via
-    `triggerTarget`), while its actual model is almost always a SHARED,
-    reused animated asset (e.g. every chest in the game can point at
-    "CHESTBIG_OCCRATELARGE.MDS"). This is exactly the same distinction
-    `OCItem` already has to make between its script instance name and
-    its mesh filename (see zen_gin_zcvob_ocitem.py and
-    zen_waypoint_tools/item_mesh_map.py) - here it's resolved with a
-    per-instance "visual_name" custom property instead of a lookup
-    table, since there's no fixed global mapping the way there is for
-    items. See README.md "VOB types" for the full picture and
-    README.md "Interactive objects" for a worked example.
-
-    All fields are read as flat custom (ID) properties on the Blender
-    object via `ZCVob._custom()` - the same addon-independent mechanism
-    `ZCVobLight` uses - so this file has no dependency on the
-    zen_waypoint_tools addon and keeps working from plain Python/pytest
-    with a bare test double. zen_waypoint_tools' vob_ops.py / mob_props.py
-    is what actually creates these properties (with UI descriptions, via
-    Blender's native Custom Properties panel) when a VOB of one of these
-    types is added.
-    """
-
-    _visual_object_type_2 = "zCModel"
-    _visual_object_triangles_limit = 53505
-
-    _SOUND_MATERIAL_ORDINALS = {
-        "WOOD": 0, "STONE": 1, "METAL": 2, "LEATHER": 3, "CLAY": 4, "GLAS": 5,
-    }
+    @classmethod
+    def _base_type(cls):
+        return cls._type_name.split(":", 1)[0]
 
     def _visual(self):
-        visual_name = str(self._custom("visual_name", "")).strip()
-        return (visual_name or self._vob_name()) + ".MDS"
+        """visual_name with its extension if it has one (vanilla mobs also
+        use .ASC models and static .3DS meshes), else <name>.MDS."""
+        visual_name = str(self._custom("visual_name", "")).strip() or self._vob_name()
+        return visual_name if "." in visual_name else visual_name + ".MDS"
+
+    def print(self, object_index):
+        # A static .3DS mesh gets a zCProgMeshProto visual block, as in Spacer.
+        if self._visual().upper().endswith(".3DS"):
+            self._visual_type, self._visual_version = "zCProgMeshProto", 53505
+        return super().print(object_index)
 
     def _print_additional_data(self):
-        sound_material = str(self._custom("sound_material", "WOOD")).upper()
+        vob_type = self._base_type()
+        print_fields(self._data_printer, FIELDS_BY_TYPE[vob_type], self._custom, vob_type)
 
-        self._data_printer.print_string_property("focusName", str(self._custom("focus_name", "")))
-        self._data_printer.print_int_property("hitpoints", int(self._custom("hitpoints", 0)))
-        self._data_printer.print_int_property("damage", int(self._custom("damage", 0)))
-        self._data_printer.print_bool_property("moveable", bool(self._custom("moveable", False)))
-        self._data_printer.print_bool_property("takeable", bool(self._custom("takeable", False)))
-        self._data_printer.print_bool_property("focusOverride", False)
-        self._data_printer.print_enum_property(
-            "soundMaterial", self._SOUND_MATERIAL_ORDINALS.get(sound_material, 0)
-        )
-        self._data_printer.print_string_property("visualDestroyed", "")
-        self._data_printer.print_string_property("owner", str(self._custom("owner", "")))
-        self._data_printer.print_string_property("ownerGuild", str(self._custom("owner_guild", "")))
-        self._data_printer.print_bool_property("isDestroyed", False)
+
+class OCMobContainer(OCMobInter):
+    _type_name = "oCMobContainer:oCMobInter:oCMOB:zCVob"
+    _class_version = 64513
+
+
+class OCMobDoor(OCMobInter):
+    _type_name = "oCMobDoor:oCMobInter:oCMOB:zCVob"
+    _class_version = 64513
+
+
+class OCMobBed(OCMobInter):
+    _type_name = "oCMobBed:oCMobInter:oCMOB:zCVob"
+    _class_version = 61440
+
+
+class OCMobLadder(OCMobInter):
+    _type_name = "oCMobLadder:oCMobInter:oCMOB:zCVob"
+
+
+class OCMobSwitch(OCMobInter):
+    _type_name = "oCMobSwitch:oCMobInter:oCMOB:zCVob"
+
+
+class OCMobWheel(OCMobInter):
+    _type_name = "oCMobWheel:oCMobInter:oCMOB:zCVob"
+
+
+class OCMobFire(OCMobInter):
+    _type_name = "oCMobFire:oCMobInter:oCMOB:zCVob"

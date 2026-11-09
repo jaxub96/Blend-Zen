@@ -1,72 +1,63 @@
+"""
+Viewport display of waypoint links.
+
+The set of linked pairs only changes on add/link/unlink/delete, so it is
+cached and rebuilt after a depsgraph update instead of on every redraw
+(orbiting a big level stays cheap); positions are read fresh each draw.
+The handlers are installed at register time and survive file loads; the
+cache is dropped on load so it never holds objects from another file.
+"""
+
 import bpy
 import gpu
-
+from bpy.app.handlers import persistent
 from gpu_extras.batch import batch_for_shader
 
 from .waypoint_links import is_waypoint, get_link_targets
 
-DRAW_HANDLER = None
-DEPSGRAPH_HANDLER = None
-
-# Connection topology (which waypoint pairs are linked) rarely changes -
-# only add/link/unlink/delete touch it - but draw_waypoint_links() used to
-# rebuild it from a full bpy.data.objects scan on every single viewport
-# redraw, including pure camera orbit/pan/zoom with zero scene changes.
-# In a level with hundreds of objects that's a real per-frame cost paid
-# exactly while the user is actively working with waypoints. Cache it and
-# only rebuild when a depsgraph update says something might have changed;
-# world-space positions are still read fresh from the cached objects every
-# draw, so live movement of a waypoint is unaffected.
+_draw_handle = None
 _cached_connections = None
 
 
-def collect_unique_connections():
-    """Collect unique undirected waypoint connections for viewport display."""
-    connections = set()
-
-    for source in bpy.data.objects:
+def collect_unique_connections(objects):
+    """Unique undirected (source, target) waypoint pairs among objects."""
+    connections = {}
+    for source in objects:
         if not is_waypoint(source):
             continue
-
         for _, target in get_link_targets(source):
-            if not is_waypoint(target) or target == source:
+            if target == source or not is_waypoint(target):
                 continue
-
-            a = source.as_pointer()
-            b = target.as_pointer()
-            key = (a, b) if a < b else (b, a)
-            connections.add((key, source, target))
-
-    return [(source, target) for _, source, target in connections]
+            a, b = source.as_pointer(), target.as_pointer()
+            connections.setdefault((min(a, b), max(a, b)), (source, target))
+    return list(connections.values())
 
 
-def draw_waypoint_links():
-    """Draw unique waypoint connections in the 3D viewport."""
+def _draw_waypoint_links():
     global _cached_connections
-
     scene = bpy.context.scene
-    if scene is None or not getattr(scene, "zen_show_waypoint_links", True):
+    if scene is None or not getattr(scene, "zen_show_waypoint_links", False):
         return
 
     if _cached_connections is None:
-        _cached_connections = collect_unique_connections()
-    connections = _cached_connections
-    if not connections:
+        _cached_connections = collect_unique_connections(scene.objects)
+    try:
+        positions = [
+            tuple(obj.matrix_world.translation)
+            for pair in _cached_connections for obj in pair
+        ]
+    except ReferenceError:  # an object was deleted since the last rebuild
+        _cached_connections = None
         return
-
-    positions = []
-    for source, target in connections:
-        positions.append(tuple(source.matrix_world.translation))
-        positions.append(tuple(target.matrix_world.translation))
+    if not positions:
+        return
 
     shader = gpu.shader.from_builtin('UNIFORM_COLOR')
     batch = batch_for_shader(shader, 'LINES', {"pos": positions})
-
     try:
         gpu.state.blend_set('ALPHA')
         gpu.state.depth_test_set('LESS_EQUAL')
         gpu.state.line_width_set(2.5)
-
         shader.bind()
         shader.uniform_float("color", (0.15, 0.7, 1.0, 0.9))
         batch.draw(shader)
@@ -76,51 +67,42 @@ def draw_waypoint_links():
         gpu.state.blend_set('NONE')
 
 
-def _invalidate_connections_cache(scene, depsgraph):
+@persistent
+def _invalidate_cache(*_args):
     global _cached_connections
     _cached_connections = None
 
 
-def start_draw_handler():
-    global DRAW_HANDLER, DEPSGRAPH_HANDLER
-
-    if DRAW_HANDLER is None:
-        DRAW_HANDLER = bpy.types.SpaceView3D.draw_handler_add(
-            draw_waypoint_links,
-            (),
-            'WINDOW',
-            'POST_VIEW',
-        )
-
-    if DEPSGRAPH_HANDLER is None:
-        DEPSGRAPH_HANDLER = _invalidate_connections_cache
-        bpy.app.handlers.depsgraph_update_post.append(DEPSGRAPH_HANDLER)
+_HANDLER_LISTS = (bpy.app.handlers.depsgraph_update_post, bpy.app.handlers.load_pre)
 
 
-def stop_draw_handler():
-    global DRAW_HANDLER, DEPSGRAPH_HANDLER, _cached_connections
-
-    if DRAW_HANDLER is not None:
-        bpy.types.SpaceView3D.draw_handler_remove(DRAW_HANDLER, 'WINDOW')
-        DRAW_HANDLER = None
-
-    if DEPSGRAPH_HANDLER is not None:
-        bpy.app.handlers.depsgraph_update_post.remove(DEPSGRAPH_HANDLER)
-        DEPSGRAPH_HANDLER = None
-
-    _cached_connections = None
+def register():
+    global _draw_handle
+    if _draw_handle is None:
+        _draw_handle = bpy.types.SpaceView3D.draw_handler_add(
+            _draw_waypoint_links, (), 'WINDOW', 'POST_VIEW')
+    for handlers in _HANDLER_LISTS:
+        if _invalidate_cache not in handlers:
+            handlers.append(_invalidate_cache)
 
 
-def is_draw_handler_active():
-    return DRAW_HANDLER is not None
+def unregister():
+    global _draw_handle
+    if _draw_handle is not None:
+        bpy.types.SpaceView3D.draw_handler_remove(_draw_handle, 'WINDOW')
+        _draw_handle = None
+    for handlers in _HANDLER_LISTS:
+        if _invalidate_cache in handlers:
+            handlers.remove(_invalidate_cache)
+    _invalidate_cache()
 
 
 def tag_viewports_redraw():
-    for window in bpy.context.window_manager.windows:
-        screen = window.screen
-        if screen is None:
+    _invalidate_cache()
+    wm = bpy.context.window_manager
+    for window in (wm.windows if wm else ()):
+        if window.screen is None:
             continue
-
-        for area in screen.areas:
+        for area in window.screen.areas:
             if area.type == 'VIEW_3D':
                 area.tag_redraw()

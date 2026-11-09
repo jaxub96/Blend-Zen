@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 
 
-_BLOCK_OPEN_RE = re.compile(r'^\s*\[(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\]')
+BLOCK_OPEN_RE = re.compile(r'^\s*\[(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\]')
 _PROPERTY_RE = re.compile(r'^\s*([^=\[\]]+)=([^:]+):(.*)$')
 
 
@@ -27,6 +27,13 @@ class ArchiveBlock:
 
     def get(self, name, default=None):
         return self.properties.get(name, default)
+
+
+def read_archive_text(filepath, encoding="windows-1250"):
+    """Read a .ZEN as text. Undecodable bytes (the binary mesh section of
+    a compiled world) are replaced instead of failing the whole read."""
+    with open(filepath, "r", encoding=encoding, errors="replace") as f:
+        return f.read()
 
 
 def parse_archive(text):
@@ -47,9 +54,21 @@ def parse_archive(text):
 
     stack = []
     roots = []
+    skip_binary_until = None
 
     for line in lines[body_start:]:
+        if skip_binary_until is not None:
+            # A compiled world's MeshAndBsp section is a binary blob with no
+            # text end marker; resume at the next block at the same depth.
+            if not (line.startswith(skip_binary_until) and BLOCK_OPEN_RE.match(line)):
+                continue
+            skip_binary_until = None
+
         if not line.strip():
+            continue
+
+        if line.lstrip().startswith("[MeshAndBsp "):
+            skip_binary_until = line[:len(line) - len(line.lstrip())] + "["
             continue
 
         if line.strip() == "[]":
@@ -61,7 +80,7 @@ def parse_archive(text):
                     roots.append(finished)
             continue
 
-        m = _BLOCK_OPEN_RE.match(line)
+        m = BLOCK_OPEN_RE.match(line)
         if m:
             stack.append(ArchiveBlock(
                 type1=m.group(1),

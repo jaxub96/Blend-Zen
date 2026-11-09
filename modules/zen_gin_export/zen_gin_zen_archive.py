@@ -5,43 +5,34 @@ from .zen_gin_data_printer import ZenGinDataPrinter
 
 
 class ZenArchive:
+    """An uncompiled ZEN: header, then one oCWorld block holding the vob
+    tree and the waynet. Object indices are threaded through every block
+    (vob tree first, then waynet) and the header states the total."""
 
     def __init__(self, blender_objects, printer: Printer):
-        self.__printer = printer
-        self.__data_printer = ZenGinDataPrinter(printer)
-        self.__vob_tree = OCVobTree(blender_objects, printer, self.__data_printer)
-        self.__way_net = WayNet(blender_objects, printer, self.__data_printer)
+        blender_objects = list(blender_objects)
+        self._printer = printer
+        self._data_printer = ZenGinDataPrinter(printer)
+        self._vob_tree = OCVobTree(blender_objects, self._data_printer)
+        self._way_net = WayNet(blender_objects, self._data_printer)
 
-    def __objects_count(self):
-        world_objects_count = 1
-        return world_objects_count + self.__vob_tree.objects_count() + self.__way_net.objects_count
-
-    def __print_header(self):
-        self.__printer.print("ZenGin Archive")
-        self.__printer.print("ver 1")
-        self.__printer.print("zCArchiverGeneric")
-        self.__printer.print("ASCII")
-        self.__printer.print("saveGame 0")
-        self.__printer.print("date 1.1.1970 12:0:0")  # TODO: Use current date
-        self.__printer.print("user BlenderZenGinExportPlugin")
-        self.__printer.print("END")
-        self.__printer.print("objects {objects_count}".format(objects_count=self.__objects_count()))
-        self.__printer.print("END")
-        self.__printer.print()
-
-    def __print_world(self):
-        self.__data_printer.start_object_block(
-            type_2="oCWorld:zCWorld",
-            triangles_limit=36865,
-            object_index=0
-        )
-        object_index = self.__vob_tree.print(object_index=1)
-        self.__way_net.print(object_index=object_index)
-        self.__data_printer.start_object_block(type_1="EndMarker")
-        self.__data_printer.end_object_block()
-        self.__data_printer.end_object_block()
+    def objects_count(self):
+        return 1 + self._vob_tree.objects_count() + self._way_net.objects_count
 
     def print(self):
-        self.__print_header()
-        self.__print_world()
+        for line in (
+            "ZenGin Archive", "ver 1", "zCArchiverGeneric", "ASCII", "saveGame 0",
+            # Fixed date keeps exports byte-identical between runs (diffable).
+            "date 1.1.1970 12:0:0",
+            "user BlenderZenGinExportPlugin", "END",
+            f"objects {self.objects_count()}", "END", "",
+        ):
+            self._printer.print(line)
 
+        p = self._data_printer
+        p.start_object_block(type_2="oCWorld:zCWorld", triangles_limit=36865, object_index=0)
+        object_index = self._vob_tree.print(object_index=1)
+        self._way_net.print(object_index=object_index)
+        p.start_object_block(type_1="EndMarker")
+        p.end_object_block()
+        p.end_object_block()

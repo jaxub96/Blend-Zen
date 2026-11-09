@@ -1,29 +1,28 @@
 """
-Import an uncompiled ZEN (as produced by our own zen_gin_export package)
-back into Blender - the reverse of the export pipeline. Reconstructs vobs
-and the waynet as the same kind of Empties the addon itself creates, so a
-round trip (export -> import) should reproduce the original scene.
+Import an uncompiled ZEN back into Blender: vobs (with their custom
+settings), waypoints with their facing direction, and links - as the same
+kind of objects the addon creates, so export -> import -> export
+round-trips. Also reads Spacer-saved worlds (free `waypointN` waynet
+entries, vobs whose name lives in `visual`/`itemInstance`), though their
+vob hierarchy is flattened and unsupported vob types are skipped.
 
-Scope for now, per the initial version of this feature: vob/waynet
-reconstruction is the real focus. Level mesh loading searches, in order:
-  1. The ZEN file's own directory (cheap, common case).
-  2. The sibling _work/Data/Meshes/Level/<mod>/ tree, if the ZEN sits
-     inside a _work/Data/Worlds/<mod>/ tree - our own Export Level
-     Package convention (see quick_export.py). Without this, a package
-     produced by our own other feature couldn't be found here at all,
-     since Worlds and Meshes/Level are sibling folders, not the same one.
-  3. Every directory configured in Preferences > Add-ons > Zen Waypoint
-     Tools > Mesh directories - the same search "Load Mesh Preview" uses.
-Both compiled .MRM and raw .3ds meshes can be imported, via KrxImpExp's
-plain-callable functions (see krximpexp_bridge.py).
+The level mesh referenced by zCVobLevelCompo is searched, in order:
+  1. the ZEN's own directory;
+  2. _work/Data/Meshes/Level/*/ when the ZEN sits in a _work tree (the
+     Export Level Package layout - Worlds and Meshes are siblings);
+  3. the mesh directories configured in the add-on preferences.
+.MRM is preferred over .3DS; both load through KrxImpExp.
 """
 
 import os
+from collections import Counter
+
 import bpy
 import mathutils
 
 from zen_gin_export import (
     parse_archive,
+    read_archive_text,
     find_block,
     parse_vec3,
     gothic_position_to_blender,
@@ -31,126 +30,124 @@ from zen_gin_export import (
     decode_rotation_matrix_hex,
     gothic_direction_to_blender,
     waypoint_rotation_from_blender_direction,
+    custom_properties_from_block,
 )
 
 from .vob_types import VOB_DISPLAY
 from .waypoint_links import add_directed_link, setup_waypoint_empty, auto_aim_suppressed
 from .krximpexp_bridge import get_krx_3ds_importer, get_krx_mrm_importer
-from .mesh_preview import get_preview_collection
 from .light_props import create_light_object
+from .mob_props import init_mob_properties
 from .preferences import get_mesh_directories
 
-
-# Real ZenGin class name -> Blender name prefix. Mirrors the mapping in
-# zen_gin_ocvobtree.py's __create_vob(), in reverse.
-_REAL_TYPE_TO_PREFIX = {
-    "zCVob": "zCVob:",
-    "zCVobLevelCompo": "zCVobLevelCompo:",
-    "zCVobStartpoint": "zCVobStartpoint:",
-    "zCVobSpot": "zCVobSpot:",
-    "zCVobLight": "zCVobLight:",
-    "zCVobSound": "zCVobSound:",
-    "oCItem": "oCItem:",
+SUPPORTED_TYPES = {
+    "zCVob", "zCVobLevelCompo", "zCVobStartpoint", "zCVobSpot", "zCVobLight",
+    "zCVobSound", "oCItem", "oCMobInter", "oCMobContainer", "oCMobDoor",
+    "oCMobBed", "oCMobSwitch", "oCMobLadder", "oCMobWheel", "oCMobFire",
 }
-
 _LIGHT_TYPE_NAMES = {0: "POINT", 1: "SPOT"}
+LEVEL_MESH_COLLECTION_NAME = "Zen Level Mesh"
+
+
+def _stem(filename):
+    return os.path.splitext(filename)[0]
+
+
+def _vob_name(real_type, block):
+    """The Blender-side name, mirroring how the exporter derives fields
+    from it. Spacer often leaves vobName empty, so fall back to the field
+    the exporter would have generated from the name."""
+    if real_type == "zCVobLevelCompo":
+        return _stem(block.get("visual", ""))      # vobName is always LEVEL-VOB
+    if real_type == "oCItem":
+        return block.get("itemInstance") or block.get("vobName", "")
+    if real_type == "zCVobSound":
+        return block.get("sndName") or block.get("vobName", "")
+    name = block.get("vobName", "")
+    if real_type == "zCVob":
+        return name or _stem(block.get("visual", ""))
+    return name
 
 
 def _set_transform(obj, position_prop, rotation_prop):
     if position_prop:
-        gx, gy, gz = parse_vec3(position_prop)
-        bx, by, bz = gothic_position_to_blender(gx, gy, gz)
-        obj.location = (bx, by, bz)
-
+        obj.location = gothic_position_to_blender(*parse_vec3(position_prop))
     if rotation_prop:
-        gothic_matrix = decode_rotation_matrix_hex(rotation_prop)
-        blender_matrix = gothic_matrix_to_blender_matrix(gothic_matrix)
-        m = mathutils.Matrix(blender_matrix).to_4x4()
+        matrix = gothic_matrix_to_blender_matrix(decode_rotation_matrix_hex(rotation_prop))
         obj.rotation_mode = 'QUATERNION'
-        obj.rotation_quaternion = m.to_quaternion()
+        obj.rotation_quaternion = mathutils.Matrix(matrix).to_quaternion()
+
+
+def _create_light(name, block):
+    color = [int(v) for v in block.get("color", "255 255 255 255").split()]
+    color += [255] * (4 - len(color))
+    return create_light_object(
+        name,
+        light_type=_LIGHT_TYPE_NAMES.get(int(block.get("lightType", "0")), "POINT"),
+        range_cm=float(block.get("range", "1000.0")),
+        spot_cone_angle_deg=float(block.get("spotConeAngle", "0.0")),
+        color_rgb=tuple(color[:3]),
+        color_a=color[3],
+        light_static=block.get("lightStatic", "1") == "1",
+    )
 
 
 def _create_vob_object(context, real_type, block):
-    if real_type == "zCVobLevelCompo":
-        # ZCVobLevelCompo's exporter always writes vobName as the fixed
-        # placeholder "LEVEL-VOB" (see zen_gin_zcvob_level_compo.py's
-        # _printed_vob_name override) - the real per-instance name lives
-        # in the visual property (the referenced mesh filename) instead.
-        import os as _os
-        vob_name = _os.path.splitext(block.get("visual", ""))[0]
-    else:
-        vob_name = block.get("vobName", "")
-    prefix = _REAL_TYPE_TO_PREFIX.get(real_type, f"{real_type}:")
-    full_name = f"{prefix}{vob_name}"
-
+    full_name = f"{real_type}:{_vob_name(real_type, block)}"
     if real_type == "zCVobLight":
-        light_type = _LIGHT_TYPE_NAMES.get(int(block.get("lightType", "0")), "POINT")
-        range_cm = float(block.get("range", "1000.0"))
-        spot_cone_angle = float(block.get("spotConeAngle", "0.0"))
-        color_parts = [int(v) for v in block.get("color", "255 255 255 255").split()]
-        color_rgb = tuple(color_parts[:3]) if len(color_parts) >= 3 else (255, 255, 255)
-        color_a = color_parts[3] if len(color_parts) >= 4 else 255
-        light_static = block.get("lightStatic", "1") == "1"
-        obj = create_light_object(
-            full_name, light_type=light_type, range_cm=range_cm,
-            spot_cone_angle_deg=spot_cone_angle, color_rgb=color_rgb,
-            color_a=color_a, light_static=light_static,
-        )
+        obj = _create_light(full_name, block)
     else:
         obj = bpy.data.objects.new(full_name, None)
-        display_type, display_size = VOB_DISPLAY.get(prefix.rstrip(":"), ('PLAIN_AXES', 0.3))
-        obj.empty_display_type = display_type
-        obj.empty_display_size = display_size
+        obj.empty_display_type, obj.empty_display_size = VOB_DISPLAY.get(real_type, ('PLAIN_AXES', 0.3))
+
+    if real_type.startswith("oCMob"):
+        visual = block.get("visual", "")
+        obj["visual_name"] = _stem(visual) if visual.upper().endswith(".MDS") else visual
+    for key, value in custom_properties_from_block(real_type, block.properties).items():
+        obj[key] = value
+    init_mob_properties(obj, real_type)  # descriptions + any missing keys
 
     _set_transform(obj, block.get("trafoOSToWSPos"), block.get("trafoOSToWSRot"))
-
     context.scene.collection.objects.link(obj)
-
     return obj
 
 
-def _create_waypoint_object(name, position_prop, direction_prop):
-    obj = bpy.data.objects.new(f"zCWaypoint:{name}", None)
+def _create_waypoint_object(context, block):
+    obj = bpy.data.objects.new(f"zCWaypoint:{block.get('wpName', '')}", None)
     rotation = None
-    if direction_prop:
-        bdir = gothic_direction_to_blender(*parse_vec3(direction_prop))
-        rotation = waypoint_rotation_from_blender_direction(*bdir)
+    if block.get("direction"):
+        direction = gothic_direction_to_blender(*parse_vec3(block.get("direction")))
+        rotation = waypoint_rotation_from_blender_direction(*direction)
     setup_waypoint_empty(obj, rotation)
-    if position_prop:
-        gx, gy, gz = parse_vec3(position_prop)
-        bx, by, bz = gothic_position_to_blender(gx, gy, gz)
-        obj.location = (bx, by, bz)
-    bpy.context.scene.collection.objects.link(obj)
+    if block.get("position"):
+        obj.location = gothic_position_to_blender(*parse_vec3(block.get("position")))
+    context.scene.collection.objects.link(obj)
     return obj
 
+
+# -- level mesh ---------------------------------------------------------------
 
 def _scan_directory_for_mesh(directory, mesh_name):
-    """Case-insensitive search for mesh_name.mrm or mesh_name.3ds
-    directly inside directory (non-recursive). .mrm (compiled) is
-    preferred over .3ds (source) if both happen to exist."""
+    """(path, ext) of mesh_name.mrm (preferred) or .3ds directly in
+    directory, case-insensitive; (None, None) if neither."""
     if not os.path.isdir(directory):
         return None, None
-    match_3ds = None
+    match_3ds = (None, None)
     for filename in os.listdir(directory):
         stem, ext = os.path.splitext(filename)
         if stem.lower() != mesh_name.lower():
             continue
-        ext_lower = ext.lower()
-        if ext_lower == ".mrm":
+        if ext.lower() == ".mrm":
             return os.path.join(directory, filename), ".mrm"
-        if ext_lower == ".3ds":
+        if ext.lower() == ".3ds":
             match_3ds = (os.path.join(directory, filename), ".3ds")
-    return match_3ds if match_3ds else (None, None)
+    return match_3ds
 
 
-def _find_work_root(filepath):
-    """Walk upward from filepath looking for a "_work" folder, matching
-    our own Export Level Package structure
-    (.../_work/Data/Worlds/<mod>/...). Returns the _work folder's path,
-    or None if not found within a reasonable depth."""
+def _find_work_root(filepath, max_depth=6):
     current = os.path.dirname(os.path.abspath(filepath))
-    for _ in range(6):
-        if os.path.basename(current) == "_work":
+    for _ in range(max_depth):
+        if os.path.basename(current).lower() == "_work":
             return current
         parent = os.path.dirname(current)
         if parent == current:
@@ -159,136 +156,126 @@ def _find_work_root(filepath):
     return None
 
 
-def _find_level_mesh_file(zen_filepath, mesh_name):
-    """Tiered search, cheapest/most-specific first - see module
-    docstring for the full explanation of each tier. Returns
-    (path, ext) or (None, None)."""
-
-    # 1. same directory as the ZEN itself
-    zen_dir = os.path.dirname(zen_filepath)
-    path, ext = _scan_directory_for_mesh(zen_dir, mesh_name)
-    if path:
-        return path, ext
-
-    # 2. sibling _work/Data/Meshes/Level/<mod>/ tree, derived from the
-    # ZEN's own _work/Data/Worlds/<mod>/ location. Every mod subfolder
-    # is checked, not just one matching name, since the mod folder name
-    # isn't recoverable from anything stored in the ZEN itself.
+def _candidate_mesh_dirs(zen_filepath):
+    yield os.path.dirname(zen_filepath)
     work_root = _find_work_root(zen_filepath)
     if work_root:
-        meshes_level_dir = os.path.join(work_root, "Data", "Meshes", "Level")
-        if os.path.isdir(meshes_level_dir):
-            for mod_folder in os.listdir(meshes_level_dir):
-                candidate_dir = os.path.join(meshes_level_dir, mod_folder)
-                path, ext = _scan_directory_for_mesh(candidate_dir, mesh_name)
-                if path:
-                    return path, ext
+        level_dir = os.path.join(work_root, "Data", "Meshes", "Level")
+        if os.path.isdir(level_dir):
+            for mod_folder in sorted(os.listdir(level_dir)):
+                yield os.path.join(level_dir, mod_folder)
+    yield from get_mesh_directories()
 
-    # 3. every directory configured in Preferences - same search "Load
-    # Mesh Preview" uses.
-    for directory in get_mesh_directories():
+
+def _find_level_mesh_file(zen_filepath, mesh_name):
+    for directory in _candidate_mesh_dirs(zen_filepath):
         path, ext = _scan_directory_for_mesh(directory, mesh_name)
         if path:
             return path, ext
-
     return None, None
 
 
-def import_zen(context, filepath, encoding="windows-1250"):
-    """Returns a report dict: vobs_created, waypoints_created,
-    ways_linked, level_mesh_status (one of 'imported', 'found_not_importable',
-    'not_found', or None if there was no zCVobLevelCompo at all)."""
-    with open(filepath, "r", encoding=encoding) as f:
-        text = f.read()
+def _level_mesh_collection(context):
+    coll = bpy.data.collections.get(LEVEL_MESH_COLLECTION_NAME)
+    if coll is None:
+        coll = bpy.data.collections.new(LEVEL_MESH_COLLECTION_NAME)
+        context.scene.collection.children.link(coll)
+    return coll
 
-    roots = parse_archive(text)
-    world_block = roots[0] if roots else None
-    if world_block is None:
+
+def _import_level_mesh(context, zen_filepath, mesh_name, compo_obj, report):
+    found_path, ext = _find_level_mesh_file(zen_filepath, mesh_name)
+    if found_path is None:
+        report["level_mesh_status"] = "not_found"
+        return
+    report["level_mesh_path"] = found_path
+    try:
+        if ext == ".mrm":
+            before = set(bpy.data.objects)
+            get_krx_mrm_importer()(filename=found_path, scale=0.01)
+            imported = [o for o in bpy.data.objects if o not in before]
+        else:
+            imported = list(get_krx_3ds_importer()(filename=found_path, scale=0.01).imported_objects)
+    except Exception as e:
+        report["level_mesh_status"] = "found_not_importable"
+        report["level_mesh_error"] = str(e)
+        return
+
+    # Parented to the level compo and unselectable: it's a reference
+    # display, the exporter only reads the compo itself.
+    collection = _level_mesh_collection(context)
+    for obj in imported:
+        for coll in list(obj.users_collection):
+            coll.objects.unlink(obj)
+        collection.objects.link(obj)
+        obj.parent = compo_obj
+        obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
+        obj.hide_select = True
+    report["level_mesh_status"] = "imported"
+
+
+# -- entry point ----------------------------------------------------------------
+
+def import_zen(context, filepath):
+    """Returns a report dict: vobs_created, waypoints_created, ways_linked,
+    ways_dropped (both ends' 3 link slots full), skipped_types ({type: count}), level_mesh_status ('imported',
+    'found_not_importable', 'not_found', or None without a level compo),
+    level_mesh_path, level_mesh_error."""
+    roots = parse_archive(read_archive_text(filepath))
+    if not roots:
         raise ValueError("Could not find the top-level world block in this archive")
+    world_block = roots[0]
 
     report = {
         "vobs_created": 0,
         "waypoints_created": 0,
         "ways_linked": 0,
+        "ways_dropped": 0,
+        "skipped_types": Counter(),
         "level_mesh_status": None,
         "level_mesh_path": None,
     }
 
-    vob_tree_block = find_block(world_block, type1="VobTree")
-    if vob_tree_block is not None:
-        for vob_block in vob_tree_block.children:
-            real_type = vob_block.type2.split(":")[0]
-            if real_type not in _REAL_TYPE_TO_PREFIX:
+    vob_tree = find_block(world_block, type1="VobTree")
+    for block in (vob_tree.children if vob_tree else ()):
+        real_type = block.type2.split(":")[0]
+        if real_type not in SUPPORTED_TYPES:
+            report["skipped_types"][real_type] += 1
+            continue
+        obj = _create_vob_object(context, real_type, block)
+        report["vobs_created"] += 1
+        if real_type == "zCVobLevelCompo":
+            mesh_name = _stem(block.get("visual", ""))
+            if mesh_name:
+                _import_level_mesh(context, filepath, mesh_name, obj, report)
+
+    way_net = find_block(world_block, type1="WayNet")
+    inner = way_net.children[0] if way_net and way_net.children else None
+    if inner is not None:
+        by_index = {}
+        way_ends = []
+        for entry in inner.children:
+            if entry.type2 == "§":           # reference to an earlier waypoint
+                way_ends.append((entry.type1, by_index.get(entry.object_index)))
                 continue
+            obj = _create_waypoint_object(context, entry)
+            by_index[entry.object_index] = obj
+            report["waypoints_created"] += 1
+            if entry.type1.startswith("way"):
+                way_ends.append((entry.type1, obj))
 
-            obj = _create_vob_object(context, real_type, vob_block)
-            report["vobs_created"] += 1
-
-            if real_type == "zCVobLevelCompo":
-                mesh_name = os.path.splitext(vob_block.get("visual", ""))[0]
-                if mesh_name:
-                    found_path, ext = _find_level_mesh_file(filepath, mesh_name)
-                    if found_path is None:
-                        report["level_mesh_status"] = "not_found"
-                    else:
-                        imported_objects = []
-                        try:
-                            if ext == ".mrm":
-                                before = set(bpy.data.objects.keys())
-                                krx_mrm_imp = get_krx_mrm_importer()
-                                krx_mrm_imp(filename=found_path, scale=0.01)
-                                after = set(bpy.data.objects.keys())
-                                imported_objects = [bpy.data.objects[n] for n in (after - before)]
-                            elif ext == ".3ds":
-                                krx_3ds_imp = get_krx_3ds_importer()
-                                loader = krx_3ds_imp(filename=found_path, scale=0.01)
-                                imported_objects = list(loader.imported_objects)
-
-                            preview_collection = get_preview_collection(context)
-                            for imported_obj in imported_objects:
-                                for coll in list(imported_obj.users_collection):
-                                    coll.objects.unlink(imported_obj)
-                                preview_collection.objects.link(imported_obj)
-                                imported_obj.parent = obj
-                                imported_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)
-                                imported_obj["zen_is_preview"] = True
-                                imported_obj.hide_select = True
-                                imported_obj.lock_location = (True, True, True)
-                                imported_obj.lock_rotation = (True, True, True)
-                                imported_obj.lock_scale = (True, True, True)
-
-                            report["level_mesh_status"] = "imported"
-                            report["level_mesh_path"] = found_path
-                            report["level_mesh_objects"] = [o.name for o in imported_objects]
-                        except Exception as e:
-                            report["level_mesh_status"] = "found_not_importable"
-                            report["level_mesh_path"] = found_path
-                            report["level_mesh_error"] = str(e)
-
-    way_net_outer = find_block(world_block, type1="WayNet")
-    if way_net_outer is not None:
-        way_net_inner = way_net_outer.children[0] if way_net_outer.children else None
-        if way_net_inner is not None:
-            objects_by_index = {}
-            way_pairs = []
-
-            for entry in way_net_inner.children:
-                if entry.type2 == "\u00a7":
-                    obj = objects_by_index.get(entry.object_index)
+        lefts = {t[len("wayl"):]: o for t, o in way_ends if t.startswith("wayl")}
+        rights = {t[len("wayr"):]: o for t, o in way_ends if t.startswith("wayr")}
+        # Keep each waypoint's direction from the ZEN (no auto-aim).
+        with auto_aim_suppressed():
+            for index, left in lefts.items():
+                right = rights.get(index)
+                if left is None or right is None:
+                    continue
+                # Stored on whichever end still has a free slot (3 each).
+                if add_directed_link(left, right) or add_directed_link(right, left):
+                    report["ways_linked"] += 1
                 else:
-                    name = entry.get("wpName", "")
-                    obj = _create_waypoint_object(name, entry.get("position"), entry.get("direction"))
-                    objects_by_index[entry.object_index] = obj
-                    report["waypoints_created"] += 1
-                way_pairs.append(obj)
-
-            # Keep each waypoint's direction from the ZEN rather than
-            # re-aiming it at its links.
-            with auto_aim_suppressed():
-                for i in range(0, len(way_pairs) - 1, 2):
-                    left, right = way_pairs[i], way_pairs[i + 1]
-                    if left is not None and right is not None:
-                        add_directed_link(left, right)
-                        report["ways_linked"] += 1
+                    report["ways_dropped"] += 1
 
     return report
