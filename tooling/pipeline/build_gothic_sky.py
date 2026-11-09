@@ -22,16 +22,26 @@ WIDTH = int(argv[2]) if len(argv) > 2 else 1024
 MESHES = f"{GAME}/_work/Data/Meshes/_intern"
 SKY_TEX = f"{GAME}/_work/Data/Textures/Effects/Environment/Sky/nomip"
 
+# Below the horizon Gothic shows black (the dome ends there); keep the picture
+# faithful. Brightness for lit scenes comes from the preview sun instead
+# (see zen_waypoint_tools/gothic_sky.py), not from changing this image.
+GROUND = (0, 0, 0)
+
 # (elevation degrees, sRGB 0-255) sampled from Spacer; below the last stop is black.
 GRADIENT = [
     (90, (70, 95, 165)), (40, (70, 92, 145)), (25, (70, 90, 135)), (16, (110, 130, 170)),
     (8, (145, 171, 194)), (4.6, (154, 172, 172)), (2.3, (152, 157, 135)), (0, (133, 124, 81)),
-    (-2, (98, 70, 33)), (-4, (48, 25, 7)), (-6, (3, 1, 1)), (-90, (0, 0, 0)),
+    (-2, (98, 70, 33)), (-4, (48, 25, 7)), (-7, GROUND), (-90, GROUND),
 ]
 CLOUD_STRENGTH = 0.85
 # Shift the whole gradient (except the zenith/nadir ends) down by this many
 # degrees, so the bright horizon band sits a little below eye level.
 HORIZON_OFFSET_DEG = -3.0
+
+
+def lin(c):
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
 
 
 def parse_3ds(path):
@@ -53,11 +63,6 @@ def parse_3ds(path):
     return next(iter(objs.values()))
 
 
-def lin(c):
-    c = c / 255.0
-    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
-
-
 def make_mesh(name, data):
     me = bpy.data.meshes.new(name)
     me.from_pydata([(x * 0.01, y * 0.01, z * 0.01) for x, y, z in data["v"]], [], data["f"])
@@ -76,7 +81,8 @@ sc.render.engine = "CYCLES"; sc.cycles.samples = 8; sc.cycles.device = "CPU"
 sc.view_settings.view_transform = "Standard"
 sc.render.resolution_x = WIDTH; sc.render.resolution_y = WIDTH // 2; sc.render.resolution_percentage = 100
 sc.world = bpy.data.worlds.new("black"); sc.world.use_nodes = True
-sc.world.node_tree.nodes["Background"].inputs["Color"].default_value = (0, 0, 0, 1)
+# the colour dome stops ~13 deg below the horizon; beyond it show the ground colour
+sc.world.node_tree.nodes["Background"].inputs["Color"].default_value = (lin(GROUND[0]), lin(GROUND[1]), lin(GROUND[2]), 1)
 
 # --- colour dome -----------------------------------------------------------
 dome = make_mesh("ColorLayer", parse_3ds(f"{MESHES}/Skydome_ColorLayer.3ds"))

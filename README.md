@@ -119,6 +119,10 @@ The "ZenGin" sidebar tab has:
   Preview, Standard view transform). The HDR is Gothic's own skydome
   rendered to a panorama by `tooling/pipeline/build_gothic_sky.py`; the
   gradient colours are sampled from a Spacer screenshot.
+  The button also adds a preview-only Sun light (`GothicSun_preview`, no ZenGin
+  prefix so it is never exported): the HDR alone is a weak light because Gothic's
+  outdoor light is mostly the sun. Tune `SUN_STRENGTH` / `SUN_ELEVATION_DEG` in
+  `gothic_sky.py`.
 - **Export Uncompiled ZEN** - writes the **current scene** (objects in other
   scenes are not exported). Every export is verified for structural
   correctness (object-index contiguity vs. the header count), and the
