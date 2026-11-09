@@ -1,179 +1,190 @@
-from mathutils import Quaternion
-from mathutils import Vector
-import struct
-from textwrap import wrap
-from .printer import Printer
-from .coordinate_transform import blender_position_to_gothic, blender_quaternion_to_gothic
+"""
+zCVob and the simple vob types that only override flags.
+
+A vob writes its base block (pack, bbox3DWS, trafoOSToWSRot/Pos, vobName,
+visual, flags...), a `visual` sub-block, an empty `ai` sub-block, then any
+type-specific properties (_print_additional_data). Header class versions
+and flags follow real Spacer-saved worlds (blender_work_dir/*.ZEN).
+"""
+
+import re
+
+from .coordinate_transform import (
+    blender_matrix_to_gothic,
+    blender_position_to_gothic,
+    encode_rotation_matrix_hex,
+)
+
+_DUPLICATE_SUFFIX_RE = re.compile(r"\.\d{3,}$")
+
+
+def vob_name_from_object_name(name):
+    """'zCVob:ROCK_01.003' -> 'ROCK_01': everything after the type prefix,
+    minus Blender's numeric duplicate suffix. Other dots are kept."""
+    _, _, rest = name.partition(":")
+    return _DUPLICATE_SUFFIX_RE.sub("", rest)
+
+
+def _format_vec3(values):
+    # Rounded so float noise (7.5e-08, 1100.0000000000002) doesn't reach
+    # the file; "+ 0.0" turns -0.0 into 0.0.
+    return " ".join(str(round(v, 6) + 0.0) for v in values)
 
 
 class ZCVob:
-    _objects_count = 2
     _type_name = "zCVob"
-    _triangles_limit = 52224
-    _visual_object_type_2 = "zCProgMeshProto"
-    _visual_object_triangles_limit = 53505
+    _class_version = 52224
+    # Number of object-index slots this vob uses (main block + visual).
+    _objects_count = 2
+    _visual_type = "zCProgMeshProto"
+    _visual_version = 53505
+    _visual_extension = ".3DS"
     _static = True
     _show_visual = True
     _collision = True
-    __3ds_extension = ".3DS"
 
-    def __init__(self, blender_object, printer: Printer, data_printer):
-        self.__blender_object = blender_object
-        self.__printer = printer
+    def __init__(self, blender_object, data_printer):
+        self._object = blender_object
         self._data_printer = data_printer
 
-    def updated_object_index(self, object_index):
-        return object_index + self._objects_count
-
-    def __start_main_object_block(self, object_index):
-        self._data_printer.start_object_block(
-            type_2=self._type_name,
-            triangles_limit=self._triangles_limit,
-            object_index=object_index
-        )
-
-    @staticmethod
-    def _visual_object_index(object_index):
-        return object_index + 1
-
-    def _print_additional_data(self):
-        pass
-
-    def _blender_object(self):
-        """Protected accessor so subclasses can read custom Blender
-        properties (e.g. per-instance light settings) without needing
-        direct access to the name-mangled __blender_object."""
-        return self.__blender_object
-
-    def _custom(self, key, default):
-        """Read a flat custom (ID) property from the Blender object, the
-        addon-independent way any subclass with per-instance tunable data
-        (ZCVobLight, the oCMOB family) reads it - see README.md "Architecture"'s
-        note on this pattern."""
-        obj = self._blender_object()
-        return obj.get(key, default) if obj is not None else default
-
-    def __print_visual_block(self, object_index):
-        self._data_printer.start_object_block(
-            type_1="visual",
-            type_2=self._visual_object_type_2,
-            triangles_limit=self._visual_object_triangles_limit,
-            object_index=self._visual_object_index(object_index)
-        )
-        self._data_printer.end_object_block()
-
-    def __print_ai(self):
-        self._data_printer.start_object_block(type_1="ai")
-        self._data_printer.end_object_block()
+    # -- overridable pieces -------------------------------------------------
 
     def _vob_name(self):
-        return self.__blender_object.name.split(":")[-1].split(".")[0]
+        return vob_name_from_object_name(self._object.name)
 
     def _printed_vob_name(self):
         return self._vob_name()
 
     def _visual(self):
-        return self._vob_name() + self.__3ds_extension
+        return self._vob_name() + self._visual_extension
 
-    def __bounding_box(self):
-        corners = self.__world_bound_box_corners()
-        if not corners:
-            # No mesh geometry anywhere in this vob's hierarchy (no
-            # preview loaded, or a genuinely visual-less vob like a
-            # freepoint) - fall back to the old degenerate single-point
-            # box, since there's nothing to size against.
-            point = self.__location()
-            return "{start} {end}".format(start=point, end=point)
-        gothic_points = [
-            blender_position_to_gothic(corner.x, corner.y, corner.z)
-            for corner in corners
-        ]
-        mins = [min(point[axis] for point in gothic_points) for axis in range(3)]
-        maxs = [max(point[axis] for point in gothic_points) for axis in range(3)]
-        return "{minx} {miny} {minz} {maxx} {maxy} {maxz}".format(
-            minx=mins[0], miny=mins[1], minz=mins[2],
-            maxx=maxs[0], maxy=maxs[1], maxz=maxs[2],
-        )
+    def _visual_object_index(self, object_index):
+        return object_index + 1
 
-    def __world_bound_box_corners(self):
-        """Collect mesh bounding-box corners, in Blender world space,
-        from this vob's own object and every mesh descendant - notably
-        the KrxImpExp preview mesh that zen_waypoint_tools' mesh-preview
-        feature parents under the vob Empty (see mesh_preview.py). The
-        vob object itself carries no geometry (it's an Empty), so the
-        real bounding box lives entirely on preview children when one
-        has been loaded.
-        """
-        corners = []
-        for obj in ZCVob.__self_and_descendants(self.__blender_object):
+    def _print_additional_data(self):
+        pass
+
+    def _custom(self, key, default):
+        """A flat custom (ID) property on the Blender object, or default.
+        This is how per-instance data (light/mob/sound settings) is read,
+        keeping this package independent of the addon's PropertyGroups."""
+        getter = getattr(self._object, "get", None)
+        return getter(key, default) if getter is not None else default
+
+    # -- geometry -----------------------------------------------------------
+
+    def _bounding_box(self, position):
+        """World-space AABB of every mesh in this object's hierarchy (the
+        object itself if it is a mesh, plus mesh children), in Gothic
+        space. Falls back to a single point at the vob's position."""
+        xs, ys, zs = [], [], []
+        for obj in _self_and_descendants(self._object):
             bound_box = getattr(obj, "bound_box", None)
-            if getattr(obj, "type", None) == "MESH" and bound_box:
-                matrix_world = obj.matrix_world
-                corners.extend(matrix_world @ Vector(corner) for corner in bound_box)
-        return corners
+            if getattr(obj, "type", None) != "MESH" or not bound_box:
+                continue
+            m = obj.matrix_world
+            for cx, cy, cz in bound_box:
+                wx = m[0][0] * cx + m[0][1] * cy + m[0][2] * cz + m[0][3]
+                wy = m[1][0] * cx + m[1][1] * cy + m[1][2] * cz + m[1][3]
+                wz = m[2][0] * cx + m[2][1] * cy + m[2][2] * cz + m[2][3]
+                gx, gy, gz = blender_position_to_gothic(wx, wy, wz)
+                xs.append(gx)
+                ys.append(gy)
+                zs.append(gz)
+        if not xs:
+            return f"{_format_vec3(position)} {_format_vec3(position)}"
+        return _format_vec3((min(xs), min(ys), min(zs), max(xs), max(ys), max(zs)))
 
-    @staticmethod
-    def __self_and_descendants(obj):
-        yield obj
-        for child in getattr(obj, "children", ()):
-            yield from ZCVob.__self_and_descendants(child)
-
-    def __location(self):
-        gx, gy, gz = blender_position_to_gothic(
-            self.__blender_object.location.x,
-            self.__blender_object.location.y,
-            self.__blender_object.location.z,
-        )
-        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
-
-    @staticmethod
-    def float_to_hex(to_convert: float):
-        r = round(to_convert, 6)
-        h = hex(struct.unpack('<I', struct.pack('<f', r))[0]).split("0x")[1]
-        if h == "0":
-            return "00000000"
-        h_a = wrap(h, 2)
-        return h_a[3] + h_a[2] + h_a[1] + h_a[0]
-
-    @staticmethod
-    def convert_vector(vector: Vector):
-        return "".join([
-            ZCVob.float_to_hex(vector.x),
-            ZCVob.float_to_hex(vector.y),
-            ZCVob.float_to_hex(vector.z)
-        ])
-
-    def __rotation(self):
-        qt: Quaternion = self.__blender_object.rotation_quaternion
-        gw, gx, gy, gz = blender_quaternion_to_gothic(qt[0], qt[1], qt[2], qt[3])
-        new_qt = Quaternion((gw, gx, gy, gz))
-        return "".join(map(ZCVob.convert_vector, new_qt.to_matrix()))
-
-    def __print_vob_data(self):
-        self._data_printer.print_int_property(name="pack", value_int=0)
-        self._data_printer.print_string_property(name="presetName", value_string="")
-        self._data_printer.print_raw_float_property(name="bbox3DWS", value=self.__bounding_box())
-        self._data_printer.print_raw_rotation_property(name="trafoOSToWSRot", value_quaternion=self.__rotation())
-        self._data_printer.print_vec3_property(name="trafoOSToWSPos", value_vector=self.__location())
-        self._data_printer.print_string_property(name="vobName", value_string=self._printed_vob_name())
-        self._data_printer.print_string_property(name="visual", value_string=self._visual())
-        self._data_printer.print_bool_property(name="showVisual", value_bool=self._show_visual)
-        self._data_printer.print_enum_property(name="visualCamAlign", value_enum_ordinal=0)
-        self._data_printer.print_enum_property(name="visualAniMode", value_enum_ordinal=0)
-        self._data_printer.print_float_property(name="visualAniModeStrength", value_float=0)
-        self._data_printer.print_float_property(name="vobFarClipZScale", value_float=1)
-        self._data_printer.print_bool_property(name="cdStatic", value_bool=self._collision)
-        self._data_printer.print_bool_property(name="cdDyn", value_bool=self._collision)
-        self._data_printer.print_bool_property(name="staticVob", value_bool=self._static)
-        self._data_printer.print_enum_property(name="dynShadow", value_enum_ordinal=0)
-        self._data_printer.print_int_property(name="zbias", value_int=0)
-        self._data_printer.print_bool_property(name="isAmbient", value_bool=False)
+    # -- output -------------------------------------------------------------
 
     def print(self, object_index):
-        self.__start_main_object_block(object_index)
-        self.__print_vob_data()
-        self.__print_visual_block(object_index=object_index)
-        self.__print_ai()
+        p = self._data_printer
+        position, rotation = blender_matrix_to_gothic(self._object.matrix_world)
+
+        p.start_object_block(type_2=self._type_name, triangles_limit=self._class_version,
+                             object_index=object_index)
+        p.print_int_property("pack", 0)
+        p.print_string_property("presetName", "")
+        p.print_raw_float_property("bbox3DWS", self._bounding_box(position))
+        p.print_raw_rotation_property("trafoOSToWSRot", encode_rotation_matrix_hex(rotation))
+        p.print_vec3_property("trafoOSToWSPos", _format_vec3(position))
+        p.print_string_property("vobName", self._printed_vob_name())
+        p.print_string_property("visual", self._visual())
+        p.print_bool_property("showVisual", self._show_visual)
+        p.print_enum_property("visualCamAlign", 0)
+        p.print_enum_property("visualAniMode", 0)
+        p.print_float_property("visualAniModeStrength", 0)
+        p.print_float_property("vobFarClipZScale", 1)
+        p.print_bool_property("cdStatic", self._collision)
+        p.print_bool_property("cdDyn", self._collision)
+        p.print_bool_property("staticVob", self._static)
+        p.print_enum_property("dynShadow", 0)
+        p.print_int_property("zbias", 0)
+        p.print_bool_property("isAmbient", False)
+
+        p.start_object_block(type_1="visual", type_2=self._visual_type,
+                             triangles_limit=self._visual_version,
+                             object_index=self._visual_object_index(object_index))
+        p.end_object_block()
+        p.start_object_block(type_1="ai")
+        p.end_object_block()
+
         self._print_additional_data()
-        self._data_printer.end_object_block()
-        return self.updated_object_index(object_index)
+        p.end_object_block()
+        return object_index + self._objects_count
+
+
+def _self_and_descendants(obj):
+    yield obj
+    for child in getattr(obj, "children", ()):
+        yield from _self_and_descendants(child)
+
+
+class NoVisualObjectVob(ZCVob):
+    """Base for vobs without a mesh: `[visual % 0 0]`, one index slot."""
+    _objects_count = 1
+    _visual_type = "%"
+    _visual_version = 0
+
+    def _visual(self):
+        return ""
+
+    def _visual_object_index(self, object_index):
+        return 0
+
+
+class ZCVobLevelCompo(ZCVob):
+    """Reference to the level mesh; Spacer compiles the named .3DS in."""
+    _type_name = "zCVobLevelCompo:zCVob"
+    _visual_type = "zCMesh"
+    _static = False
+    _collision = False
+    _show_visual = False
+
+    def _printed_vob_name(self):
+        return "LEVEL-VOB"
+
+
+class ZCVobSpot(NoVisualObjectVob):
+    _type_name = "zCVobSpot:zCVob"
+    _static = False
+    _collision = False
+
+
+class ZCVobStartpoint(NoVisualObjectVob):
+    _type_name = "zCVobStartpoint:zCVob"
+    _static = False
+    _collision = False
+
+
+class OCItem(NoVisualObjectVob):
+    """itemInstance is the Daedalus script instance name (the vob's own
+    name, e.g. ITMW_1H_PAL_SWORD), not a mesh filename - confirmed in
+    Spacer: a mesh name here resolves no visual in-game."""
+    _type_name = "oCItem:zCVob"
+    _class_version = 0
+    _static = False
+    _show_visual = False
+
+    def _print_additional_data(self):
+        self._data_printer.print_string_property("itemInstance", self._vob_name())

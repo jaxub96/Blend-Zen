@@ -1,54 +1,27 @@
+"""
+Waypoint link storage and helpers.
+
+Each object has a `zen_waypoint_links` PropertyGroup (registered in
+__init__.py) with three Object pointer slots. A connection is stored on
+ONE endpoint only - the exporter writes one way per stored link (and
+dedupes a link stored on both ends) - so a waypoint's three slots hold
+three distinct neighbours. The UI still reads as bidirectional:
+get_effective_neighbors() also finds links stored on the other side.
+
+Auto-aim: storing a link source -> target turns the source to face the
+target (slot update callback), so every way of linking gets it - Link
+Selected Waypoints, Add Waypoint at Cursor and dragging an object into a
+slot. Only the heading changes (waypoints stay level). The importer
+suppresses it to keep directions read from a ZEN.
+"""
+
 from contextlib import contextmanager
 
 import bpy
 
-
 WAYPOINT_PREFIX = "zCWaypoint:"
 LINK_SLOT_NAMES = ("link_a", "link_b", "link_c")
 LINK_SLOT_COUNT = len(LINK_SLOT_NAMES)
-
-
-# ---------------------------------------------------------------------------
-# Link storage
-#
-# Each waypoint object gets a `zen_waypoint_links` PropertyGroup (registered
-# in __init__.py) with three PointerProperty(type=bpy.types.Object) slots.
-# This is a native, documented Blender mechanism for storing object
-# references as custom data - unlike an earlier version of this tool, which
-# stored links as custom values on a Geometry Nodes modifier attached to
-# each waypoint (a trick to get free "pick an object" UI fields without
-# writing a PropertyGroup). That trick broke starting around Blender 5.2:
-# the modifier's dict-style value access (`mod.get(...)`, `mod[...]`,
-# `mod.keys()`) started raising
-# "TypeError: this type doesn't support IDProperties" outright, meaning the
-# underlying storage model for Geometry Nodes modifier inputs is no longer
-# compatible with that approach. PointerProperty on a PropertyGroup doesn't
-# depend on Geometry Nodes internals at all, so it isn't exposed to the same
-# kind of breakage.
-#
-# Storage stays SINGLE-DIRECTIONAL on purpose: each connection is written
-# on exactly ONE endpoint. This matches the exporter's WayNet class, which
-# emits one "way" per stored link it finds while scanning all waypoints -
-# storing the same connection on both ends would export it twice (doubling
-# numWays and writing duplicate way pairs into the archive). It also means
-# each waypoint's 3 link slots can hold 3 *real* distinct neighbors, instead
-# of burning 2 slots just to keep a simple chain connected both ways.
-#
-# The UI still *feels* bidirectional: get_effective_neighbors() below unions
-# a waypoint's own outgoing links with any incoming links found by scanning
-# other waypoints, so the panel and the viewport wires show the full picture
-# regardless of which side a given connection happened to be stored on.
-# ---------------------------------------------------------------------------
-
-# ---------------------------------------------------------------------------
-# Auto-aim: storing a link source -> target turns source to face target.
-#
-# Done in the slot's update callback, so every way of linking gets it -
-# Link Selected Waypoints, Add Waypoint at Cursor (chaining from the active
-# one) and dragging an object into a slot in the panel. Only the heading
-# (rotation about Z) changes: waypoints stay level, see setup_waypoint_empty.
-# The importer suppresses it so directions read from a ZEN are kept.
-# ---------------------------------------------------------------------------
 
 _auto_aim_suppressed = 0
 
@@ -106,27 +79,19 @@ class ZenWaypointLinks(bpy.types.PropertyGroup):
 
 
 def is_waypoint(obj):
-    """A waypoint is defined solely by its export name prefix.
-
-    This intentionally matches the exporter's own check
-    (`blender_object.name.startswith("zCWaypoint:")`) exactly, so this tool
-    can never disagree with what actually gets written to the .ZEN file.
-    """
-    return obj is not None and obj.name.startswith(WAYPOINT_PREFIX)
+    """Same test as the exporter: the name prefix alone. False for None
+    and for stale references to deleted objects."""
+    try:
+        return obj is not None and obj.name.startswith(WAYPOINT_PREFIX)
+    except ReferenceError:
+        return False
 
 
 def setup_waypoint_empty(obj, rotation_matrix=None):
-    """Configure an Empty as a waypoint: ARROWS ("csys") display whose
-    green local +Y axis is the exported facing direction (same forward
-    axis as freepoints and other vobs) (see
-    zen_gin_waynet.py), Euler rotation with X/Y locked so the viewport
-    rotate tool only turns it around Z, keeping the direction level -
-    NPCs only ever use the horizontal heading. The locks only affect
-    interactive editing; unlock them in the N panel if ever needed.
-
-    rotation_matrix: optional 3x3 (row tuples) to start from, e.g. an
-    imported waypoint's direction; identity (facing Blender +Y) if None.
-    """
+    """ARROWS ("csys") display whose green local +Y is the exported facing
+    direction; Euler rotation with X/Y locked so rotating only turns it
+    about Z (NPCs only use the heading). rotation_matrix: optional 3x3 row
+    tuples to start from, e.g. an imported direction."""
     obj.empty_display_type = 'ARROWS'
     obj.empty_display_size = 1.0
     obj.rotation_mode = 'XYZ'
@@ -136,47 +101,25 @@ def setup_waypoint_empty(obj, rotation_matrix=None):
     obj.lock_rotation = (True, True, False)
 
 
-def get_waypoint_display_name(obj):
-    return obj.name
-
-
 def get_links(obj):
-    """Return the ZenWaypointLinks PropertyGroup for obj, or None if unavailable."""
+    """The ZenWaypointLinks PropertyGroup for obj, or None."""
     return getattr(obj, "zen_waypoint_links", None)
 
 
-def _is_freed(obj):
-    """True if obj is a stale reference to an Object Blender has since freed.
-
-    Deleting a waypoint via the viewport (X) does not reliably clear the
-    PointerProperty slots that other waypoints hold pointing at it - the
-    slot can be left holding a dangling reference. Accessing any attribute
-    on one raises ReferenceError; that's the only way to detect it.
-    """
-    try:
-        obj.name
-    except ReferenceError:
-        return True
-    return False
-
-
 def get_link_targets(obj):
-    """Return (slot_name, target) tuples for this object's own occupied link slots.
-
-    Self-heals: a slot pointing at a freed Object (its target waypoint was
-    deleted) is cleared here, so the link stops being drawn/counted on the
-    very next read instead of surviving until the file is reloaded.
-    """
+    """(slot_name, target) for obj's own occupied slots. A slot left
+    pointing at a deleted object is cleared on the way."""
     links = get_links(obj)
     if links is None:
         return []
-
     result = []
     for slot in LINK_SLOT_NAMES:
         target = getattr(links, slot, None)
         if target is None:
             continue
-        if _is_freed(target):
+        try:
+            target.name
+        except ReferenceError:
             setattr(links, slot, None)
             continue
         result.append((slot, target))
@@ -187,7 +130,6 @@ def get_empty_link_slot(obj):
     links = get_links(obj)
     if links is None:
         return None
-
     for slot in LINK_SLOT_NAMES:
         if getattr(links, slot, None) is None:
             return slot
@@ -195,34 +137,26 @@ def get_empty_link_slot(obj):
 
 
 def has_link(source, target):
-    """True if a connection exists between source and target, stored on either side."""
-    if any(t == target for _, t in get_link_targets(source)):
-        return True
-    if any(t == source for _, t in get_link_targets(target)):
-        return True
-    return False
+    """True if source and target are connected, stored on either side."""
+    return (any(t == target for _, t in get_link_targets(source))
+            or any(t == source for _, t in get_link_targets(target)))
 
 
 def add_directed_link(source, target):
-    """Store one link on source's next free slot. Returns False if source is full or invalid."""
+    """Store one link in source's next free slot. False if source is full."""
     links = get_links(source)
-    if links is None:
-        return False
-
     slot = get_empty_link_slot(source)
-    if slot is None:
+    if links is None or slot is None:
         return False
-
     setattr(links, slot, target)
     return True
 
 
 def remove_directed_link(source, target):
-    """Remove every occurrence of target from source's own slots. Returns number removed."""
+    """Clear target from source's own slots. Returns the number removed."""
     links = get_links(source)
     if links is None:
         return 0
-
     removed = 0
     for slot in LINK_SLOT_NAMES:
         if getattr(links, slot, None) == target:
@@ -231,50 +165,27 @@ def remove_directed_link(source, target):
     return removed
 
 
-def get_effective_neighbors(obj):
-    """All waypoints connected to obj, regardless of which side stores the link."""
-    neighbors = []
-    seen = set()
-
-    for _, target in get_link_targets(obj):
-        key = target.as_pointer()
-        if key not in seen:
-            seen.add(key)
-            neighbors.append(target)
-
-    for other in bpy.data.objects:
-        if other == obj or not is_waypoint(other):
+def get_effective_neighbors(obj, candidates=None):
+    """Every waypoint connected to obj, whichever side stores the link.
+    candidates: objects to scan for incoming links (default: all)."""
+    neighbors = [t for _, t in get_link_targets(obj)]
+    for other in bpy.data.objects if candidates is None else candidates:
+        if other == obj or other in neighbors or not is_waypoint(other):
             continue
-        for _, target in get_link_targets(other):
-            if target == obj:
-                key = other.as_pointer()
-                if key not in seen:
-                    seen.add(key)
-                    neighbors.append(other)
-
+        if any(t == obj for _, t in get_link_targets(other)):
+            neighbors.append(other)
     return neighbors
 
 
-def count_links(obj):
-    """Effective neighbor count (outgoing + incoming), for capacity/display purposes."""
-    return len(get_effective_neighbors(obj))
-
-
 def find_next_waypoint_name():
-    existing_numbers = set()
-
+    existing = set()
     for obj in bpy.data.objects:
         if not is_waypoint(obj):
             continue
-
         suffix = obj.name[len(WAYPOINT_PREFIX):].split(".")[0]
-        if suffix.startswith("WP_"):
-            num_part = suffix[3:]
-            if num_part.isdigit():
-                existing_numbers.add(int(num_part))
-
+        if suffix.startswith("WP_") and suffix[3:].isdigit():
+            existing.add(int(suffix[3:]))
     next_num = 1
-    while next_num in existing_numbers:
+    while next_num in existing:
         next_num += 1
-
     return f"{WAYPOINT_PREFIX}WP_{next_num:03d}"

@@ -1,118 +1,107 @@
-from mathutils import Quaternion
+import pytest
 
-from conftest import RecordingPrinter, FakeLocation
-from modules.zen_gin_export.zen_gin_data_printer import ZenGinDataPrinter
-from modules.zen_gin_export.zen_gin_zcvob_ocmob_inter import OCMobInter
-from modules.zen_gin_export.zen_gin_zcvob_ocmob_container import OCMobContainer
-from modules.zen_gin_export.zen_gin_zcvob_ocmob_door import OCMobDoor
-from modules.zen_gin_export.zen_gin_zcvob_ocmob_fire import OCMobFire
-
-
-class FakeBlenderObject:
-    """A bare test double with no Blender/bpy dependency - only what
-    ZCVob/OCMob actually touch: name, location, rotation_quaternion, and
-    dict-style custom-property access via .get(), mirroring the flat ID
-    properties zen_waypoint_tools' mob_props.py sets on the real object."""
-
-    rotation_quaternion = Quaternion((1.0, 0.0, 0.0, 0.0))
-    location = FakeLocation()
-
-    def __init__(self, name, **custom_properties):
-        self.name = name
-        self._custom_properties = custom_properties
-
-    def get(self, key, default=None):
-        return self._custom_properties.get(key, default)
+from conftest import FakeObject, exported_properties, print_vob
+from modules.zen_gin_export.archive_parser import parse_archive
+from modules.zen_gin_export.vob_fields import FIELDS_BY_TYPE, custom_properties_from_block
+from modules.zen_gin_export.zen_gin_ocvobtree import VOB_CLASSES
+from modules.zen_gin_export.zen_gin_zcvob_ocmob import (
+    OCMobInter, OCMobContainer, OCMobDoor, OCMobBed, OCMobLadder, OCMobFire,
+)
+from modules.zen_gin_export.zen_gin_zcvob_sound import ZCVobSound
 
 
-def _exported_properties(vob_object_class, blender_object):
-    printer = RecordingPrinter()
-    data_printer = ZenGinDataPrinter(printer)
-    vob_object_class(blender_object, printer, data_printer).print(0)
-
-    properties = {}
-    for line in printer.lines:
-        stripped = line.strip()
-        if "=" not in stripped or stripped.startswith("["):
-            continue
-        name, value = stripped.split("=", 1)
-        properties[name] = value
-    return properties
-
-
-def test_ocmob_base_fields_default_when_no_custom_properties_set():
-    obj = FakeBlenderObject("oCMobInter:UNCONFIGURED")
-    props = _exported_properties(OCMobInter, obj)
+def test_ocmob_fields_default_when_no_custom_properties_set():
+    props = exported_properties(OCMobInter, FakeObject("oCMobInter:UNCONFIGURED"))
 
     assert props["focusName"] == "string:"
     assert props["hitpoints"] == "int:0"
-    assert props["damage"] == "int:0"
-    assert props["moveable"] == "bool:0"
-    assert props["takeable"] == "bool:0"
     assert props["soundMaterial"] == "enum:0"  # WOOD
     assert props["isDestroyed"] == "bool:0"
-    # No visual_name override -> falls back to the vob's own name.
+    assert props["stateNum"] == "int:1"  # what vanilla mobs use (108 of 109)
+    # No visual_name -> falls back to the vob's own name.
     assert props["visual"] == "string:UNCONFIGURED.MDS"
 
 
 def test_ocmob_inter_fields_read_custom_properties():
-    obj = FakeBlenderObject(
-        "oCMobSwitch:LEVER_GATE_01",
-        trigger_target="GATE_MOVER_01",
-        condition_func="ZS_GateCondition",
-        on_state_func="ZS_GateUse",
-        rewind=True,
-    )
-    props = _exported_properties(OCMobInter, obj)
+    props = exported_properties(OCMobInter, FakeObject(
+        "oCMobSwitch:LEVER_GATE_01", trigger_target="GATE_MOVER_01",
+        condition_func="ZS_GateCondition", rewind=True, sound_material="metal",
+    ))
 
     assert props["triggerTarget"] == "string:GATE_MOVER_01"
     assert props["conditionFunc"] == "string:ZS_GateCondition"
-    assert props["onStateFunc"] == "string:ZS_GateUse"
     assert props["rewind"] == "bool:1"
+    assert props["soundMaterial"] == "enum:2"
 
 
-def test_ocmob_container_is_lockable_and_has_contains():
-    obj = FakeBlenderObject(
-        "oCMobContainer:CHEST_CITY_01",
-        visual_name="CHESTBIG_OCCRATELARGE",
-        locked=True,
-        key_instance="ITKE_CHEST_CITY_01",
-        picklock_str="RRLRL",
-        contains="ITFO_APPLE:3,ITMW_1H_SHORTSWORD1",
-    )
-    props = _exported_properties(OCMobContainer, obj)
-
-    assert props["visual"] == "string:CHESTBIG_OCCRATELARGE.MDS"
-    assert props["locked"] == "bool:1"
-    assert props["keyInstance"] == "string:ITKE_CHEST_CITY_01"
-    assert props["pickLockStr"] == "string:RRLRL"
-    assert props["contains"] == "string:ITFO_APPLE:3,ITMW_1H_SHORTSWORD1"
+def test_bad_custom_value_falls_back_instead_of_failing_the_export():
+    props = exported_properties(OCMobInter, FakeObject("oCMobInter:X", hitpoints="lots"))
+    assert props["hitpoints"] == "int:0"
 
 
-def test_ocmob_door_has_lock_fields_but_no_contains():
-    obj = FakeBlenderObject("oCMobDoor:DOOR_CHAPEL_01", locked=True)
-    props = _exported_properties(OCMobDoor, obj)
+def test_container_has_lock_fields_and_contains_door_has_no_contains():
+    chest = exported_properties(OCMobContainer, FakeObject(
+        "oCMobContainer:CHEST_CITY_01", visual_name="CHESTBIG_OCCRATELARGE",
+        locked=True, picklock_str="RRLRL", contains="ITFO_APPLE:3,ITMW_1H_SHORTSWORD1",
+    ))
+    door = exported_properties(OCMobDoor, FakeObject("oCMobDoor:DOOR_01", locked=True))
 
-    assert props["locked"] == "bool:1"
-    assert "contains" not in props
+    assert chest["visual"] == "string:CHESTBIG_OCCRATELARGE.MDS"
+    assert chest["locked"] == "bool:1"
+    assert chest["pickLockStr"] == "string:RRLRL"
+    assert chest["contains"] == "string:ITFO_APPLE:3,ITMW_1H_SHORTSWORD1"
+    assert door["locked"] == "bool:1"
+    assert "contains" not in door
 
 
-def test_ocmob_fire_adds_fire_slot_and_vobtree():
-    obj = FakeBlenderObject(
-        "oCMobFire:CAMPFIRE_01",
-        fire_slot="BIP01 FIRE",
-        fire_vobtree_name="FIRETREE_MEDIUM.ZEN",
-    )
-    props = _exported_properties(OCMobFire, obj)
-
+def test_fire_adds_fire_slot_and_vobtree():
+    props = exported_properties(OCMobFire, FakeObject(
+        "oCMobFire:CAMPFIRE_01", fire_slot="BIP01 FIRE", fire_vobtree_name="FIRETREE_MEDIUM.ZEN"))
     assert props["fireSlot"] == "string:BIP01 FIRE"
     assert props["fireVobtreeName"] == "string:FIRETREE_MEDIUM.ZEN"
 
 
-def test_ocmob_type_name_chain_matches_real_archive_convention():
-    """Real example confirmed from a decompiled ZEN: `oCMobInter:oCMOB:zCVob`
-    (oCVob is NOT part of the persisted class-name chain) - this pins that
-    convention down the whole oCMOB hierarchy so it can't silently drift."""
-    assert OCMobInter._type_name == "oCMobInter:oCMOB:zCVob"
-    assert OCMobContainer._type_name == "oCMobContainer:oCMobLockable:oCMobInter:oCMOB:zCVob"
-    assert OCMobDoor._type_name == "oCMobDoor:oCMobLockable:oCMobInter:oCMOB:zCVob"
+def test_class_headers_match_real_spacer_worlds():
+    """From blender_work_dir/G2ISLAND_WEB.ZEN: oCMobLockable is not in the
+    persisted chain, the class versions differ per type, and the zCModel
+    visual block has version 0."""
+    assert print_vob(OCMobContainer, FakeObject("oCMobContainer:C"), 5)[0] == \
+        "[% oCMobContainer:oCMobInter:oCMOB:zCVob 64513 5]"
+    assert print_vob(OCMobDoor, FakeObject("oCMobDoor:D"))[0] == \
+        "[% oCMobDoor:oCMobInter:oCMOB:zCVob 64513 0]"
+    assert print_vob(OCMobBed, FakeObject("oCMobBed:B"))[0] == \
+        "[% oCMobBed:oCMobInter:oCMOB:zCVob 61440 0]"
+    assert print_vob(OCMobLadder, FakeObject("oCMobLadder:L"))[0] == \
+        "[% oCMobLadder:oCMobInter:oCMOB:zCVob 35585 0]"
+    assert "\t[visual zCModel 0 6]" in print_vob(OCMobInter, FakeObject("oCMobInter:I"), 5)
+
+
+def test_sound_writes_sound_fields_in_spacer_order():
+    lines = print_vob(ZCVobSound, FakeObject("zCVobSound:OW_COASTLIGHT", sound_radius=2500))
+    assert lines[0] == "[% zCVobSound:zCVob 12289 0]"
+    names = [l.strip().split("=")[0] for l in lines if l.strip().startswith("snd")]
+    assert names == [
+        "sndVolume", "sndMode", "sndRandDelay", "sndRandDelayVar", "sndStartOn",
+        "sndAmbient3D", "sndObstruction", "sndConeAngle", "sndVolType", "sndRadius", "sndName",
+    ]
+    props = exported_properties(ZCVobSound, FakeObject("zCVobSound:OW_COASTLIGHT", sound_radius=2500))
+    assert props["sndRadius"] == "float:2500.0"
+    assert props["sndName"] == "string:OW_COASTLIGHT"
+
+
+@pytest.mark.parametrize("vob_type", sorted(FIELDS_BY_TYPE))
+def test_custom_properties_round_trip_through_export_and_parse(vob_type):
+    """What the importer restores is what was exported."""
+    custom = {}
+    for _, archive_type, key, default in FIELDS_BY_TYPE[vob_type]:
+        if key is None:
+            continue
+        custom[key] = {
+            "int": 7, "float": 12.5, "bool": not default, "string": f"{key}_VALUE",
+        }.get(archive_type, default)
+    custom.update({k: v for k, v in (("sound_material", "STONE"), ("sound_mode", "RANDOM")) if k in custom})
+
+    lines = print_vob(VOB_CLASSES[vob_type], FakeObject(f"{vob_type}:X", **custom))
+    block = parse_archive("END\nEND\n" + "\n".join(lines))[0]
+
+    assert custom_properties_from_block(vob_type, block.properties) == custom

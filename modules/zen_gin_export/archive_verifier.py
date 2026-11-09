@@ -7,11 +7,6 @@ this is flagged there as the highest-risk spot for future extension
 bugs). This module verifies that invariant holds, and that the header's
 claimed object count actually matches what's in the file.
 
-This exact check - written ad hoc as a one-off debugging script while
-diagnosing a real exported file - caught a genuine structural question
-during development. It's built in here permanently instead of staying a
-one-time favor, so every export gets checked for free.
-
 Pure string/regex processing - no Blender dependency, fully testable
 with plain pytest.
 
@@ -25,10 +20,11 @@ flagged as a duplicate-index-0 issue.
 """
 
 import re
+from collections import Counter
 from dataclasses import dataclass, field
 
+from .archive_parser import BLOCK_OPEN_RE as _BLOCK_OPEN_RE, read_archive_text
 
-_BLOCK_OPEN_RE = re.compile(r'^\s*\[(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\]')
 _HEADER_COUNT_RE = re.compile(r'objects\s+(\d+)')
 
 # (type1, type2) pairs that always print with object_index=0 as a
@@ -64,7 +60,7 @@ def verify_archive_text(text):
         m = _BLOCK_OPEN_RE.match(line)
         if not m:
             continue
-        type1, type2, _triangles, index = m.group(1), m.group(2), int(m.group(3)), int(m.group(4))
+        type1, type2, index = m.group(1), m.group(2), int(m.group(4))
 
         if type2 == "\u00a7":
             continue  # reused reference (waynet dedup marker), not a new allocation
@@ -75,7 +71,7 @@ def verify_archive_text(text):
 
         real_indices.append(index)
 
-    duplicates = sorted({i for i in real_indices if real_indices.count(i) > 1})
+    duplicates = sorted(i for i, n in Counter(real_indices).items() if n > 1)
     if duplicates:
         issues.append(f"Duplicate object indices found: {duplicates}")
 
@@ -104,6 +100,4 @@ def verify_archive_text(text):
 
 def verify_archive_file(filepath, encoding="windows-1250"):
     """Verify an exported .ZEN file on disk."""
-    with open(filepath, "r", encoding=encoding) as f:
-        text = f.read()
-    return verify_archive_text(text)
+    return verify_archive_text(read_archive_text(filepath, encoding))

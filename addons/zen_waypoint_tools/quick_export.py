@@ -22,14 +22,29 @@ compiled save you make there becomes the mod's world.
 """
 
 import os
+import shutil
 import subprocess
+import sys
+import tempfile
+
 import bpy
 
 from .krximpexp_bridge import get_krx_3ds_exporter
 from .export_ops import export_zen_to_path
 from .preferences import get_gothic_settings
 
-SPACER_LOG = os.path.expanduser("~/Library/Logs/gothic-spacernet.log")
+def _spacer_log_path():
+    if sys.platform == "darwin":
+        return os.path.expanduser("~/Library/Logs/gothic-spacernet.log")
+    return os.path.join(tempfile.gettempdir(), "gothic-spacernet.log")
+
+
+def _command_line(command):
+    """Run an executable directly (honours its shebang); a plain script
+    file goes through a shell - zsh if installed (gothic-wine is zsh)."""
+    if os.access(command, os.X_OK) or sys.platform == "win32":
+        return [command]
+    return [shutil.which("zsh") or "/bin/sh", command]
 
 
 class ZEN_OT_quick_export_package(bpy.types.Operator):
@@ -92,6 +107,10 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
         if not mesh_objs:
             self.report({'ERROR'}, "Select at least one mesh object to use as the level mesh")
             return {'CANCELLED'}
+        for label, value in (("Level Name", self.level_name), ("Mod Folder", self.mod_name)):
+            if not value.strip() or any(c in value for c in '\\/:*?"<>|'):
+                self.report({'ERROR'}, f"{label} must be a plain folder/file name: {value!r}")
+                return {'CANCELLED'}
 
         game_folder, gothic_command = get_gothic_settings(context)
         if game_folder:
@@ -109,13 +128,9 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
         mesh_path = os.path.join(meshes_dir, f"{self.level_name}.3DS")
         zen_path = os.path.join(worlds_dir, f"{self.level_name}_uncompiled.zen")
 
-        # 1. Export the level mesh. use_local_cs is forced False regardless
-        # of object count - a level mesh needs absolute world-space
-        # vertex coordinates (matching README.md "Blender -> Spacer workflow"'s explanation of how
-        # zCVobLevelCompo's own position is vestigial - the compiled
-        # world's placement comes entirely from the mesh's own baked
-        # coordinates), not the per-object local origin used for
-        # exporting a single reusable prop.
+        # 1. Export the level mesh in world space (use_local_cs=False): the
+        # compiled world's placement comes from the mesh's own coordinates,
+        # zCVobLevelCompo's transform is not used for it.
         try:
             krx_3ds_exp = get_krx_3ds_exporter()
             krx_3ds_exp(
@@ -128,28 +143,22 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
             self.report({'ERROR'}, f"3DS export failed: {e}")
             return {'CANCELLED'}
 
-        # 2. Make sure a matching zCVobLevelCompo exists, so the ZEN we're
-        # about to write actually references the mesh we just exported -
-        # easy to forget by hand, and the whole point of this button is
-        # to remove manual steps.
-        level_compo_name = f"zCVobLevelCompo:{self.level_name}"
-        created_level_compo = False
-        if level_compo_name not in bpy.data.objects:
-            compo_obj = bpy.data.objects.new(level_compo_name, None)
+        # 2. Make sure a zCVobLevelCompo references the mesh just exported.
+        compo_obj = context.scene.objects.get(f"zCVobLevelCompo:{self.level_name}")
+        created_level_compo = compo_obj is None
+        if created_level_compo:
+            compo_obj = bpy.data.objects.new(f"zCVobLevelCompo:{self.level_name}", None)
             compo_obj.empty_display_type = 'PLAIN_AXES'
             compo_obj.empty_display_size = 1.0
-            compo_obj.rotation_mode = 'QUATERNION'
             context.scene.collection.objects.link(compo_obj)
-            created_level_compo = True
+        level_compo_name = compo_obj.name
 
-        # 3. Export the scene to the uncompiled ZEN, same verified path
-        # as the regular Export Uncompiled ZEN button - minus the level
-        # compos of other level names. Each export under a new name adds
-        # one to the .blend, and each points at its own .3DS: Spacer
-        # would load all of those meshes on top of this one.
-        other_compos = [o.name for o in bpy.data.objects
-                        if o.name.startswith("zCVobLevelCompo:") and o.name != level_compo_name]
-        objects = [o for o in bpy.data.objects if o.name not in other_compos]
+        # 3. Export the scene, leaving out level compos of other level names:
+        # each earlier export under another name left one in the .blend, and
+        # Spacer would load all of their meshes on top of this one.
+        other_compos = [o.name for o in context.scene.objects
+                        if o.name.startswith("zCVobLevelCompo:") and o != compo_obj]
+        objects = [o for o in context.scene.objects if o.name not in other_compos]
         report_type, message = export_zen_to_path(zen_path, objects)
 
         prefix = f"Created {level_compo_name} at world origin. " if created_level_compo else ""
@@ -165,16 +174,20 @@ class ZEN_OT_quick_export_package(bpy.types.Operator):
         return {'CANCELLED'} if report_type == 'ERROR' else {'FINISHED'}
 
     def _open_in_spacer(self, gothic_command):
-        # Runs on after Blender returns: it waits for the compiled save in Spacer,
-        # so its output goes to a log and it ends with a macOS notification.
+        # Runs on after Blender returns (it waits for the compiled save in
+        # Spacer), so its output goes to a log file.
         if not os.path.isfile(gothic_command):
             return f"Not opened in Spacer: gothic command not found: {gothic_command}"
-        os.makedirs(os.path.dirname(SPACER_LOG), exist_ok=True)
-        with open(SPACER_LOG, "w") as log:
-            subprocess.Popen(
-                ["/bin/zsh", gothic_command, "spacernet", f"{self.mod_name}/{self.level_name}"],
-                stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                start_new_session=True,
-            )
+        log_path = _spacer_log_path()
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        try:
+            with open(log_path, "w") as log:
+                subprocess.Popen(
+                    _command_line(gothic_command) + ["spacernet", f"{self.mod_name}/{self.level_name}"],
+                    stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+        except OSError as e:
+            return f"Not opened in Spacer: {e}"
         return (f"Starting Spacer.NET: File > Open ZEN, pick {self.level_name}_uncompiled.zen "
-                f"(log: {SPACER_LOG})")
+                f"(log: {log_path})")

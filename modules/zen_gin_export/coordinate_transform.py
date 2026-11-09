@@ -2,9 +2,9 @@
 Pure-math Blender<->ZenGin coordinate conversion.
 
 Deliberately has ZERO dependency on Blender or mathutils - every function
-here takes and returns plain numbers/tuples, so it's testable with plain
-pytest. Matrix/quaternion construction that needs mathutils lives in
-zen_gin_zcvob.py / zen_gin_waynet.py, which just feed numbers in.
+here takes and returns plain numbers/tuples (a Blender `matrix_world` is
+read through plain `m[row][col]` indexing), so it's testable with plain
+pytest.
 
 Blender is right-handed and Z-up; ZenGin is Y-up AND LEFT-HANDED
 (confirmed by the "Compass Cross" test, README.md "Coordinate transform" - don't re-derive this again). So the
@@ -13,6 +13,9 @@ conversion is a plain Y<->Z axis swap with NO sign flip - determinant
 verified (an independent, non-circular comparison against real compiled
 mesh geometry in Spacer) and for the rotation-formula derivation below.
 """
+
+import math
+import struct
 
 
 def blender_position_to_gothic(x, y, z, scale=100):
@@ -72,7 +75,9 @@ def gothic_position_to_blender(gx, gy, gz, scale=100):
     return (gx / scale, gz / scale, gy / scale)
 
 
-# The forward linear map (scale=1) as a plain 3x3 matrix: R @ v_blender = v_gothic
+# The forward linear map (scale=1) as a plain 3x3 matrix: R @ v_blender = v_gothic.
+# R is symmetric and its own inverse, so the same conjugation R @ M @ R
+# converts a rotation matrix in either direction.
 _FORWARD_MATRIX = (
     (1, 0, 0),
     (0, 0, 1),
@@ -87,31 +92,57 @@ def _matmul_3x3(a, b):
     )
 
 
-def gothic_matrix_to_blender_matrix(matrix_3x3):
-    """Inverse of the change of basis applied to a rotation matrix by the
-    coordinate transform. `matrix_3x3` is a Gothic-space rotation matrix
-    (3 row tuples); returns the equivalent Blender-space matrix, same
-    shape. Since the forward matrix R is orthogonal, R^-1 == R^T, so this
-    computes R^T @ matrix_3x3 @ R.
-    """
+def _change_basis(matrix_3x3):
     r = _FORWARD_MATRIX
-    r_transpose = tuple(zip(*r))
-    return _matmul_3x3(_matmul_3x3(r_transpose, matrix_3x3), r)
+    return _matmul_3x3(_matmul_3x3(r, matrix_3x3), r)
+
+
+def gothic_matrix_to_blender_matrix(matrix_3x3):
+    """Gothic-space rotation matrix (3 row tuples) -> the equivalent
+    Blender-space matrix, same shape: R^T @ M @ R (R^T == R here)."""
+    return _change_basis(matrix_3x3)
+
+
+def blender_matrix_to_gothic(matrix_world, scale=100):
+    """Blender 4x4 world matrix (row-indexable, e.g. `obj.matrix_world`) ->
+    (Gothic position (gx, gy, gz), Gothic 3x3 rotation as row tuples).
+
+    Reading the world matrix rather than `location`/`rotation_quaternion`
+    makes this independent of rotation mode (Euler or quaternion) and
+    includes parent transforms. Object scale is removed from the rotation
+    (each axis column is normalized). Equivalent to
+    blender_quaternion_to_gothic() for a pure rotation - see the tests.
+    """
+    m = matrix_world
+    position = blender_position_to_gothic(m[0][3], m[1][3], m[2][3], scale=scale)
+    columns = []
+    for j in range(3):
+        column = _normalize(m[0][j], m[1][j], m[2][j]) or tuple(float(i == j) for i in range(3))
+        columns.append(column)
+    blender_rotation = tuple(tuple(columns[j][i] for j in range(3)) for i in range(3))
+    return position, _change_basis(blender_rotation)
+
+
+def float_to_hex(value):
+    """One float as ZenGin's `raw` encoding: the IEEE754 single's 4 bytes,
+    little-endian, as 8 hex chars (1.0 -> "0000803f"). Rounded to 6
+    decimals first so float noise like 1e-17 writes as a clean 0."""
+    return struct.pack("<f", round(value, 6)).hex()
 
 
 def hex_to_float(hex_str_8chars):
-    """Inverse of ZCVob.float_to_hex(): decode one 8-hex-char, byte-swapped
-    IEEE754 float back to a Python float."""
-    import struct
-    pairs = [hex_str_8chars[i:i + 2] for i in range(0, 8, 2)]
-    original_order = pairs[3] + pairs[2] + pairs[1] + pairs[0]
-    uint_value = int(original_order, 16)
-    return struct.unpack("<f", struct.pack("<I", uint_value))[0]
+    """Inverse of float_to_hex()."""
+    return struct.unpack("<f", bytes.fromhex(hex_str_8chars))[0]
+
+
+def encode_rotation_matrix_hex(matrix_3x3):
+    """3x3 rotation (row tuples) -> trafoOSToWSRot raw hex string
+    (9 floats, row-major)."""
+    return "".join(float_to_hex(v) for row in matrix_3x3 for v in row)
 
 
 def decode_rotation_matrix_hex(hex_string):
-    """Decode a trafoOSToWSRot raw hex string (72 hex chars = 9 floats,
-    row-major 3x3) back into a plain 3x3 tuple-of-tuples matrix."""
+    """Inverse of encode_rotation_matrix_hex(): 72 hex chars -> 3x3 rows."""
     floats = [hex_to_float(hex_string[i:i + 8]) for i in range(0, 72, 8)]
     return (
         tuple(floats[0:3]),
@@ -205,7 +236,6 @@ def waypoint_yaw_towards(dx, dy):
     local +Y is (-sin t, cos t), so t = atan2(-dx, dy). Returns None when
     the offset is (near) zero - the target is directly above/below, so
     there is no heading to aim at."""
-    import math
     if dx * dx + dy * dy < 1e-12:
         return None
     return math.atan2(-dx, dy)

@@ -1,4 +1,4 @@
-from .zen_gin_zcvob_no_visual import NoVisualObjectVob
+from .zen_gin_zcvob import NoVisualObjectVob
 from .light_conversion import (
     blender_distance_to_gothic_range,
     blender_spot_size_to_gothic_cone_angle,
@@ -45,21 +45,19 @@ class ZCVobLight(NoVisualObjectVob):
     """
 
     _type_name = "zCVobLight:zCVob"
-    _triangles_limit = 52224
+    _class_version = 39168
     _static = False
     _collision = False
 
     _LIGHT_TYPE_ORDINALS = {"POINT": 0, "SPOT": 1}
     _LIGHT_QUALITY_ORDINALS = {"HIGH": 0, "MEDIUM": 1, "LOW_FASTEST": 2}
-    _BLENDER_TYPE_TO_LIGHT_TYPE = {"SPOT": "SPOT"}  # anything else (POINT/SUN/AREA) -> POINT
+    # Anything else (POINT/SUN/AREA) -> POINT; export_checks warns about SUN/AREA.
+    _BLENDER_TYPE_TO_LIGHT_TYPE = {"SPOT": "SPOT"}
     _DEFAULT_RANGE = 1000.0
-
-    def _visual(self):
-        return ""
 
     def __light_values(self):
         """Returns (light_type, range_cm, spot_cone_angle_deg, (r, g, b))."""
-        obj = self._blender_object()
+        obj = self._object
         if obj is not None and obj.type == 'LIGHT':
             data = obj.data
             light_type = self._BLENDER_TYPE_TO_LIGHT_TYPE.get(data.type, "POINT")

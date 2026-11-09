@@ -7,11 +7,10 @@ from .waypoint_links import (
     add_directed_link,
     has_link,
     remove_directed_link,
-    get_waypoint_display_name,
     LINK_SLOT_COUNT,
     setup_waypoint_empty,
 )
-from .viewport_draw import tag_viewports_redraw, start_draw_handler, stop_draw_handler
+from .viewport_draw import tag_viewports_redraw
 
 
 class ZEN_OT_add_waypoint(bpy.types.Operator):
@@ -90,10 +89,6 @@ class ZEN_OT_link_waypoints(bpy.types.Operator):
             if o != active and is_waypoint(o)
         )
 
-        if active == other:
-            self.report({'ERROR'}, "A waypoint cannot link to itself")
-            return {'CANCELLED'}
-
         if has_link(active, other):
             self.report({'WARNING'}, "These waypoints are already linked")
             return {'CANCELLED'}
@@ -105,7 +100,7 @@ class ZEN_OT_link_waypoints(bpy.types.Operator):
         tag_viewports_redraw()
         self.report(
             {'INFO'},
-            f"Linked {get_waypoint_display_name(active)} -> {get_waypoint_display_name(other)}",
+            f"Linked {active.name} -> {other.name}",
         )
         return {'FINISHED'}
 
@@ -145,7 +140,7 @@ class ZEN_OT_update_waypoint_display(bpy.types.Operator):
     bl_idname = "zen.update_waypoint_display"
     bl_label = "Show Waypoint Directions"
     bl_description = (
-        "Switch every waypoint in the file to the csys (ARROWS) display, "
+        "Switch every waypoint in the scene to the csys (ARROWS) display, "
         "where the green Y arrow is the exported facing direction, and lock "
         "X/Y rotation. Orientation is kept, so the exported direction "
         "doesn't change"
@@ -158,7 +153,7 @@ class ZEN_OT_update_waypoint_display(bpy.types.Operator):
 
     def execute(self, context):
         count = 0
-        for obj in bpy.data.objects:
+        for obj in context.scene.objects:
             if obj.type == 'EMPTY' and is_waypoint(obj):
                 # Setting rotation_mode converts the existing rotation, so
                 # the world orientation doesn't change.
@@ -177,11 +172,5 @@ class ZEN_OT_toggle_waypoint_links(bpy.types.Operator):
 
     def execute(self, context):
         context.scene.zen_show_waypoint_links = not context.scene.zen_show_waypoint_links
-
-        if context.scene.zen_show_waypoint_links:
-            start_draw_handler()
-        else:
-            stop_draw_handler()
-
         tag_viewports_redraw()
         return {'FINISHED'}

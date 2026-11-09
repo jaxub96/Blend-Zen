@@ -1,20 +1,16 @@
 """
-Custom (ID) property schema for the oCMOB / oCMobInter family (chests,
-doors, beds, switches, ladders, wheels, fire sources).
+Custom (ID) property schema for vobs with per-instance settings: the
+oCMOB family (chests, doors, beds, switches, ladders, wheels, fire
+sources) and zCVobSound.
 
-These are plain flat custom properties directly on the Blender object
-(obj["key"] = value) - NOT a registered PropertyGroup. The exporter
-(zen_gin_export's OCMob and its subclasses, see
-modules/zen_gin_export/zen_gin_zcvob_ocmob.py) reads them back the same
-addon-independent way ZCVobLight already reads light_static/color_a, so
-zen_gin_export has zero dependency on this addon and keeps working from
-plain Python/pytest. This module is only what CREATES those properties
-(with a helpful description via id_properties_ui, so Blender's own
-Object Properties > Custom Properties panel is self-documenting) when a
-VOB of one of these types is added.
+These are plain flat custom properties on the object (obj["key"]), not a
+PropertyGroup: zen_gin_export reads them with obj.get() (see its
+vob_fields.py, which maps each key to an archive property), so the
+exporter keeps working from plain Python. This module only adds the keys
+with defaults and UI descriptions; tests/test_mob_props.py checks the
+keys and defaults match vob_fields.py.
 
-See README.md "Interactive objects" for the end-to-end guide
-this schema is designed around.
+No bpy import, so it is testable outside Blender.
 """
 
 _INTER = (
@@ -22,6 +18,7 @@ _INTER = (
     'oCMobSwitch', 'oCMobLadder', 'oCMobWheel', 'oCMobFire',
 )
 _LOCKABLE = ('oCMobContainer', 'oCMobDoor')
+_SOUND = ('zCVobSound',)
 
 # key -> (default_value, ui_description, vob_types_it_applies_to)
 MOB_PROPERTIES = {
@@ -77,8 +74,8 @@ MOB_PROPERTIES = {
         "", "Daedalus function called when the object is used.", _INTER,
     ),
     "state_num": (
-        0, "Number of states the object's model script defines (0 = "
-        "use the model's own default - almost always correct).", _INTER,
+        1, "Number of states the object's model script defines. Vanilla "
+        "worlds use 1 for nearly every object.", _INTER,
     ),
     "rewind": (
         False, "Fire the trigger every time the object is used, instead "
@@ -107,12 +104,28 @@ MOB_PROPERTIES = {
         "", "Fire effect template ZEN, e.g. 'FIRETREE_MEDIUM.ZEN'.",
         ('oCMobFire',),
     ),
+    "sound_volume": (
+        100.0, "Volume, 0-100.", _SOUND,
+    ),
+    "sound_mode": (
+        "LOOP", "LOOP (continuous), ONCE, or RANDOM (repeats after a random "
+        "delay).", _SOUND,
+    ),
+    "sound_random_delay": (
+        5.0, "Seconds between repeats in RANDOM mode.", _SOUND,
+    ),
+    "sound_start_on": (
+        True, "Playing from the start (otherwise it waits for a trigger).", _SOUND,
+    ),
+    "sound_ambient_3d": (
+        False, "Ambient 3D sound.", _SOUND,
+    ),
+    "sound_radius": (
+        1500.0, "Audible radius in cm (Gothic units).", _SOUND,
+    ),
 }
 
-# Every match below requires a trailing ":", so one type name being a
-# prefix of another's text can't cause a false match - order doesn't
-# matter.
-_KNOWN_MOB_TYPES = tuple({t for _, _, types in MOB_PROPERTIES.values() for t in types})
+_KNOWN_MOB_TYPES = frozenset(t for _, _, types in MOB_PROPERTIES.values() for t in types)
 
 
 def fields_for(vob_type):
@@ -123,23 +136,23 @@ def fields_for(vob_type):
 
 
 def mob_type_of(obj):
-    """The oCMOB type prefix of a Blender object's name, or None if it
-    isn't one of this family."""
+    """The vob type prefix of an object's name if that type has settings
+    here (oCMOB family, zCVobSound), else None."""
     if obj is None:
         return None
-    for vob_type in _KNOWN_MOB_TYPES:
-        if obj.name.startswith(vob_type + ":"):
-            return vob_type
-    return None
+    prefix, sep, _ = obj.name.partition(":")
+    return prefix if sep and prefix in _KNOWN_MOB_TYPES else None
+
+
+def missing_fields(obj, vob_type):
+    """Keys this type needs that obj doesn't have yet."""
+    return [key for key in fields_for(vob_type) if key not in obj.keys()]
 
 
 def init_mob_properties(obj, vob_type, fields=None):
-    """Set every custom property this VOB type needs to a sensible
-    default, with a UI description - but only for keys that don't
-    already exist, so re-running this (e.g. from the sidebar panel,
-    every draw) never clobbers a value you've already tuned by hand.
-    Pass `fields` (from `fields_for(vob_type)`) when the caller already
-    has it, to avoid rebuilding that list a second time."""
+    """Add every custom property this type needs, with its default and a
+    UI description - only keys that don't exist yet, so values already
+    tuned by hand are never overwritten."""
     for key in fields if fields is not None else fields_for(vob_type):
         if key in obj.keys():
             continue

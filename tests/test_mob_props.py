@@ -72,3 +72,25 @@ def test_init_mob_properties_never_overwrites_an_existing_value():
     mob_props.init_mob_properties(obj, "oCMobContainer")
 
     assert obj["locked"] is True
+
+
+def test_addon_schema_matches_the_exporter_field_table():
+    """mob_props.py (UI defaults/descriptions) and zen_gin_export's
+    vob_fields.py (archive mapping) describe the same keys and defaults."""
+    from modules.zen_gin_export.vob_fields import FIELDS_BY_TYPE
+
+    for vob_type, fields in FIELDS_BY_TYPE.items():
+        exporter = {key: default for _, _, key, default in fields if key is not None}
+        addon = {key: mob_props.MOB_PROPERTIES[key][0]
+                 for key in mob_props.fields_for(vob_type) if key != "visual_name"}
+        assert addon == exporter, vob_type
+
+
+def test_sound_vobs_get_settings_and_missing_fields_are_reported():
+    obj = FakeBlenderObject()
+    obj.name = "zCVobSound:OW_COASTLIGHT"
+    assert mob_props.mob_type_of(obj) == "zCVobSound"
+    assert "sound_radius" in mob_props.missing_fields(obj, "zCVobSound")
+
+    mob_props.init_mob_properties(obj, "zCVobSound")
+    assert mob_props.missing_fields(obj, "zCVobSound") == []

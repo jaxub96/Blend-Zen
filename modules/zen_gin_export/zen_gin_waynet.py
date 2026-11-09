@@ -1,131 +1,100 @@
-from .printer import Printer
-from .zen_gin_data_printer import ZenGinDataPrinter
 from .coordinate_transform import (
     blender_position_to_gothic,
     blender_direction_to_gothic,
     waypoint_direction_from_matrix,
 )
 
+WAYPOINT_PREFIX = "zCWaypoint:"
+LINK_SLOT_NAMES = ("link_a", "link_b", "link_c")
+
+
+def is_waypoint_object(obj):
+    try:
+        return obj is not None and obj.name.startswith(WAYPOINT_PREFIX)
+    except ReferenceError:  # a link slot pointing at a deleted object
+        return False
+
+
+def linked_waypoints(blender_object):
+    """Targets stored in the object's `zen_waypoint_links` slots (the
+    PropertyGroup registered by the zen_waypoint_tools addon)."""
+    links = getattr(blender_object, "zen_waypoint_links", None)
+    if links is None:
+        return []
+    targets = (getattr(links, slot, None) for slot in LINK_SLOT_NAMES)
+    return [t for t in targets if is_waypoint_object(t) and t is not blender_object]
+
+
+def _format_vec3(values):
+    # Rounded so float noise (7.5e-08, 1100.0000000000002) doesn't reach
+    # the file; "+ 0.0" turns -0.0 into 0.0.
+    return " ".join(str(round(v, 6) + 0.0) for v in values)
+
 
 class WayNet:
+    """The zCWayNet block. Like Spacer, waypoints that are part of a way
+    are written inline in the way list (first use defines them, later uses
+    are `§` references); waypoints with no ways go in the `waypointN` list
+    first. Only links between two exported waypoints are written, and a
+    connection stored on both ends is written once."""
 
-    LINK_SLOT_NAMES = ("link_a", "link_b", "link_c")
+    def __init__(self, blender_objects, data_printer):
+        self._data_printer = data_printer
+        waypoints = [o for o in blender_objects if is_waypoint_object(o)]
+        exported = {wp.name for wp in waypoints}
 
-    @staticmethod
-    def __linked_waypoints(blender_object):
-        """
-        Reads up to 3 linked waypoint objects from the object's
-        `zen_waypoint_links` PropertyGroup, registered by the Zen Waypoint
-        Tools Blender addon.
+        self._ways = []
+        seen_pairs = set()
+        for source in waypoints:
+            for target in linked_waypoints(source):
+                pair = frozenset((source.name, target.name))
+                if target.name in exported and pair not in seen_pairs:
+                    seen_pairs.add(pair)
+                    self._ways.append((source, target))
 
-        This replaced an earlier Geometry-Nodes-modifier-based storage
-        trick (reading `blender_object.modifiers[0]` as if it were a dict
-        of Object-type input values). That trick was itself already a
-        workaround for two earlier version-specific naming issues
-        ("Input_2/3/4" vs "Socket_2/3/4"), and eventually broke outright
-        starting around Blender 5.2, where the modifier's dict-style value
-        access stopped supporting ID properties at all. A native
-        PointerProperty(type=bpy.types.Object) on a registered
-        PropertyGroup doesn't depend on Geometry Nodes internals, so it
-        isn't exposed to that kind of breakage.
-        """
-        links = getattr(blender_object, "zen_waypoint_links", None)
-        if links is None:
-            return []
+        in_ways = {wp.name for way in self._ways for wp in way}
+        self._free_waypoints = [wp for wp in waypoints if wp.name not in in_ways]
+        self.objects_count = 1 + len(in_ways) + len(self._free_waypoints)
 
-        result = []
-        for slot in WayNet.LINK_SLOT_NAMES:
-            target = getattr(links, slot, None)
-            if target:
-                result.append(target)
-        return result
-
-    def __init__(self, blender_objects, printer: Printer, data_printer: ZenGinDataPrinter):
-        self.__printer = printer
-        self.__data_printer = data_printer
-        self.__way_net = []
-        for blender_object in blender_objects:
-            if blender_object.name.startswith("zCWaypoint:"):
-                for target in self.__linked_waypoints(blender_object):
-                    self.__way_net.append((blender_object, target))
-
-        # Only waypoints that actually appear in a way (source or target)
-        # get printed by print() below - counting every zCWaypoint:-named
-        # object here regardless of linkage overstated the header's total
-        # object count whenever a waypoint existed with no link yet (e.g.
-        # freshly added, not yet wired up), which archive_verifier then
-        # correctly flagged as a header/body mismatch.
-        distinct_waypoint_names = {
-            waypoint.name for way in self.__way_net for waypoint in way
-        }
-        self.objects_count = 1 + len(distinct_waypoint_names)
-
-    @staticmethod
-    def __waypoint_location(waypoint):
-        gx, gy, gz = blender_position_to_gothic(
-            waypoint.location.x, waypoint.location.y, waypoint.location.z,
-        )
-        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
-
-    @staticmethod
-    def __waypoint_direction_vec3(waypoint):
-        # Facing direction = the empty's local +Y axis in world space (the
-        # green arrow of its ARROWS/csys display) - see
-        # coordinate_transform.waypoint_direction_from_matrix.
-        bx, by, bz = waypoint_direction_from_matrix(waypoint.matrix_world)
-        gx, gy, gz = blender_direction_to_gothic(bx, by, bz)
-        return "{x} {y} {z}".format(x=gx, y=gy, z=gz)
-
-    def __print_waypoint(self, waypoint, side, way_index, object_index, defined_waypoints):
-        waypoint_definition = None
-        for defined_waypoint in defined_waypoints:
-            if defined_waypoint[0] == waypoint.name:
-                waypoint_definition = defined_waypoint
-                break
-        if waypoint_definition:
-            self.__data_printer.start_object_block(
-                type_1="way{side}{way_index}".format(way_index=way_index, side=side),
-                type_2="\u00a7",
-                object_index=waypoint_definition[1]
-            )
-            self.__data_printer.end_object_block()
-            return object_index
-        else:
-            self.__data_printer.start_object_block(
-                type_1="way{side}{way_index}".format(way_index=way_index, side=side),
-                type_2="zCWaypoint",
-                object_index=object_index
-            )
-            self.__data_printer.print_string_property("wpName", waypoint.name.removeprefix("zCWaypoint:"))
-            self.__data_printer.print_int_property("waterDepth", 0)
-            self.__data_printer.print_int_property("underWater", 0)
-            self.__data_printer.print_vec3_property("position", self.__waypoint_location(waypoint))
-            self.__data_printer.print_vec3_property("direction", self.__waypoint_direction_vec3(waypoint))
-            self.__data_printer.end_object_block()
-            defined_waypoints.append((waypoint.name, object_index))
-            return object_index + 1
+    def _print_waypoint_block(self, type_1, waypoint, object_index):
+        p = self._data_printer
+        m = waypoint.matrix_world
+        position = blender_position_to_gothic(m[0][3], m[1][3], m[2][3])
+        direction = blender_direction_to_gothic(*waypoint_direction_from_matrix(m))
+        p.start_object_block(type_1=type_1, type_2="zCWaypoint", object_index=object_index)
+        p.print_string_property("wpName", waypoint.name[len(WAYPOINT_PREFIX):])
+        p.print_int_property("waterDepth", 0)
+        p.print_bool_property("underWater", False)
+        p.print_vec3_property("position", _format_vec3(position))
+        p.print_vec3_property("direction", _format_vec3(direction))
+        p.end_object_block()
 
     def print(self, object_index):
-        self.__data_printer.start_object_block(type_1="WayNet")
-        self.__data_printer.start_object_block(
-            type_1="%",
-            type_2="zCWayNet",
-            object_index=object_index
-        )
+        p = self._data_printer
+        p.start_object_block(type_1="WayNet")
+        p.start_object_block(type_2="zCWayNet", object_index=object_index)
         object_index += 1
-        self.__data_printer.print_int_property("waynetVersion", 1)
-        self.__data_printer.print_int_property("numWaypoints", 0)
-        self.__data_printer.print_int_property("numWays", len(self.__way_net))
-        defined_waypoints = []
-        for way_index, way in enumerate(self.__way_net):
-            object_index = self.__print_waypoint(
-                waypoint=way[0], side="l", way_index=way_index, object_index=object_index,
-                defined_waypoints=defined_waypoints
-            )
-            object_index = self.__print_waypoint(
-                waypoint=way[1], side="r", way_index=way_index, object_index=object_index,
-                defined_waypoints=defined_waypoints
-            )
-        self.__data_printer.end_object_block()
-        self.__data_printer.end_object_block()
+        p.print_int_property("waynetVersion", 1)
+
+        p.print_int_property("numWaypoints", len(self._free_waypoints))
+        for i, waypoint in enumerate(self._free_waypoints):
+            self._print_waypoint_block(f"waypoint{i}", waypoint, object_index)
+            object_index += 1
+
+        p.print_int_property("numWays", len(self._ways))
+        defined = {}
+        for way_index, way in enumerate(self._ways):
+            for side, waypoint in zip("lr", way):
+                type_1 = f"way{side}{way_index}"
+                if waypoint.name in defined:
+                    p.start_object_block(type_1=type_1, type_2="§",
+                                         object_index=defined[waypoint.name])
+                    p.end_object_block()
+                else:
+                    self._print_waypoint_block(type_1, waypoint, object_index)
+                    defined[waypoint.name] = object_index
+                    object_index += 1
+
+        p.end_object_block()
+        p.end_object_block()
         return object_index

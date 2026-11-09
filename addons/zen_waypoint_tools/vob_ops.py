@@ -1,8 +1,7 @@
 import bpy
 
 from .vob_types import VOB_TYPE_ITEMS, VOB_DISPLAY, find_next_vob_name
-from .light_props import create_light_object
-from .mob_props import init_mob_properties
+from .mob_props import init_mob_properties, mob_type_of
 
 
 def _update_vob_type_name(self, context):
@@ -46,6 +45,7 @@ class ZEN_OT_add_vob(bpy.types.Operator):
         full_name = f"{self.vob_type}:{name}"
 
         if self.vob_type == 'zCVobLight':
+            from .light_props import create_light_object
             obj = create_light_object(full_name)
         else:
             display_type, display_size = VOB_DISPLAY.get(self.vob_type, ('PLAIN_AXES', 0.3))
@@ -67,4 +67,23 @@ class ZEN_OT_add_vob(bpy.types.Operator):
         context.view_layer.objects.active = obj
 
         self.report({'INFO'}, f"Added {full_name}")
+        return {'FINISHED'}
+
+
+class ZEN_OT_init_vob_properties(bpy.types.Operator):
+    bl_idname = "zen.init_vob_properties"
+    bl_label = "Add Missing Properties"
+    bl_description = (
+        "Add this vob type's settings (with defaults) as custom properties - "
+        "for objects renamed by hand or made with an older version"
+    )
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return mob_type_of(context.active_object) is not None
+
+    def execute(self, context):
+        obj = context.active_object
+        init_mob_properties(obj, mob_type_of(obj))
         return {'FINISHED'}
