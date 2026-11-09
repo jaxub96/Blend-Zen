@@ -42,7 +42,8 @@ class OCMobInter(ZCVob):
         return super().print(object_index)
 
     def _print_additional_data(self):
-        print_fields(self._data_printer, FIELDS_BY_TYPE[self._base_type()], self._custom)
+        vob_type = self._base_type()
+        print_fields(self._data_printer, FIELDS_BY_TYPE[vob_type], self._custom, vob_type)
 
 
 class OCMobContainer(OCMobInter):

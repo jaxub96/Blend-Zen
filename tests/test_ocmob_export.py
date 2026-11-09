@@ -14,7 +14,7 @@ def test_ocmob_fields_default_when_no_custom_properties_set():
     props = exported_properties(OCMobInter, FakeObject("oCMobInter:UNCONFIGURED"))
 
     assert props["focusName"] == "string:"
-    assert props["hitpoints"] == "int:0"
+    assert props["hitpoints"] == "int:10"  # vanilla value for every mob
     assert props["soundMaterial"] == "enum:0"  # WOOD
     assert props["isDestroyed"] == "bool:0"
     assert props["stateNum"] == "int:1"  # what vanilla mobs use (108 of 109)
@@ -36,17 +36,30 @@ def test_ocmob_inter_fields_read_custom_properties():
 
 def test_bad_custom_value_falls_back_instead_of_failing_the_export():
     props = exported_properties(OCMobInter, FakeObject("oCMobInter:X", hitpoints="lots"))
-    assert props["hitpoints"] == "int:0"
+    assert props["hitpoints"] == "int:10"
+
+
+def test_type_defaults_make_a_bare_bed_sleepable():
+    """The engine calls <onStateFunc>_S1; SLEEPABIT_S1 opens the sleep
+    dialog. Without it a bed is usable but nothing happens (seen in-game)."""
+    bed = exported_properties(OCMobBed, FakeObject("oCMobBed:B"))
+    chest = exported_properties(OCMobContainer, FakeObject("oCMobContainer:C"))
+    assert bed["onStateFunc"] == "string:SLEEPABIT"
+    assert bed["focusName"] == "string:MOBNAME_BED"
+    assert chest["focusName"] == "string:MOBNAME_CHEST"
+    assert chest["onStateFunc"] == "string:"
+    # An explicit value still wins.
+    assert exported_properties(OCMobBed, FakeObject("oCMobBed:B", on_state_func=""))["onStateFunc"] == "string:"
 
 
 def test_container_has_lock_fields_and_contains_door_has_no_contains():
     chest = exported_properties(OCMobContainer, FakeObject(
-        "oCMobContainer:CHEST_CITY_01", visual_name="CHESTBIG_OCCRATELARGE",
+        "oCMobContainer:CHEST_CITY_01", visual_name="CHESTBIG_NW_NORMAL_LOCKED",
         locked=True, picklock_str="RRLRL", contains="ITFO_APPLE:3,ITMW_1H_SHORTSWORD1",
     ))
     door = exported_properties(OCMobDoor, FakeObject("oCMobDoor:DOOR_01", locked=True))
 
-    assert chest["visual"] == "string:CHESTBIG_OCCRATELARGE.MDS"
+    assert chest["visual"] == "string:CHESTBIG_NW_NORMAL_LOCKED.MDS"
     assert chest["locked"] == "bool:1"
     assert chest["pickLockStr"] == "string:RRLRL"
     assert chest["contains"] == "string:ITFO_APPLE:3,ITMW_1H_SHORTSWORD1"

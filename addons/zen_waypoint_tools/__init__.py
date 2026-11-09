@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Zen Waypoint Tools",
     "author": "jaxub",
-    "version": (2, 6, 0),
+    "version": (2, 7, 0),
     "blender": (5, 2, 0),
     "location": "View3D > Sidebar > ZenGin",
     "description": "Place, link, and visualize zCWaypoint objects, add other ZenGin VOBs, and export to an uncompiled ZEN",
@@ -37,6 +37,7 @@ classes = (
     waypoint_ops.ZEN_OT_update_waypoint_display,
     vob_ops.ZEN_OT_add_vob,
     vob_ops.ZEN_OT_init_vob_properties,
+    vob_ops.ZEN_OT_apply_mob_preset,
     gothic_sky.ZEN_OT_use_gothic_sky,
     export_ops.ZEN_OT_export_zen,
     export_ops.ZEN_OT_import_zen,

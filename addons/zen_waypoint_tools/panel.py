@@ -1,7 +1,7 @@
 import bpy
 
 from .waypoint_links import is_waypoint, get_links, get_effective_neighbors
-from .mob_props import mob_type_of, fields_for, missing_fields
+from .mob_props import mob_type_of, fields_for, missing_fields, presets_for
 
 
 class ZEN_PT_waypoint_tools(bpy.types.Panel):
@@ -58,6 +58,8 @@ class ZEN_PT_waypoint_tools(bpy.types.Panel):
             # made by hand/older versions get a button to add the fields.
             if missing_fields(active, vob_type):
                 box.operator("zen.init_vob_properties", icon='ADD')
+            if presets_for(vob_type):
+                box.operator_menu_enum("zen.apply_mob_preset", "preset", icon='PRESET')
             col = box.column(align=True)
             for key in fields_for(vob_type):
                 if key in active.keys():

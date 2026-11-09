@@ -21,7 +21,7 @@ ENUMS = {
 
 OCMOB_FIELDS = (
     ("focusName", "string", "focus_name", ""),
-    ("hitpoints", "int", "hitpoints", 0),
+    ("hitpoints", "int", "hitpoints", 10),
     ("damage", "int", "damage", 0),
     ("moveable", "bool", "moveable", False),
     ("takeable", "bool", "takeable", False),
@@ -73,6 +73,23 @@ SOUND_FIELDS = (
 
 _INTER = OCMOB_FIELDS + INTER_FIELDS
 
+# Per-type defaults that replace a field's generic default, taken from
+# vanilla worlds and the game scripts. A bed needs onStateFunc SLEEPABIT:
+# the engine calls <onStateFunc>_S1 when it's used, and SLEEPABIT_S1
+# (Story/Dialog_Mobsis/SleepABit.d) opens the sleep dialog. focusName is a
+# script string constant (MOBNAME_* in Text.d) the engine resolves.
+TYPE_DEFAULTS = {
+    "oCMobContainer": {"focus_name": "MOBNAME_CHEST"},
+    "oCMobDoor": {"focus_name": "MOBNAME_DOOR"},
+    "oCMobBed": {"focus_name": "MOBNAME_BED", "on_state_func": "SLEEPABIT"},
+    "oCMobSwitch": {"focus_name": "MOBNAME_SWITCH"},
+    "oCMobWheel": {"focus_name": "MOBNAME_WHEEL"},
+}
+
+
+def field_default(vob_type, key, generic_default):
+    return TYPE_DEFAULTS.get(vob_type, {}).get(key, generic_default)
+
 FIELDS_BY_TYPE = {
     "oCMobInter": _INTER,
     "oCMobBed": _INTER,
@@ -98,11 +115,13 @@ def _enum_ordinal(archive_name, value):
     return ordinal if 0 <= ordinal < len(names) else 0
 
 
-def print_fields(data_printer, fields, get_custom):
+def print_fields(data_printer, fields, get_custom, vob_type=None):
     """Write `fields` in order. get_custom(key, default) reads one custom
-    property; bad values (e.g. text in an int field) fall back to the
-    default rather than failing the whole export."""
+    property; a missing one uses the (per-type) default, and bad values
+    (e.g. text in an int field) fall back to it rather than failing the
+    whole export."""
     for archive_name, archive_type, key, default in fields:
+        default = field_default(vob_type, key, default)
         value = default if key is None else get_custom(key, default)
         if archive_type == "enum":
             data_printer.print_enum_property(archive_name, _enum_ordinal(archive_name, value))

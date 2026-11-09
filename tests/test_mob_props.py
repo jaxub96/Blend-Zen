@@ -77,13 +77,35 @@ def test_init_mob_properties_never_overwrites_an_existing_value():
 def test_addon_schema_matches_the_exporter_field_table():
     """mob_props.py (UI defaults/descriptions) and zen_gin_export's
     vob_fields.py (archive mapping) describe the same keys and defaults."""
-    from modules.zen_gin_export.vob_fields import FIELDS_BY_TYPE
+    from modules.zen_gin_export.vob_fields import FIELDS_BY_TYPE, field_default
 
     for vob_type, fields in FIELDS_BY_TYPE.items():
-        exporter = {key: default for _, _, key, default in fields if key is not None}
-        addon = {key: mob_props.MOB_PROPERTIES[key][0]
+        exporter = {key: field_default(vob_type, key, default)
+                    for _, _, key, default in fields if key is not None}
+        addon = {key: mob_props.default_for(vob_type, key)
                  for key in mob_props.fields_for(vob_type) if key != "visual_name"}
         assert addon == exporter, vob_type
+
+
+def test_presets_only_set_fields_their_type_has_and_give_a_model():
+    for preset_id, (label, vob_type, values) in mob_props.MOB_PRESETS.items():
+        assert set(values) <= set(mob_props.fields_for(vob_type)), preset_id
+        assert values["visual_name"], preset_id
+
+
+def test_new_mobs_get_a_working_vanilla_setup_and_presets_switch_cleanly():
+    bed = FakeBlenderObject()
+    mob_props.init_mob_properties(bed, "oCMobBed")
+    assert bed["visual_name"] == "BEDHIGH_NW_NORMAL_01.ASC"
+    assert bed["on_state_func"] == "SLEEPABIT"
+
+    table = FakeBlenderObject()
+    mob_props.init_mob_properties(table, "oCMobInter")
+    mob_props.apply_preset(table, "LAB")
+    assert (table["on_state_func"], table["use_with_item"]) == ("POTIONALCHEMY", "ITMI_FLASK")
+    mob_props.apply_preset(table, "BENCH")
+    assert (table["visual_name"], table["on_state_func"], table["use_with_item"]) == \
+        ("BENCH_NW_CITY_01.ASC", "", "")
 
 
 def test_sound_vobs_get_settings_and_missing_fields_are_reported():

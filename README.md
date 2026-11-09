@@ -109,7 +109,8 @@ The "ZenGin" sidebar tab has:
   renamed by hand or made with an older version get an **Add Missing
   Properties** button.
 - **Add Other VOBs** - creates a level compo, startpoint, freepoint, light,
-  sound or any interactive `oCMob*` type at the 3D cursor. Props (`zCVob`)
+  sound or any interactive `oCMob*` type at the 3D cursor; interactive
+  objects start from a working vanilla preset. Props (`zCVob`)
   and items (`oCItem`) are not in this dialog: drag real assets in from the
   `Props.blend` / `Items_*.blend` asset libraries (they export with a real
   bounding box), or name an Empty yourself (see the naming table).
@@ -123,7 +124,8 @@ The "ZenGin" sidebar tab has:
   correctness (object-index contiguity vs. the header count), and the
   report also warns about likely mistakes: unknown type prefixes (typos),
   duplicate names where names must be unique (freepoints, startpoints,
-  named mobs), sun/area lights (exported as point lights) and a missing
+  named mobs), mobs without a model, locks nothing can open, beds without
+  `SLEEPABIT`, sun/area lights (exported as point lights) and a missing
   `zCVobLevelCompo`. A failed export writes nothing and leaves an existing
   file untouched.
 - **Export Level Package** - with the level mesh selected: writes
@@ -213,44 +215,49 @@ is reported in the export message.
 
 ### oCMOB objects
 
-How to make a chest, door, bed, switch, ladder, wheel or fire source
-*behave* in-game, not just export.
+How to make a chest, door, bed, ladder, alchemy table and so on *work*
+in-game, not just export.
 
 A plain `zCVob` prop's name doubles as its mesh filename. **oCMOB objects
 don't:**
 
 1. The name is the object's in-game identity (`vobName`) - what a
-   trigger's `triggerTarget` addresses. Five chests that are triggered need
-   five names.
-2. The appearance comes from a **shared, already-animated model** - an
-   `.MDS` (ModelScript), e.g. every chest can use
-   `CHESTBIG_OCCRATELARGE.MDS`, every human bed `BED_HUM.MDS`. The MDS
-   defines the states (`s_S0` closed, `s_S1` open) and transition
-   animations. Each instance names its MDS in **Visual Name** (blank = the
-   object's own name, only right for a one-off asset named after itself).
-   Many vanilla mobs use an `.ASC` model or a static `.3DS` mesh instead
-   (e.g. `BEDHIGH_NW_NORMAL_01.ASC`); give the extension and it is kept.
+   trigger's `triggerTarget` addresses. It may stay empty (many vanilla
+   mobs are unnamed); otherwise it must be unique.
+2. The model is a **shared game asset** named in **Visual Name**: an
+   animated `.MDS` (extension optional, e.g. `CHESTBIG_NW_NORMAL_LOCKED`),
+   an `.ASC` model (`BEDHIGH_NW_NORMAL_01.ASC`) or a static `.3DS` mesh -
+   give the extension for anything but `.MDS`. **The model must exist in
+   the game: Spacer crashes loading a mob whose model is missing**
+   (`oCMobInter::Reset` access violation). Blend-Zen can't create or
+   preview these models; you place an Empty.
+3. What happens on use is **script-driven**: the engine calls the
+   **On State Func** with `_S1` appended. A bed needs `SLEEPABIT`
+   (`SLEEPABIT_S1` opens the sleep dialog), an alchemy table
+   `POTIONALCHEMY`, a rune table `MAKERUNE`, a shrine `PrayShrine` (see
+   `Story/Dialog_Mobsis/` in the scripts). **Use With Item** is the item
+   the player must carry (e.g. `ITMI_FLASK` for alchemy). **Focus Name**
+   is a script text constant such as `MOBNAME_CHEST`.
+4. **Locked** chests and doors need a **Key Instance** and/or a
+   **Picklock Str** (e.g. `RLRRLL`); locked with neither shows "can't be
+   opened" in-game.
 
-Blend-Zen can place these objects but **cannot create the animated model**
-(that's a 3ds Max + Gothic animation SDK workflow), and can't import
-skeletal MDS models, so you place and orient an Empty and trust the Visual
-Name - double-check its spelling. To find names, browse
-`_work\Data\Anims\_compiled\` (or unpacked `Anims.vdf`) for `<NAME>.MDS`
-(`BED_HUM`, `CHESTBIG_OCCRATELARGE`, `DOOR_WOOD_01`, ...), or read an
-existing object's `visual` in a vanilla world (Import Uncompiled ZEN works
-on `blender_work_dir/G2ISLAND_WEB.ZEN`).
+**Presets.** Add VOB fills in a working vanilla setup for each type
+(chest `CHESTBIG_NW_NORMAL_LOCKED`, door `DOOR_NW_NORMAL_01`, bed
+`BEDHIGH_NW_NORMAL_01.ASC` + `SLEEPABIT`, ladder `LADDER_3.ASC`) and has a
+**Preset** dropdown; the sidebar box has **Apply Preset** for existing
+objects. Presets are copied from vanilla worlds: big/small chests, two
+doors, three beds, ladder, alchemy table, rune table, Innos shrine,
+cauldron, stove, campfire pan, tree saw, water pipe, bench, chair (the
+generic ones are "Interactive: Generic" / `oCMobInter`). Switch, wheel and
+fire have no vanilla model on record yet - set Visual Name yourself.
 
-**Placing one:** Add Other VOBs > Type, e.g. "Interactive: Bed", with a
-name like `BED_TAVERN_ROOM_01` (not a mesh name). Select it, set **Visual
-Name** (e.g. `BED_HUM`) in the sidebar box, adjust other fields if needed,
-position it, export, compile in Spacer, test. A plain `zCVob:` is never
-interactive. Using the bed needs no Daedalus (engine `oCMobInter` logic +
-the MDS's animations); an NPC sleeping there on a schedule is the NPC's
-routine script (`TA_Sleep`) referencing it.
+**Export warnings** catch the three silent failures above: a mob without
+Visual Name, a lock nothing can open, and a bed without `SLEEPABIT`.
 
-This is inferred from ZenGin documentation and vanilla worlds and **not
-yet confirmed** with a Spacer/in-game round trip; verify one object before
-building several.
+**Verified in Spacer and in-game (2026-11-09):** `DOOR_NW_NORMAL_01`
+opens; chests and doors with real models load. NPC sleeping schedules are
+separate (the NPC's `TA_Sleep` routine).
 
 ### Field reference
 
@@ -261,18 +268,18 @@ mapping to archive properties in `modules/zen_gin_export/vob_fields.py`
 
 | Field | Applies to | Meaning |
 |---|---|---|
-| Visual Name | all mobs | Base filename (no extension) of the shared MDS model |
-| Focus Name | all mobs | Text shown when the player looks at it |
-| Hitpoints / Damage | all mobs | Leave 0 for ordinary furniture |
+| Visual Name | all mobs | Game model: `NAME` (= `NAME.MDS`) or `NAME.ASC` / `NAME.3DS`. Must exist |
+| Focus Name | all mobs | Text shown when the player looks at it; usually a `MOBNAME_*` constant |
+| Hitpoints / Damage | all mobs | Vanilla uses 10 / 0 |
 | Moveable / Takeable | all mobs | Can the player drag / pick it up |
 | Sound Material | all mobs | WOOD, STONE, METAL, LEATHER, CLAY, GLAS |
 | Owner / Owner Guild | all mobs | Script instance/guild that owns it, for theft detection |
 | Trigger Target | all mobs | Vob name to send OnTrigger to when used (e.g. switch -> door) |
-| Use With Item | all mobs | Item instance needed to interact |
-| Condition/On-State Function | all mobs | Daedalus function names, for scripted behavior |
+| Use With Item | all mobs | Item instance the player must carry to use it |
+| Condition Func / On State Func | all mobs | Script functions; On State Func is called as `<name>_S1` on use (bed: `SLEEPABIT`) |
 | State Num | all mobs | Default 1, as in vanilla worlds (108 of 109 mobs) |
 | Rewind | all mobs | Fire the trigger every use, not only the first |
-| Locked / Key Instance / Picklock Str | Chest, Door | Key opens it; a picklock combination (e.g. `RRLRL`) enables lockpicking, empty disables |
+| Locked / Key Instance / Picklock Str | Chest, Door | Locked needs a key and/or a picklock combination (e.g. `RRLRL`), or it never opens |
 | Contains | Chest | `ITEM_INSTANCE:count` comma list, e.g. `ITFO_APPLE:3,ITMW_1H_SHORTSWORD1` |
 | Fire Slot / Fire Vobtree Name | Fire | Bone name for the flame, and fire-effect template ZEN (e.g. `FIRETREE_MEDIUM.ZEN`) |
 | Sound Volume / Mode / Random Delay | Sound | 0-100; LOOP, ONCE or RANDOM; seconds between RANDOM repeats |
@@ -556,7 +563,8 @@ in CI.
 **Known limitations**
 
 - **No compiled-ZEN writing** - Spacer is required for compiling.
-- **Not yet confirmed in-game:** oCMOB behavior; `zCVobSound` settings;
+- **Not yet confirmed in-game:** beds with `SLEEPABIT`, the other presets,
+  switches/wheels/fires; `zCVobSound` settings;
   `zCVobLight` `lightType`/`lightQuality` ordinals; waypoint `direction`
   with `AI_AlignToWP`. Class versions for `oCMobSwitch`/`oCMobWheel`/
   `oCMobFire` are not in the sample worlds and use `oCMobInter`'s.

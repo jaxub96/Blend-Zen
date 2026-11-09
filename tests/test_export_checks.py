@@ -44,7 +44,11 @@ def test_clean_scene_has_no_warnings():
         FakeObject("zCVob:ROCK"), FakeObject("zCVob:ROCK.001"),       # props may repeat
         FakeObject("oCItem:ITFO_APPLE"), FakeObject("oCItem:ITFO_APPLE.001"),
         FakeObject("zCWaypoint:WP_001"), FakeObject("Level mesh"),
-        FakeObject("oCMobContainer:"), FakeObject("oCMobContainer:.001"),  # unnamed mobs
+        FakeObject("oCMobContainer:", visual_name="CHESTBIG_NW_NORMAL_LOCKED"),  # unnamed mobs
+        FakeObject("oCMobContainer:.001", visual_name="CHESTBIG_NW_NORMAL_LOCKED"),
+        FakeObject("oCMobDoor:LOCKED_PICKABLE", visual_name="DOOR_NW_POOR_01",
+                   locked=True, picklock_str="RLRRLL"),
+        FakeObject("oCMobBed:BED", visual_name="BEDHIGH_NW_NORMAL_01.ASC"),
     ]) == []
 
 
@@ -53,7 +57,8 @@ def test_warnings_for_unknown_types_duplicates_sun_lights_and_missing_level_comp
     warnings = scene_warnings([
         FakeObject("zCVobSpto:TYPO"),
         FakeObject("zCVobSpot:FP_01"), FakeObject("zCVobSpot:FP_01.001"),
-        FakeObject("oCMobDoor:DOOR"), FakeObject("oCMobDoor:DOOR.001"),
+        FakeObject("oCMobDoor:DOOR", visual_name="DOOR_NW_NORMAL_01"),
+        FakeObject("oCMobDoor:DOOR.001", visual_name="DOOR_NW_NORMAL_01"),
         sun,
     ])
     text = "\n".join(warnings)
@@ -62,3 +67,16 @@ def test_warnings_for_unknown_types_duplicates_sun_lights_and_missing_level_comp
     assert "zCVobSpot:FP_01" in text and "oCMobDoor:DOOR" in text
     assert "zCVobLight:SUN" in text
     assert "No zCVobLevelCompo" in text
+
+
+def test_warnings_for_mobs_that_load_or_work_wrong_in_game():
+    """Each of these was hit in a real Spacer/in-game test."""
+    text = "\n".join(scene_warnings([
+        FakeObject("zCVobLevelCompo:L"),
+        FakeObject("oCMobDoor:NO_MODEL"),                                   # Spacer crash
+        FakeObject("oCMobContainer:CHEST", visual_name="X", locked=True),    # "can't be opened"
+        FakeObject("oCMobBed:BED", visual_name="X", on_state_func=""),        # no sleep dialog
+    ]))
+    assert "No Visual Name" in text and "oCMobDoor:NO_MODEL" in text
+    assert "can never be opened: oCMobContainer:CHEST" in text
+    assert "no sleep dialog: oCMobBed:BED" in text
