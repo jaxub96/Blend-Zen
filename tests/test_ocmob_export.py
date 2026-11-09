@@ -105,3 +105,13 @@ def test_custom_properties_round_trip_through_export_and_parse(vob_type):
     block = parse_archive("END\nEND\n" + "\n".join(lines))[0]
 
     assert custom_properties_from_block(vob_type, block.properties) == custom
+
+
+def test_mob_visual_keeps_an_explicit_extension():
+    """Vanilla mobs also use .ASC models and static .3DS meshes
+    (G2ISLAND_WEB.ZEN: BEDHIGH_NW_NORMAL_01.ASC); a .3DS gets a
+    zCProgMeshProto visual block."""
+    asc = exported_properties(OCMobBed, FakeObject("oCMobBed:B", visual_name="BEDHIGH_NW_NORMAL_01.ASC"))
+    assert asc["visual"] == "string:BEDHIGH_NW_NORMAL_01.ASC"
+    lines = print_vob(OCMobInter, FakeObject("oCMobInter:I", visual_name="LAB_TABLE.3DS"), 5)
+    assert "\t[visual zCProgMeshProto 53505 6]" in lines

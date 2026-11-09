@@ -228,6 +228,8 @@ don't:**
    defines the states (`s_S0` closed, `s_S1` open) and transition
    animations. Each instance names its MDS in **Visual Name** (blank = the
    object's own name, only right for a one-off asset named after itself).
+   Many vanilla mobs use an `.ASC` model or a static `.3DS` mesh instead
+   (e.g. `BEDHIGH_NW_NORMAL_01.ASC`); give the extension and it is kept.
 
 Blend-Zen can place these objects but **cannot create the animated model**
 (that's a 3ds Max + Gothic animation SDK workflow), and can't import
@@ -558,6 +560,9 @@ in CI.
   `zCVobLight` `lightType`/`lightQuality` ordinals; waypoint `direction`
   with `AI_AlignToWP`. Class versions for `oCMobSwitch`/`oCMobWheel`/
   `oCMobFire` are not in the sample worlds and use `oCMobInter`'s.
+- Some vanilla content can't be round-tripped yet (zones, decals,
+  particle effects, light presets/flicker, per-instance flags) - see
+  `TODO.md` "Gaps found in the reference worlds".
 - Output is one flat vob list (no nested hierarchies); imports of nested
   Spacer worlds are flattened. Only fresh archives are written - merging
   into an existing Spacer-made ZEN isn't supported.

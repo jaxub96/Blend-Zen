@@ -27,7 +27,8 @@ MOB_PROPERTIES = {
         "this vob uses in-game, e.g. 'CHESTBIG_OCCRATELARGE' or "
         "'BED_HUM' - almost always a reused asset, NOT unique to this "
         "instance. Leave empty to reuse this object's own name (only "
-        "correct for a one-off custom asset named after itself).",
+        "correct for a one-off custom asset named after itself). Give an "
+        "extension for non-MDS models, e.g. 'BEDHIGH_NW_NORMAL_01.ASC'.",
         _INTER,
     ),
     "focus_name": (

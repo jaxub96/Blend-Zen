@@ -4,7 +4,8 @@ ladders, wheels, fire sources).
 
 The Blender object name is the instance's unique vobName (what a
 triggerTarget addresses); the model is a shared, already-animated .MDS
-named by the `visual_name` custom property (blank = the vob's own name).
+named by the `visual_name` custom property (blank = the vob's own name;
+an explicit .ASC/.3DS extension is kept).
 Every other field is a flat custom property - see vob_fields.py.
 
 Class chains and versions are copied from real Spacer-saved worlds:
@@ -29,8 +30,16 @@ class OCMobInter(ZCVob):
         return cls._type_name.split(":", 1)[0]
 
     def _visual(self):
-        visual_name = str(self._custom("visual_name", "")).strip()
-        return (visual_name or self._vob_name()) + ".MDS"
+        """visual_name with its extension if it has one (vanilla mobs also
+        use .ASC models and static .3DS meshes), else <name>.MDS."""
+        visual_name = str(self._custom("visual_name", "")).strip() or self._vob_name()
+        return visual_name if "." in visual_name else visual_name + ".MDS"
+
+    def print(self, object_index):
+        # A static .3DS mesh gets a zCProgMeshProto visual block, as in Spacer.
+        if self._visual().upper().endswith(".3DS"):
+            self._visual_type, self._visual_version = "zCProgMeshProto", 53505
+        return super().print(object_index)
 
     def _print_additional_data(self):
         print_fields(self._data_printer, FIELDS_BY_TYPE[self._base_type()], self._custom)

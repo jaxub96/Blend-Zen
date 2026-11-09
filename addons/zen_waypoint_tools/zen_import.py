@@ -101,7 +101,8 @@ def _create_vob_object(context, real_type, block):
         obj.empty_display_type, obj.empty_display_size = VOB_DISPLAY.get(real_type, ('PLAIN_AXES', 0.3))
 
     if real_type.startswith("oCMob"):
-        obj["visual_name"] = _stem(block.get("visual", ""))
+        visual = block.get("visual", "")
+        obj["visual_name"] = _stem(visual) if visual.upper().endswith(".MDS") else visual
     for key, value in custom_properties_from_block(real_type, block.properties).items():
         obj[key] = value
     init_mob_properties(obj, real_type)  # descriptions + any missing keys
