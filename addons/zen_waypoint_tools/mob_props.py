@@ -82,9 +82,14 @@ MOB_PRESETS = {
     "BENCH": ("Bench", "oCMobInter", {"visual_name": "BENCH_NW_CITY_01.ASC", "focus_name": "MOBNAME_BENCH"}),
     "CHAIR": ("Chair", "oCMobInter", {"visual_name": "CHAIR_NW_NORMAL_01.ASC", "focus_name": "MOBNAME_CHAIR"}),
     "THRONE": ("Armchair", "oCMobInter", {"visual_name": "THRONE_NW_CITY_01.ASC", "focus_name": "MOBNAME_ARMCHAIR"}),
-    "SIGN": ("Sign", "oCMOB", {"visual_name": "NW_MISC_SIGN_01.3DS", "focus_name": "MOBNAME_CITY"}),
+    "SIGN": ("Sign", "oCMOB", {"visual_name": "NW_MISC_SIGN_01.3DS", "focus_name": "MOBNAME_GENERIC"}),
     "GRAVESTONE": ("Gravestone", "oCMOB", {"visual_name": "NW_MISC_GRAVESTONE_01.3DS", "focus_name": "MOBNAME_GRAVE_01"}),
 }
+
+# Metres a preset's model is raised above the 3D cursor when it is added:
+# these models have their origin at hand height, not at their base, so on
+# the floor they would sit in the ground (seen in-game, 2026-11-10).
+PRESET_HEIGHTS = {"LEVER": 1.0, "BOOKSTAND": 1.0}
 
 # Fields a preset resets to the type's default when it doesn't name them,
 # so switching e.g. from the alchemy table to a bench clears the function.

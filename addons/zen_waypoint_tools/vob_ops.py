@@ -2,7 +2,9 @@ import bpy
 
 from .vob_types import VOB_TYPE_ITEMS, vob_display, default_box_size, find_next_vob_name
 from .vob_ui_schema import split_type_id, VARIANT_VISUALS
-from .mob_props import vob_type_of, presets_for, apply_preset, init_new_vob, VISUAL_DEFAULTS
+from .mob_props import (
+    vob_type_of, presets_for, apply_preset, init_new_vob, VISUAL_DEFAULTS, PRESET_HEIGHTS,
+)
 
 # Blender needs the strings of dynamic enum items kept alive.
 _preset_items_cache = {}
@@ -55,6 +57,9 @@ def create_vob(context, vob_type_id, name, preset=None):
     init_new_vob(obj, vob_type)
     if preset and preset not in ('DEFAULT', 'NONE'):
         apply_preset(obj, preset)
+        obj.location.z += PRESET_HEIGHTS.get(preset, 0.0)
+    elif vob_type == 'oCMobSwitch':
+        obj.location.z += PRESET_HEIGHTS["LEVER"]       # the default switch is the lever
 
     (context.collection or context.scene.collection).objects.link(obj)
 

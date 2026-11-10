@@ -87,8 +87,9 @@ FIELD_UI = {
                               {"when": _decal}),
 
     # -- oCMOB ------------------------------------------------------------------
-    "focus_name": ("Focus Name", "Name shown when the player looks at it: a script constant "
-                   "such as MOBNAME_CHEST (Text.d), or plain text", {"source": "focus_names"}),
+    "focus_name": ("Focus Name", "Name shown when the player looks at it. Must be a script string "
+                   "constant such as MOBNAME_CHEST (Text.d): plain text shows nothing in-game",
+                   {"source": "focus_names"}),
     "hitpoints": ("Hitpoints", "Vanilla worlds use 10 everywhere", {"adv": True}),
     "damage": ("Damage", "Damage dealt by the object (unused by vanilla mobs)", {"adv": True}),
     "moveable": ("Moveable", "Can be pushed around", {"adv": True}),

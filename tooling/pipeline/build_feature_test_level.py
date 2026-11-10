@@ -10,7 +10,11 @@ Run it with your normal Blender profile (no --factory-startup): it needs
 writes into the Gothic Game Folder from the add-on preferences.
 
 Every station has a sign (an oCMOB whose focus name is the instruction),
-so in-game you look at the sign and do what it says. Stations, by row
+so in-game you look at the sign and do what it says. A focus name only
+shows if it is a script string constant, so with a level name the script
+also writes the signs' MOBNAME_FT_* constants into the game's
+Scripts/Content/Story/Text.d, between two marker comments (re-running
+replaces that block). Rebuild the scripts afterwards ("gothic build"). Stations, by row
 (the player starts at the south edge facing north; +Y is north):
 
 Row A, y = +6: level logic
@@ -104,10 +108,41 @@ def add(type_id, name, location, rotation_z=0.0, preset=None, parent=None, box=N
     return obj
 
 
+SIGN_TEXTS = {}         # MOBNAME_FT_<station> -> text, written to Text.d
+
+
 def sign(station, text, x, y):
-    """The station's instruction, shown as the focus name of a sign."""
-    return add("oCMOB", f"SIGN_{station}", (x, y - 2.0, 0.0), preset="SIGN",
-               focus_name=f"{station}: {text}")
+    """The station's instruction, shown as the focus name of a sign. The
+    focus name must be a script constant (plain text shows nothing)."""
+    constant = f"MOBNAME_FT_{station}"
+    SIGN_TEXTS[constant] = f"{station}: {text}"
+    return add("oCMOB", f"SIGN_{station}", (x, y - 2.0, 0.0), preset="SIGN", focus_name=constant)
+
+
+_TEXT_BEGIN = b"// >>> Blend-Zen feature test level signs (generated, do not edit)"
+_TEXT_END = b"// <<< Blend-Zen feature test level signs"
+
+
+def write_sign_texts(game_folder):
+    """Put the signs' constants into <game>/_work/Data/Scripts/Content/Story/Text.d,
+    replacing an earlier generated block. Bytes in, bytes out: the rest of
+    the file (windows-1250 text) is not touched. Returns the path or None."""
+    from zen_gin_export.game_data import find_data_dir, _path
+    path = _path(find_data_dir(game_folder), "Scripts", "Content", "Story", "Text.d")
+    if not path:
+        return None
+    with open(path, "rb") as f:
+        content = f.read()
+    start, end = content.find(_TEXT_BEGIN), content.find(_TEXT_END)
+    if start >= 0 and end > start:
+        content = content[:start].rstrip() + content[end + len(_TEXT_END):]
+    lines = [_TEXT_BEGIN] + [
+        f'CONST STRING {name} = "{text}";'.encode("ascii") for name, text in SIGN_TEXTS.items()
+    ] + [_TEXT_END]
+    newline = b"\r\n" if b"\r\n" in content else b"\n"
+    with open(path, "wb") as f:
+        f.write(content.rstrip() + newline * 2 + newline.join(lines) + newline)
+    return path
 
 
 def mover(name, location, lift, visual="OC_LOB_GATE_BIG", **settings):
@@ -284,7 +319,7 @@ def row_c_lights_effects_sounds():
     add("zCVobSound", "SOUND_RANDOM", (xs[7], y, 1.0), sound_name="OW_CROW", sound_mode="RANDOM",
         sound_random_delay=4.0, sound_random_delay_var=2.0, sound_radius=1000.0)
 
-    sign("C9", "Day/night sound: birds 6-20 h, frogs at night (set time: 'set time 23 0')", xs[8], y)
+    sign("C9", "Day/night sound: birds 6-20 h, frogs at night (console: set time 23 0)", xs[8], y)
     add("zCVobSoundDaytime", "SOUND_DAYNIGHT", (xs[8], y, 1.0), sound_name="OW_BIRD8",
         sound_name_2="INSECTSFROGS_NIGHT", sound_start_time=6.0, sound_end_time=20.0,
         sound_radius=1000.0, sound_ambient_3d=True)
@@ -370,6 +405,9 @@ def main():
         if result != {'FINISHED'}:
             raise SystemExit(f"[feature_test_level] export did not finish: {result}")
         bpy.ops.wm.save_mainfile()      # keeps the level compo the export created
+        from zen_waypoint_tools.preferences import get_gothic_settings
+        text_path = write_sign_texts(get_gothic_settings()[0])
+        print(f"[feature_test_level] sign texts: {text_path or 'no game folder, not written'}")
         print(f"[feature_test_level] exported level package {mod_name}/{level_name}")
 
 

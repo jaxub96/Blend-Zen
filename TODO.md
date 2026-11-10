@@ -22,16 +22,16 @@ in Spacer or played yet.
 - [ ] Open a 3.0 export in Spacer: static lights now omit the dynamic
   fields (as vanilla does), freepoints write `zbias=1`, floats are written
   without a trailing `.0`.
-- [ ] Switch -> mover: `oCMobSwitch` (lever and touch plate presets) with a
+- [x] Switch -> mover: `oCMobSwitch` (lever and touch plate presets) with a
   `zCMover` target and two keyframes; check direction of travel, speed and
   the sounds.
 - [ ] `oCTriggerScript` fires its function when the player walks in;
   `oCTriggerChangeLevel` loads the other world.
-- [ ] Music zone + default music zone play the chosen theme; fog and
+- [x] Music zone + default music zone play the chosen theme; fog and
   view-distance zones take effect.
 - [ ] Particle-effect and decal vobs show (FIRE.PFX, ZFLARE6.TGA with Face
   Camera).
-- [ ] Dynamic light flicker (range/colour lists) and a light preset.
+- [x] Dynamic light flicker (range/colour lists) and a light preset.
 - [ ] `zCVobSoundDaytime` switches at the set hours; `zCVobSound` mode,
   radius, volume.
 - [ ] Fire mob presets light up with their fire tree; lever, winch,

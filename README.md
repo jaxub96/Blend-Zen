@@ -300,7 +300,8 @@ don't:**
    `POTIONALCHEMY`, a rune table `MAKERUNE`, a shrine `PrayShrine` (see
    `Story/Dialog_Mobsis/` in the scripts). **Needs Item** is the item
    the player must carry (e.g. `ITMI_FLASK` for alchemy). **Focus Name**
-   is a script text constant such as `MOBNAME_CHEST`.
+   must be a script text constant such as `MOBNAME_CHEST` (Text.d); plain
+   text shows nothing in-game.
 4. **Locked** chests and doors need a **Key** and/or a
    **Picklock** (e.g. `RLRRLL`); locked with neither shows "can't be
    opened" in-game.
@@ -345,7 +346,7 @@ works:
 | Visual | mobs, movers, props | Game model: `NAME` (default extension per type) or `NAME.ASC` / `.3DS` / `.MDS` / `.PFX` / `.TGA`. Must exist |
 | Collision / Collide With World | everything with a visual | `cdDyn` / `cdStatic`, per object. Props default to on; turn off for plants you can walk through |
 | Wind Sway (+ Strength) | props | `visualAniMode` for plants and trees |
-| Focus Name | mobs | Text shown when the player looks at it; usually a `MOBNAME_*` constant |
+| Focus Name | mobs | Text shown when the player looks at it: a `MOBNAME_*` constant from Text.d (plain text shows nothing) |
 | Trigger Target | mobs, triggers | Vob name that is triggered when used (switch -> mover) |
 | Needs Item / Script Function | mobs | Item the player must carry; function called as `<name>_S1` on use (bed: `SLEEPABIT`) |
 | Locked / Key / Picklock | chest, door | Locked needs a key and/or a combination (e.g. `LRRLR`), or it never opens |
@@ -442,7 +443,9 @@ transforms, bounding boxes or the archive format.
 builds a level with one station per item of `TODO.md` "Verify in Spacer /
 in-game" (switch -> mover, triggers, zones, lights, effects, sounds, mobs,
 props, items), each with a sign whose focus name says what to do, saves it
-as a `.blend` and can run Export Level Package in the same step:
+as a `.blend` and can run Export Level Package in the same step. With a
+level name it also writes the signs' `MOBNAME_FT_*` texts into the game's
+`Story/Text.d` (between marker comments; rebuild the scripts afterwards):
 
 ```bash
 blender --background --python tooling/pipeline/build_feature_test_level.py -- blender_work_dir/feature_test_level.blend FEATURE_TEST MOD
