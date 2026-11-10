@@ -29,7 +29,7 @@ def find_next_vob_name(vob_type_id):
     if vob_type == "zCVobStartpoint":
         return label
     if vob_type in ("oCZoneMusic", "oCZoneMusicDefault"):
-        return f"{label}_SYS"       # <PLACE>_<THEME>; SYS is the menu theme, always present
+        return f"{label}_DEF"       # <PLACE>_<THEME>; DEF is the vanilla default theme
 
     prefix = f"{vob_type}:{label}_"
     existing_numbers = set()

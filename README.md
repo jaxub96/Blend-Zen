@@ -438,6 +438,18 @@ transforms, bounding boxes or the archive format.
    prop collision; pull the switch and watch the mover; walk into the
    script trigger and the music/fog zones.
 
+**Feature test level.** `tooling/pipeline/build_feature_test_level.py`
+builds a level with one station per item of `TODO.md` "Verify in Spacer /
+in-game" (switch -> mover, triggers, zones, lights, effects, sounds, mobs,
+props, items), each with a sign whose focus name says what to do, saves it
+as a `.blend` and can run Export Level Package in the same step:
+
+```bash
+blender --background --python tooling/pipeline/build_feature_test_level.py -- blender_work_dir/feature_test_level.blend FEATURE_TEST MOD
+```
+
+The station list is in the script's docstring.
+
 **Round-trip check.** `tooling/pipeline/roundtrip_check.py` imports a
 ZEN, exports it again and compares every property of every vob and
 waypoint with the original:

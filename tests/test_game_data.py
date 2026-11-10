@@ -75,7 +75,7 @@ def test_index_reads_scripts_presets_and_asset_folders(tmp_path):
     assert index.light_presets == ["FIRESMALL"]
     assert index.light_preset_values["FIRESMALL"]["colorAniList"] == "(255 139 83) (255 104 53)"
     assert index.meshes == ["OC_LOB_GATE_BIG.3DS"]
-    assert index.mob_models == ["BED.ASC", "CHEST.MDS"] and index.morph_meshes == ["FLAG.MMS"]
+    assert index.mob_models == ["BED.ASC", "CHEST.ASC", "CHEST.MDS"] and index.morph_meshes == ["FLAG.MMS"]
     assert index.textures == ["ZFLARE6.TGA"]
     assert index.vob_trees == ["FIRETREE_LAMP.ZEN"] and index.worlds == ["MOD\\LEVEL_001.ZEN"]
 

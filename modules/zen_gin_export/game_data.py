@@ -250,9 +250,10 @@ class GameIndex:
         self.meshes = sorted(
             f"{stem}.3DS" for stem in _files_with_extension(_path(data, "Meshes", "_compiled"), {".MRM"}))
         anims = _path(data, "Anims", "_compiled")
-        scripted = _files_with_extension(anims, {".MSB"})          # animated: X.MDS
-        models = {f"{stem}.MDS" for stem in scripted}
-        models |= {f"{stem}.ASC" for stem in _files_with_extension(anims, {".MDL"}) - scripted}
+        # A model with a script (.MSB) is usable as X.MDS and, like any
+        # compiled model (.MDL), as X.ASC - vanilla worlds use both.
+        models = {f"{stem}.MDS" for stem in _files_with_extension(anims, {".MSB"})}
+        models |= {f"{stem}.ASC" for stem in _files_with_extension(anims, {".MDL"})}
         self.mob_models = sorted(models)
         self.morph_meshes = sorted(f"{stem}.MMS" for stem in _files_with_extension(anims, {".MMB"}))
         self.textures = sorted(
