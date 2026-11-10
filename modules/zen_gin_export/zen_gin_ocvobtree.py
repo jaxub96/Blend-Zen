@@ -1,65 +1,75 @@
-from .zen_gin_zcvob import ZCVob, OCItem, ZCVobSpot, ZCVobStartpoint, ZCVobLevelCompo
+from .vob_fields import VOB_SPECS
+from .zen_gin_zcvob import ZCVob, vob_type_of
 from .zen_gin_zcvob_light import ZCVobLight
-from .zen_gin_zcvob_sound import ZCVobSound
-from .zen_gin_zcvob_ocmob import (
-    OCMobInter, OCMobContainer, OCMobDoor, OCMobBed,
-    OCMobSwitch, OCMobLadder, OCMobWheel, OCMobFire,
-)
 
-# Blender name prefix (before the first ":") -> vob class.
+# Vob type (the Blender name prefix before the first ":") -> vob class.
 VOB_CLASSES = {
-    "zCVob": ZCVob,
-    "oCItem": OCItem,
-    "zCVobSpot": ZCVobSpot,
-    "zCVobStartpoint": ZCVobStartpoint,
-    "zCVobLevelCompo": ZCVobLevelCompo,
-    "zCVobLight": ZCVobLight,
-    "zCVobSound": ZCVobSound,
-    "oCMobContainer": OCMobContainer,
-    "oCMobDoor": OCMobDoor,
-    "oCMobBed": OCMobBed,
-    "oCMobSwitch": OCMobSwitch,
-    "oCMobLadder": OCMobLadder,
-    "oCMobWheel": OCMobWheel,
-    "oCMobFire": OCMobFire,
-    "oCMobInter": OCMobInter,
+    vob_type: type(f"Vob_{vob_type}", (ZCVob,), {"_vob_type": vob_type})
+    for vob_type in VOB_SPECS
 }
-
-# Output order: level compo first, then grouped by type; everything not
-# listed (props, lights, startpoints, mobs) shares the generic slot 1.
-_VOB_ORDER = {ZCVobLevelCompo: 0, OCItem: 2, ZCVobSpot: 3, ZCVobSound: 4}
+VOB_CLASSES["zCVob"] = ZCVob
+VOB_CLASSES["zCVobLight"] = ZCVobLight
 
 
 def vob_class_for(blender_object):
     """The vob class for an object's name prefix, or None (not exported)."""
-    prefix, sep, _ = blender_object.name.partition(":")
-    return VOB_CLASSES.get(prefix) if sep else None
+    vob_type = vob_type_of(blender_object)
+    return VOB_CLASSES[vob_type] if vob_type else None
+
+
+class _Node:
+    def __init__(self, vob):
+        self.vob = vob
+        self.children = []
 
 
 class OCVobTree:
-    """Flat list of vobs under one VobTree block (no nesting)."""
+    """The VobTree block. Blender parenting is the vob hierarchy: a vob
+    whose nearest exported vob ancestor is P is written as P's child (a
+    torch with its flame, light and sound). Siblings are grouped by type
+    (level compo first, then props/mobs/lights, items, freepoints, sounds).
+
+    Format: `childsN=int:count` after node N-1's block says how many of the
+    following vobs are its children; node 0 is the implicit root.
+    """
 
     def __init__(self, blender_objects, data_printer):
         self._data_printer = data_printer
-        vobs = []
+        nodes = {}
         for obj in blender_objects:
             vob_class = vob_class_for(obj)
             if vob_class is not None:
-                vobs.append(vob_class(obj, data_printer))
-        vobs.sort(key=lambda vob: _VOB_ORDER.get(type(vob), 1))
-        self._vobs = vobs
+                nodes[id(obj)] = _Node(vob_class(obj, data_printer))
+
+        self._roots = []
+        for obj in blender_objects:
+            node = nodes.get(id(obj))
+            if node is None:
+                continue
+            parent = getattr(obj, "parent", None)
+            while parent is not None and id(parent) not in nodes:
+                parent = getattr(parent, "parent", None)
+            (nodes[id(parent)].children if parent is not None else self._roots).append(node)
+
+        self._nodes = list(nodes.values())
+        for siblings in [self._roots] + [n.children for n in self._nodes]:
+            siblings.sort(key=lambda n: n.vob._spec.order)     # stable: keeps scene order
 
     def objects_count(self):
-        return sum(vob._objects_count for vob in self._vobs)
+        return sum(node.vob._objects_count for node in self._nodes)
 
     def print(self, object_index):
         p = self._data_printer
         p.start_object_block(type_1="VobTree")
-        for index, vob in enumerate(self._vobs):
-            # childs0 on the implicit root holds the vob count; every vob
-            # is a leaf (childsN=0).
-            p.print_int_property(f"childs{index}", len(self._vobs) if index == 0 else 0)
-            object_index = vob.print(object_index)
-        p.print_int_property(f"childs{len(self._vobs)}", 0)
+        p.print_int_property("childs0", len(self._roots))
+        counter = 1
+        # Depth-first, without recursion (deep parent chains are legal).
+        stack = list(reversed(self._roots))
+        while stack:
+            node = stack.pop()
+            object_index = node.vob.print(object_index)
+            p.print_int_property(f"childs{counter}", len(node.children))
+            counter += 1
+            stack.extend(reversed(node.children))
         p.end_object_block()
         return object_index

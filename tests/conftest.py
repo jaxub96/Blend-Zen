@@ -10,6 +10,9 @@ from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT))
+# The addon imports the library as `zen_gin_export` (Blender puts modules/
+# on sys.path); its bpy-free modules do the same here.
+sys.path.insert(0, str(_REPO_ROOT / "modules"))
 # mob_props.py has no bpy dependency, so tests import it directly.
 sys.path.insert(0, str(_REPO_ROOT / "addons" / "zen_waypoint_tools"))
 
@@ -42,11 +45,14 @@ class FakeObject:
     become custom (ID) properties."""
 
     def __init__(self, name, location=(0.0, 0.0, 0.0), matrix_world=None, type="EMPTY",
-                 children=(), bound_box=None, data=None, **custom):
+                 children=(), bound_box=None, data=None, parent=None, **custom):
         self.name = name
         self.type = type
         self.matrix_world = matrix_world or world_matrix(location)
-        self.children = children
+        self.children = list(children)
+        self.parent = parent
+        if parent is not None:
+            parent.children.append(self)
         self.bound_box = bound_box
         self.data = data
         self.zen_waypoint_links = None

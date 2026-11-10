@@ -1,100 +1,41 @@
 import bpy
 
+from .vob_ui_schema import VOB_TYPE_INFO, type_info, split_type_id
 
 # zCVob (mesh props) and oCItem (items) are deliberately absent from the Add
 # VOB dialog: they are placed by dragging real assets in from the Props.blend
-# / Items_*.blend asset libraries. VOB_DISPLAY still has entries for them for
-# the importer.
-VOB_TYPE_ITEMS = (
-    ('zCVobLevelCompo', "Level Compo (World Mesh Ref)",
-     "Reference to the compiled level mesh - name must match the .3ds filename, without extension"),
-    ('zCVobStartpoint', "Startpoint",
-     "Player/NPC start position"),
-    ('zCVobSpot', "Vob Spot (Freepoint)",
-     "Freepoint used by NPCs during TA_Stand_* routines"),
-    ('zCVobLight', "Light",
-     "Point or spot light source. Created as a real Blender Light - tune "
-     "range/color/type in Blender's own Light Properties tab"),
-    ('zCVobSound', "Sound",
-     "Sound source - name must match the sound's script instance name. "
-     "Volume/mode/radius are in the sidebar after adding"),
-    ('oCMobContainer', "Interactive: Container",
-     "Lootable chest/barrel/sack - name is this instance's unique vobName, "
-     "not its mesh. Configure in the sidebar after adding - see "
-     "README.md, Interactive objects"),
-    ('oCMobDoor', "Interactive: Door",
-     "A door - name is this instance's unique vobName, not its mesh. "
-     "Configure in the sidebar after adding"),
-    ('oCMobBed', "Interactive: Bed",
-     "A sleepable bed - name is this instance's unique vobName, not its "
-     "mesh. Configure in the sidebar after adding"),
-    ('oCMobSwitch', "Interactive: Switch",
-     "A two-state switch/lever - name is this instance's unique vobName, "
-     "not its mesh. Configure in the sidebar after adding"),
-    ('oCMobLadder', "Interactive: Ladder",
-     "A climbable ladder - name is this instance's unique vobName, not "
-     "its mesh. Configure in the sidebar after adding"),
-    ('oCMobWheel', "Interactive: Wheel",
-     "A four-state rotating wheel mechanism - name is this instance's "
-     "unique vobName, not its mesh. Configure in the sidebar after adding"),
-    ('oCMobFire', "Interactive: Fire",
-     "A usable fire source (campfire/forge) - name is this instance's "
-     "unique vobName, not its mesh. Configure in the sidebar after adding"),
-    ('oCMobInter', "Interactive: Generic",
-     "Generic interactive object for anything that doesn't fit the more "
-     "specific types above - name is this instance's unique vobName, not "
-     "its mesh. Configure in the sidebar after adding"),
+# / Items_*.blend asset libraries, which already carry the right name.
+VOB_TYPE_ITEMS = tuple(
+    (type_id, label, description) for type_id, (label, description, *_rest) in VOB_TYPE_INFO.items()
 )
 
-VOB_DISPLAY = {
-    'zCVobLevelCompo': ('PLAIN_AXES', 1.0),
-    'zCVobStartpoint': ('PLAIN_AXES', 2.0),
-    'zCVob': ('SPHERE', 0.5),
-    'zCVobSpot': ('ARROWS', 1.2),
-    'oCItem': ('CUBE', 0.3),
-    'zCVobLight': ('CONE', 0.3),
-    'zCVobSound': ('SPHERE', 1.0),
-    'oCMobContainer': ('CUBE', 0.5),
-    'oCMobDoor': ('CUBE', 0.4),
-    'oCMobBed': ('CUBE', 0.6),
-    'oCMobSwitch': ('CONE', 0.25),
-    'oCMobLadder': ('PLAIN_AXES', 1.5),
-    'oCMobWheel': ('CIRCLE', 0.5),
-    'oCMobFire': ('SPHERE', 0.3),
-    'oCMobInter': ('CUBE', 0.4),
-}
 
-VOB_DEFAULT_LABEL = {
-    'zCVobLevelCompo': "LEVEL",
-    'zCVobStartpoint': "PC_START",
-    'zCVob': "PROP",
-    'zCVobSpot': "FREEPOINT",
-    'oCItem': "ITEM",
-    'zCVobLight': "LIGHT",
-    'zCVobSound': "SOUND",
-    'oCMobContainer': "CHEST",
-    'oCMobDoor': "DOOR",
-    'oCMobBed': "BED",
-    'oCMobSwitch': "SWITCH",
-    'oCMobLadder': "LADDER",
-    'oCMobWheel': "WHEEL",
-    'oCMobFire': "FIRE",
-    'oCMobInter': "INTERACTIVE",
-}
+def vob_display(vob_type_id):
+    """(empty display type, display size) for a vob type or variant id."""
+    info = type_info(vob_type_id)
+    return (info[2], info[3]) if info else ('PLAIN_AXES', 0.3)
 
 
-def find_next_vob_name(vob_type):
-    """Generic name generator, mirrors find_next_waypoint_name() in waypoint_links.py."""
-    label = VOB_DEFAULT_LABEL.get(vob_type, "VOB")
-    prefix = f"{vob_type}:{label}_"
+def default_box_size(vob_type_id):
+    info = type_info(vob_type_id)
+    return info[5] if info else None
+
+
+def find_next_vob_name(vob_type_id):
+    """Suggested name for a new vob: the type's label, numbered."""
+    info = type_info(vob_type_id)
+    label = info[4] if info else "VOB"
+    vob_type, _ = split_type_id(vob_type_id)
     if vob_type == "zCVobStartpoint":
         return label
+    if vob_type in ("oCZoneMusic", "oCZoneMusicDefault"):
+        return f"{label}_SYS"       # <PLACE>_<THEME>; SYS is the menu theme, always present
 
+    prefix = f"{vob_type}:{label}_"
     existing_numbers = set()
     for obj in bpy.data.objects:
         if not obj.name.startswith(prefix):
             continue
-
         suffix = obj.name[len(prefix):].split(".")[0]
         if suffix.isdigit():
             existing_numbers.add(int(suffix))
@@ -102,5 +43,4 @@ def find_next_vob_name(vob_type):
     next_num = 1
     while next_num in existing_numbers:
         next_num += 1
-
-    return f"{label}_{next_num:03d}"
+    return f"{label}_{next_num:02d}" if label.startswith("FP_") else f"{label}_{next_num:03d}"

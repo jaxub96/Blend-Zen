@@ -239,3 +239,62 @@ def waypoint_yaw_towards(dx, dy):
     if dx * dx + dy * dy < 1e-12:
         return None
     return math.atan2(-dx, dy)
+
+
+# ---------------------------------------------------------------------------
+# Mover keyframes: `keyframes=raw:` is numKeyframes x (position vec3,
+# rotation quaternion x y z w) as 7 little-endian floats each. ZenGin's
+# quaternion is the conjugate of the textbook one for the trafoOSToWSRot
+# matrix (i.e. it is built from the transposed matrix) - checked against
+# the reference world, where keyframe 0 equals the mover's own transform.
+# ---------------------------------------------------------------------------
+
+def rotation_matrix_to_quaternion(matrix_3x3):
+    """3x3 rotation (row tuples) -> unit quaternion (x, y, z, w)."""
+    (m00, m01, m02), (m10, m11, m12), (m20, m21, m22) = matrix_3x3
+    trace = m00 + m11 + m22
+    if trace > 0.0:
+        s = math.sqrt(trace + 1.0) * 2.0
+        w, x, y, z = 0.25 * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s
+    elif m00 > m11 and m00 > m22:
+        s = math.sqrt(1.0 + m00 - m11 - m22) * 2.0
+        w, x, y, z = (m21 - m12) / s, 0.25 * s, (m01 + m10) / s, (m02 + m20) / s
+    elif m11 > m22:
+        s = math.sqrt(1.0 + m11 - m00 - m22) * 2.0
+        w, x, y, z = (m02 - m20) / s, (m01 + m10) / s, 0.25 * s, (m12 + m21) / s
+    else:
+        s = math.sqrt(1.0 + m22 - m00 - m11) * 2.0
+        w, x, y, z = (m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s
+    return (x, y, z, w)
+
+
+def quaternion_to_rotation_matrix(x, y, z, w):
+    """Inverse of rotation_matrix_to_quaternion()."""
+    n = math.sqrt(x * x + y * y + z * z + w * w) or 1.0
+    x, y, z, w = x / n, y / n, z / n, w / n
+    return (
+        (1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)),
+        (2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)),
+        (2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)),
+    )
+
+
+def encode_mover_keyframes(keyframes):
+    """[(gothic position, gothic 3x3 rotation)] -> raw hex string."""
+    parts = []
+    for position, rotation in keyframes:
+        transposed = tuple(zip(*rotation))
+        for value in tuple(position) + rotation_matrix_to_quaternion(transposed):
+            parts.append(float_to_hex(value))
+    return "".join(parts)
+
+
+def decode_mover_keyframes(hex_string):
+    """Inverse of encode_mover_keyframes()."""
+    hex_string = hex_string.strip()
+    keyframes = []
+    for start in range(0, len(hex_string) - 55, 56):
+        f = [hex_to_float(hex_string[start + i:start + i + 8]) for i in range(0, 56, 8)]
+        rotation = tuple(zip(*quaternion_to_rotation_matrix(*f[3:7])))
+        keyframes.append((tuple(f[0:3]), rotation))
+    return keyframes

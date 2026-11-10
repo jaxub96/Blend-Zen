@@ -2,7 +2,9 @@ import pytest
 
 from conftest import FakeObject, exported_properties, print_vob
 from modules.zen_gin_export.archive_parser import parse_archive
-from modules.zen_gin_export.vob_fields import FIELDS_BY_TYPE, custom_properties_from_block
+from modules.zen_gin_export.vob_fields import (
+    BASE_FIELDS, ENUMS, custom_properties_from_block, default_for, keyed_fields,
+)
 from modules.zen_gin_export.zen_gin_ocvobtree import VOB_CLASSES
 from modules.zen_gin_export.zen_gin_zcvob_ocmob import (
     OCMobInter, OCMobContainer, OCMobDoor, OCMobBed, OCMobLadder, OCMobFire,
@@ -98,26 +100,52 @@ def test_sound_writes_sound_fields_in_spacer_order():
         "sndAmbient3D", "sndObstruction", "sndConeAngle", "sndVolType", "sndRadius", "sndName",
     ]
     props = exported_properties(ZCVobSound, FakeObject("zCVobSound:OW_COASTLIGHT", sound_radius=2500))
-    assert props["sndRadius"] == "float:2500.0"
-    assert props["sndName"] == "string:OW_COASTLIGHT"
+    assert props["sndRadius"] == "float:2500"
+    assert props["sndName"] == "string:OW_COASTLIGHT"       # blank sound_name = the vob's name
+    named = exported_properties(ZCVobSound, FakeObject("zCVobSound:TORCH_A", sound_name="TORCH_BURN"))
+    assert (named["vobName"], named["sndName"]) == ("string:TORCH_A", "string:TORCH_BURN")
+    # The bbox is the audible sphere's box, as Spacer writes it.
+    assert props["bbox3DWS"] == "rawFloat:-2500.0 -2500.0 -2500.0 2500.0 2500.0 2500.0"
 
 
-@pytest.mark.parametrize("vob_type", sorted(FIELDS_BY_TYPE))
+_SAMPLE_VALUES = {"int": 7, "float": 12.5, "string": "VALUE", "color": [10, 20, 30, 255],
+                  "vec3": [1.0, 2.0, 3.0], "rawFloat": [4.0, 5.0]}
+
+
+@pytest.mark.parametrize("vob_type", sorted(VOB_CLASSES))
 def test_custom_properties_round_trip_through_export_and_parse(vob_type):
-    """What the importer restores is what was exported."""
+    """What the importer restores is what was exported, for every setting
+    of every vob type (base flags, type fields, trigger bits, list slots)."""
     custom = {}
-    for _, archive_type, key, default in FIELDS_BY_TYPE[vob_type]:
-        if key is None:
+    for archive_name, archive_type, key, default in BASE_FIELDS + keyed_fields(vob_type):
+        if key in ("visual_name", "light_static") or key.startswith("decal_"):
             continue
-        custom[key] = {
-            "int": 7, "float": 12.5, "bool": not default, "string": f"{key}_VALUE",
-        }.get(archive_type, default)
-    custom.update({k: v for k, v in (("sound_material", "STONE"), ("sound_mode", "RANDOM")) if k in custom})
+        if archive_type == "enum":
+            custom[key] = ENUMS[archive_name][-1]
+        elif archive_type == "bool":
+            custom[key] = not default_for(vob_type, key)
+        else:
+            custom[key] = _SAMPLE_VALUES[archive_type]
+    if vob_type == "zCVobLight":
+        custom["light_static"] = False          # dynamic: the flicker fields are written
+    if vob_type == "zCMover":
+        del custom["move_speed"], custom["pos_lerp_type"], custom["speed_type"]  # need keyframes
 
     lines = print_vob(VOB_CLASSES[vob_type], FakeObject(f"{vob_type}:X", **custom))
     block = parse_archive("END\nEND\n" + "\n".join(lines))[0]
 
     assert custom_properties_from_block(vob_type, block.properties) == custom
+
+
+def test_only_changed_base_flags_are_imported():
+    """A vanilla vob at its type's defaults comes in without flag clutter."""
+    lines = print_vob(VOB_CLASSES["zCVob"], FakeObject("zCVob:ROCK", cd_dyn=False))
+    block = parse_archive("END\nEND\n" + "\n".join(lines))[0]
+    assert custom_properties_from_block("zCVob", block.properties) == {"cd_dyn": False}
+
+
+def test_spacer_minus_one_is_a_true_bool():
+    assert custom_properties_from_block("oCMobContainer", {"locked": "-1"}) == {"locked": True}
 
 
 def test_mob_visual_keeps_an_explicit_extension():

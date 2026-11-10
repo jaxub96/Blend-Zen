@@ -25,6 +25,45 @@ def linked_waypoints(blender_object):
     return [t for t in targets if is_waypoint_object(t) and t is not blender_object]
 
 
+def orient_ways(ways, capacity=len(LINK_SLOT_NAMES)):
+    """Decide which end of each way stores the link, so that no waypoint
+    stores more than `capacity` (it has that many slots; a link is stored
+    on one end only). ways: [(a, b)] of hashable waypoints. Returns
+    ([(source, target)], [ways that fit nowhere]).
+
+    Each way goes to its less loaded end; when both are full, links
+    already stored are passed along to neighbours with a free slot
+    (an augmenting path), which succeeds whenever any assignment exists.
+    """
+    stored = {}                      # waypoint -> set of targets it stores
+
+    def free_slot(node, visiting):
+        """Make room on node by handing one of its links to that link's
+        other end. True if node now has a free slot."""
+        if len(stored.setdefault(node, set())) < capacity:
+            return True
+        visiting.add(node)
+        for target in list(stored[node]):
+            if target not in visiting and free_slot(target, visiting):
+                stored[node].discard(target)
+                stored[target].add(node)
+                return True
+        return False
+
+    dropped = []
+    for a, b in ways:
+        if a == b or b in stored.get(a, ()) or a in stored.get(b, ()):
+            continue
+        first, second = sorted((a, b), key=lambda n: len(stored.get(n, ())))
+        if free_slot(first, set()):
+            stored[first].add(second)
+        elif free_slot(second, set()):
+            stored[second].add(first)
+        else:
+            dropped.append((a, b))
+    return [(source, target) for source, targets in stored.items() for target in targets], dropped
+
+
 def _format_vec3(values):
     # Rounded so float noise (7.5e-08, 1100.0000000000002) doesn't reach
     # the file; "+ 0.0" turns -0.0 into 0.0.

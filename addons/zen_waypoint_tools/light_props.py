@@ -5,6 +5,8 @@ Creates a real Blender Light (not an Empty), so it actually illuminates
 the scene and can be tuned via Blender's own native Light Properties tab.
 The exporter (zen_gin_export's ZCVobLight) reads back from these same
 native properties, so what you see in the viewport is what gets exported.
+Preset, quality, static/dynamic and flicker have no Blender equivalent
+and are custom properties, edited in the sidebar's VOB Settings.
 
 Used by both ZEN_OT_add_vob (new light creation) and zen_import.py
 (reconstructing a light from a parsed ZEN) - one place for this so they
@@ -49,6 +51,9 @@ def create_light_object(name, light_type="POINT", range_cm=DEFAULT_RANGE_CM,
         light_data.spot_size = gothic_cone_angle_to_blender_spot_size(spot_cone_angle_deg)
 
     obj = bpy.data.objects.new(name, light_data)
-    obj["light_static"] = light_static
-    obj["color_a"] = color_a
+    # Only what differs from the defaults (static, opaque) is stored.
+    if not light_static:
+        obj["light_static"] = False
+    if color_a != 255:
+        obj["color_a"] = color_a
     return obj
