@@ -248,9 +248,11 @@ of their radius/range.
 
 ## Game files bridge
 
-With **Gothic Game Folder** set in the add-on preferences, the text fields
-in VOB Settings suggest what actually exists in your game as you type
-(free text still works, and everything works without a game folder):
+With **Gothic Game Folder** set in the add-on preferences, every field
+below has a dropdown button (the arrow next to it): a searchable list of
+what actually exists in your game. The field itself is a normal text
+field, so any name can still be typed by hand, and everything works
+without a game folder:
 
 | Field | Read from (`_work/Data/...`) |
 |---|---|

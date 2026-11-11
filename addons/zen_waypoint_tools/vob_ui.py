@@ -211,6 +211,65 @@ def _build_settings_class():
 
 # -- operators ------------------------------------------------------------------------
 
+# Settings that are not vob_fields keys but pick from the game files too.
+_VIRTUAL_SOURCES = {"music_theme": "music_themes", "item_instance": "items"}
+_NO_GAME_DATA = "(nothing found - set Gothic Game Folder in the add-on preferences)"
+# Blender needs the strings of dynamic enum items kept alive; also maps the
+# picked index back to its name.
+_pick_cache = {"key": None, "names": [], "items": []}
+
+
+def source_of(key):
+    """The game-file list a setting picks from, or None."""
+    if key in _VIRTUAL_SOURCES:
+        return _VIRTUAL_SOURCES[key]
+    return FIELD_UI[key][2].get("source") if key in FIELD_UI else None
+
+
+def _pick_items(self, context):
+    names = game_bridge.candidates(source_of(self.key), context, context.active_object)
+    if _pick_cache["key"] != self.key or _pick_cache["names"] != names:
+        _pick_cache.update(key=self.key, names=list(names), items=[
+            (str(index), name, "") for index, name in enumerate(names)
+        ] or [("-1", _NO_GAME_DATA, "")])
+    return _pick_cache["items"]
+
+
+class ZEN_OT_pick_game_value(bpy.types.Operator):
+    """The dropdown next to a text field: a searchable list of what exists
+    in the game files (or, for trigger targets, in the scene). The field
+    itself still takes any typed text."""
+    bl_idname = "zen.pick_game_value"
+    bl_label = "Pick From Game Files"
+    bl_description = (
+        "Choose from the names found in the Gothic game files (type to filter). "
+        "The field next to it also accepts any name typed by hand"
+    )
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+    bl_property = "value"
+
+    key: bpy.props.StringProperty(options={'HIDDEN'})
+    value: bpy.props.EnumProperty(name="Value", items=_pick_items)
+
+    @classmethod
+    def poll(cls, context):
+        return vob_type_of(context.active_object) is not None
+
+    def invoke(self, context, event):
+        context.window_manager.invoke_search_popup(self)
+        return {'FINISHED'}
+
+    def execute(self, context):
+        try:
+            name = _pick_cache["names"][int(self.value)]
+        except (ValueError, IndexError):
+            return {'CANCELLED'}
+        setattr(context.active_object.zen_vob, self.key, name)
+        for area in context.screen.areas:
+            area.tag_redraw()
+        return {'FINISHED'}
+
+
 class ZEN_OT_add_container_item(bpy.types.Operator):
     bl_idname = "zen.add_container_item"
     bl_label = "Add Item to Container"
@@ -302,7 +361,13 @@ def _visible(obj, vob_type, key):
 
 def _draw_field(layout, obj, key):
     settings = obj.zen_vob
-    if key == "contains":
+    if source_of(key):
+        # Text field (type anything, suggestions while typing) + a
+        # dropdown button listing what the game files have.
+        row = layout.row(align=True)
+        row.prop(settings, key)
+        row.operator("zen.pick_game_value", text="", icon='DOWNARROW_HLT').key = key
+    elif key == "contains":
         row = layout.row(align=True)
         row.prop(settings, key)
         row.operator("zen.add_container_item", text="", icon='ADD')
@@ -351,13 +416,13 @@ def draw_vob_settings(layout, context, obj):
     col.use_property_decorate = False
 
     if vob_type == "oCItem":
-        col.prop(settings, "item_instance")
+        _draw_field(col, obj, "item_instance")
     elif vob_type == "zCVobLevelCompo":
         col.prop(settings, "vob_name", text="Level Mesh")
     else:
         col.prop(settings, "vob_name")
     if vob_type in ("oCZoneMusic", "oCZoneMusicDefault"):
-        col.prop(settings, "music_theme")
+        _draw_field(col, obj, "music_theme")
         if "_" not in settings.vob_name:
             col.label(text="Name must be <PLACE>_<THEME>", icon='ERROR')
     if spec.volume == "box":
@@ -420,7 +485,8 @@ class ZEN_PT_vob_settings(bpy.types.Panel):
         draw_vob_settings(self.layout, context, context.active_object)
 
 
-classes = (ZEN_OT_add_container_item, ZEN_OT_add_mover_keyframe, ZEN_PT_vob_settings)
+classes = (ZEN_OT_pick_game_value, ZEN_OT_add_container_item, ZEN_OT_add_mover_keyframe,
+           ZEN_PT_vob_settings)
 
 
 def register():
