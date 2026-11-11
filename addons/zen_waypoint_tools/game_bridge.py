@@ -66,11 +66,11 @@ def candidates(source, context, obj=None):
             if current.endswith(".TGA"):
                 return index.textures
             return index.meshes + index.pfx
-        if vob_type in ("zCMover", "oCMOB"):
-            return index.meshes
         if vob_type == "zCVobAnimate":
             return index.morph_meshes
-        return index.mob_models + index.meshes
+        from zen_gin_export.visual_rules import visuals_for
+        fitting = visuals_for(vob_type, index.mob_models, index.meshes)
+        return fitting if fitting is not None else index.mob_models + index.meshes
     if source == "keys":
         return index.keys or index.items
     return getattr(index, source, [])

@@ -16,7 +16,7 @@ import bpy
 
 from . import game_bridge
 from .mob_props import vob_type_of, presets_for, VISUAL_DEFAULTS
-from .vob_ui_schema import FIELD_UI, MAIN_BASE_KEYS, enum_label, type_info
+from .vob_ui_schema import FIELD_UI, MAIN_BASE_KEYS, RARELY_USED, enum_label, type_info
 
 _settings_class = None
 _key_types = {}          # key -> (archive name, archive type)
@@ -27,13 +27,22 @@ def _vob_fields():
     return vob_fields
 
 
+def _prop_visual(obj, vob_type):
+    """A prop's visual, the way the exporter derives it: its Visual field,
+    else its name. Other types have no per-visual defaults."""
+    if vob_type != "zCVob":
+        return None
+    from zen_gin_export.zen_gin_zcvob import vob_name_from_object_name
+    return str(obj.get("visual_name", "") or "").strip() or vob_name_from_object_name(obj.name)
+
+
 def _default(obj, key):
     vob_type = vob_type_of(obj)
     vf = _vob_fields()
     if key == "visual_name":
         return ""
     try:
-        return vf.default_for(vob_type, key)
+        return vf.default_for(vob_type, key, _prop_visual(obj, vob_type))
     except KeyError:
         # A key this type doesn't have (never drawn): any default of that key.
         for other in vf.VOB_SPECS:
@@ -440,8 +449,13 @@ def draw_vob_settings(layout, context, obj):
 
     type_keys = [key for _, _, key, _ in vf.keyed_fields(vob_type)]
     main_base = MAIN_BASE_KEYS.get(vob_type, ())
-    main = [k for k in type_keys if not FIELD_UI[k][2].get("adv")] + list(main_base)
-    advanced = [k for k in type_keys if FIELD_UI[k][2].get("adv")]
+    from zen_gin_export.vanilla_survey import unused_fields
+    # Advanced: marked so in the schema, or never changed in any vanilla
+    # world for this class (a chest's hitpoints) - unless it is set here.
+    rarely = (unused_fields(vob_type) | RARELY_USED.get(vob_type, frozenset())) - set(obj.keys())
+    is_advanced = lambda k: bool(FIELD_UI[k][2].get("adv")) or k in rarely
+    main = [k for k in type_keys if not is_advanced(k)] + list(main_base)
+    advanced = [k for k in type_keys if is_advanced(k)]
     advanced += [k for k in vf.BASE_KEYS if k not in main_base]
 
     for key in main:

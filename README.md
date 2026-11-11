@@ -116,8 +116,20 @@ The "ZenGin" sidebar tab has:
   settings only for a `.TGA` visual). Values that are the same on
   practically every vanilla vob (hitpoints, z-bias, far-clip scale, ...)
   sit in a collapsed **Advanced** section, which says how many of them you
-  changed. A setting left at its type's default is not stored on the
-  object at all.
+  changed. So do the fields no vanilla world ever changes for that class
+  (a chest's hitpoints, a mover's lock sounds) and a mover's own Target;
+  a field you did set moves back up. A setting left at its default is not
+  stored on the object at all.
+  **Defaults by visual.** A prop's collision and wind defaults come from
+  what vanilla does with that mesh: `NW_NATURE_GRASSGROUP_01` dropped into
+  a scene sways (Wind 2) and does not block the player, a barrel collides.
+  A mesh vanilla never uses gets the plain prop defaults (collides, no
+  wind). Set a value on the object to override it.
+  **Visual dropdown by class.** Chests, doors, switches and wheels list
+  only their model scripts (`.MDS`, which carry the open/close
+  animations), beds, ladders and fireplaces their models, generic
+  interactives (chair, bench, anvil, ...) what is left, with the visuals
+  vanilla uses for the class first. Any name can still be typed.
 - **Add Other VOBs** - **Add ZenGin VOB** creates any of the types in
   [VOB types](#vob-types) at the 3D cursor, set up to work as it is:
   interactive objects start from a vanilla preset, zones and triggers are
@@ -469,6 +481,13 @@ blender --background --python tooling/pipeline/build_feature_test_level.py -- bl
 ```
 
 The station list is in the script's docstring.
+
+**Vanilla survey.** `tooling/pipeline/survey_vanilla_worlds.py "<game
+folder>"` (plain Python) reads every ASCII world under `_work/Data/Worlds`
+except `MOD` and writes `modules/zen_gin_export/vanilla_survey.json`: the
+per-visual prop defaults, the visuals used per class and the fields never
+changed per class. Re-run it to include more worlds. A visual sways by
+default when at least 30% of its vanilla instances do (`WIND_SHARE`).
 
 **Round-trip check.** `tooling/pipeline/roundtrip_check.py` imports a
 ZEN, exports it again and compares every property of every vob and

@@ -279,6 +279,14 @@ for _mob in ("oCMobInter", "oCMobContainer", "oCMobDoor", "oCMobBed", "oCMobSwit
              "oCMobLadder", "oCMobWheel", "oCMobFire"):
     MAIN_BASE_KEYS[_mob] = ("cd_dyn", "cd_static")
 
+# Fields vanilla does use now and then, but that a typical vob of the class
+# leaves alone; shown under Advanced like the never-used ones.
+RARELY_USED = {
+    # A mover is the end of a chain (lever -> gate); its own target is only
+    # for chaining a further vob off it (6% of vanilla movers).
+    "zCMover": frozenset({"trigger_target"}),
+}
+
 ENUM_LABELS = {
     "GLAS": "Glass", "MAT_DEFAULT": "Material Default", "MUL2": "Multiply x2", "MUL": "Multiply",
     "SUB": "Subtract", "YAW": "Yaw Only", "FULL": "Fully", "WIND2": "Wind (strong)",

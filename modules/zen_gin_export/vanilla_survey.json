@@ -1,0 +1,1885 @@
+{
+ "worlds": [
+  "Addon_Part_AdanosTemple_01.zen",
+  "Addon_Part_BanditsCamp_01.zen",
+  "Addon_Part_Canyon_01.zen",
+  "Addon_Part_Entrance_01.zen",
+  "Addon_Part_GoldMine_01.zen",
+  "Addon_Part_PiratesCamp_01.zen",
+  "Addon_Part_Valley_01.zen",
+  "NewWorld_Part_City_01.zen",
+  "NewWorld_Part_Dragon_Final_01.zen",
+  "NewWorld_Part_Dragon_Island_01.zen",
+  "NewWorld_Part_Farm_01.zen",
+  "NewWorld_Part_Forest_01.zen",
+  "NewWorld_Part_GreatPeasant_01.zen",
+  "NewWorld_Part_Monastery_01.zen",
+  "NewWorld_Part_Pass_To_OW_01.zen",
+  "NewWorld_Part_Ship_01.zen",
+  "NewWorld_Part_TrollArea_01.zen",
+  "NewWorld_Part_Xardas_01.zen",
+  "OldCamp.zen",
+  "Surface.zen"
+ ],
+ "instances": {
+  "oCItem": 5130,
+  "oCMOB": 126,
+  "oCMobBed": 17,
+  "oCMobContainer": 310,
+  "oCMobDoor": 256,
+  "oCMobFire": 134,
+  "oCMobInter": 725,
+  "oCMobLadder": 2,
+  "oCMobSwitch": 49,
+  "oCMobWheel": 1,
+  "oCTouchDamage": 52,
+  "oCTriggerChangeLevel": 7,
+  "oCTriggerScript": 84,
+  "oCZoneMusic": 62,
+  "oCZoneMusicDefault": 4,
+  "zCCodeMaster": 16,
+  "zCEarthquake": 2,
+  "zCMessageFilter": 150,
+  "zCMover": 268,
+  "zCPFXControler": 161,
+  "zCTrigger": 66,
+  "zCTriggerList": 131,
+  "zCTriggerUntouch": 1,
+  "zCTriggerWorldStart": 7,
+  "zCVob": 24218,
+  "zCVobAnimate": 158,
+  "zCVobLensFlare": 9,
+  "zCVobLevelCompo": 34,
+  "zCVobLight": 5173,
+  "zCVobSound": 1216,
+  "zCVobSoundDaytime": 84,
+  "zCVobSpot": 4585,
+  "zCVobStartpoint": 2,
+  "zCZoneVobFarPlane": 2,
+  "zCZoneVobFarPlaneDefault": 6,
+  "zCZoneZFog": 9,
+  "zCZoneZFogDefault": 5
+ },
+ "visual_defaults": {
+  "ADDON_CANYONOBJECT_CAR_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_CANYONOBJECT_SIGN_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_CANYONPLANT_BUSHES_01_120P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_BUSHES_02_240P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_BUSHES_04_240P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_BUSHES_05_168P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_CACTUSBIG_01_165P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_CANYONPLANT_CACTUSBIG_02_165P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_CACTUSLONG_01_58P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_CACTUSLONG_02_97P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_CANYONPLANT_TREE_01_1010P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_BROKENSTONE_03.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_PILLAR_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_PILLAR_02.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_SCHUTT_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_SCROLLS_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_DUNGEON_SCROLLS_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_DUNGEON_SCROLLS_03.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_DUNGEON_SHELF_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_SHELF_02.3DS": {
+   "cd_static": false
+  },
+  "ADDON_DUNGEON_SHELF_03.3DS": {
+   "cd_static": false
+  },
+  "ADDON_GOLDMINE_BRIDGE.3DS": {
+   "cd_static": false
+  },
+  "ADDON_LSTTEMP_STONEGUARDIAN_MEDIUM_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MAYA_PILLAR_02.3DS": {
+   "static_vob": false
+  },
+  "ADDON_MAYA_PILLAR_04.3DS": {
+   "static_vob": false
+  },
+  "ADDON_MAYA_SNAKE_01.3DS": {
+   "static_vob": false
+  },
+  "ADDON_MISC_BOHLEN_01.3DS": {
+   "static_vob": false
+  },
+  "ADDON_MISC_FLAGMAST_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_HOLZBOCK.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_HOLZWAND_01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_HOLZWAND_02.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_L01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_L02.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_L04.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_M01.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_M02.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_M03.3DS": {
+   "cd_static": false
+  },
+  "ADDON_MISC_WOODPILLAR_M04.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_BLAETTERDACH_02_6P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_BUSH_01_36P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_HANGPLANTS_01_374P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_PLANTS_HANGPLANTS_02_494P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_JUNGLETREE_02_163P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_JUNGLETREE_03_163P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_JUNGLETREE_04_163P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_LIANA_BEND_01_120P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_LIANA_LONG_01_27P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_PLANTS_PALM_BEND_01_199P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_PALM_LONG_BENT_01_200P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_PALM_LONG_BENT_02_200P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.01
+  },
+  "ADDON_PLANTS_PALM_LONG_STRAIGHT_01_200P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_PALM_SHORT_BENT_01_170P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.01
+  },
+  "ADDON_PLANTS_PALM_SHORT_BENT_02_170P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_PLANTS_PALM_SHORT_STRAIGHT_01_170P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_PALM_STRAIGHT_01_151P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_SMALLPALM_01_73P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_SMALLPALM_02_73P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_THINTREE_01_200P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_TREE_01_353P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_TREE_03_279P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_TREE_04_275P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_PLANTS_TREE_05_239P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_PLANTS_WALLFERN_01_117P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_PLANTS_WALLFERN_02_234PP.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_PLANTS_WALLFERN_03_468P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "ADDON_STONES_COUPLESTONES_01_230P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_CRYSTAL_01_228P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_CRYSTAL_02_228P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_CRYSTAL_ROSE_01_228P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_STONE_01_84P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_STONE_02_BIG_124P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_STONE_02_MED_124P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_STONES_STONE_03_SMALL_92P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ADDON_STONES_STONE_04_MED_114P.3DS": {
+   "cd_static": false
+  },
+  "ADDON_VALLEYPLANT_TREE_01_L_357P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "ADDON_VALLEYPLANT_TREE_01_XL_357P.3DS": {
+   "cd_static": false,
+   "static_vob": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.01
+  },
+  "ADDON_VALLEYPLANT_TREE_02_L_191P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "ADDON_VALLEYPLANT_TREE_02_XL_191P.3DS": {
+   "cd_static": false,
+   "static_vob": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "ADDON_VALLEYPLANT_TREE_03_L_344P.3DS": {
+   "cd_static": false,
+   "static_vob": false
+  },
+  "ADDON_VALLEYPLANT_TREE_03_XL_344P.3DS": {
+   "cd_static": false,
+   "static_vob": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "ADDON_VALLEYPLANT_TREE_04_XL_304P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "AW_CRATEPILE_01.3DS": {
+   "cd_static": false
+  },
+  "AW_CRATE_01.3DS": {
+   "cd_static": false
+  },
+  "BEAM_G.3DS": {
+   "cd_static": false
+  },
+  "BEAM_ML.3DS": {
+   "cd_static": false
+  },
+  "BEAM_MS.3DS": {
+   "cd_static": false
+  },
+  "BEDHIGH_1_OC.ASC": {
+   "cd_static": false
+  },
+  "CR_DI_OPENEGG.3DS": {
+   "cd_static": false
+  },
+  "CR_DI_SLIME.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "DT_2ND_FLOOR_BANNKREIS_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "DT_2ND_FLOOR_GEWOELBE.3DS": {
+   "cd_static": false
+  },
+  "DT_3RD_FLOOR_GEWOELBE.3DS": {
+   "cd_static": false
+  },
+  "DT_BOOKSHELF_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "DT_BOOKSHELF_V2.3DS": {
+   "cd_static": false
+  },
+  "DT_BOOKS_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "DT_CHAINBOX.3DS": {
+   "cd_static": false
+  },
+  "DT_FIREPLACE_V2.3DS": {
+   "cd_static": false
+  },
+  "DT_LIGHTER_PENTAGRAMM.3DS": {
+   "cd_static": false
+  },
+  "DT_SHELF_V1.3DS": {
+   "cd_static": false
+  },
+  "DT_SKELETON_V01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "DT_SKELETON_V01_HEAD.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "DT_SKELETON_V02.3DS": {
+   "cd_static": false
+  },
+  "DT_TABLE_01.3DS": {
+   "cd_static": false
+  },
+  "DT_TABLE_V2.3DS": {
+   "cd_static": false
+  },
+  "DT_TABLE_V3.3DS": {
+   "cd_static": false
+  },
+  "DT_TORCH_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "EVT_ADDON_LSTTEMP_PLATESSAVE_01.3DS": {
+   "cd_static": false
+  },
+  "EVT_ADDON_LSTTEMP_SPIKEROOM_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "EVT_ADDON_LSTTEMP_SPIKEROOM_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "EVT_ADDON_LSTTEMP_SPIKEROOM_03.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "EVT_ADDON_LSTTEMP_SPIKEROOM_04.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "EVT_CORNERROOMS_LIFT_01.3DS": {
+   "cd_static": false
+  },
+  "EVT_GATEROOM_WHEEL_02.3DS": {
+   "cd_static": false
+  },
+  "EVT_GATE_SMALL_01.3DS": {
+   "cd_static": false
+  },
+  "EVT_NC_MAINGATE01.3DS": {
+   "cd_static": false
+  },
+  "EVT_TPL_GITTERKAEFIG_4X4M.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "EVT_TPL_METALTHORNS_2X2X05M.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "EVT_TPL_METALTHORNS_4X4X4M.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "FIREPLACE_GROUND.ASC": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "FIREPLACE_GROUND2.ASC": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "FIREPLACE_MIDDLE.ASC": {
+   "cd_static": false
+  },
+  "GIANT_RAT_BODY.ASC": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "HAMMEL_BODY.ASC": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITAT_SHADOWFUR.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITAT_WOLFFUR.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITMI_FOCUS.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITMI_STONEOFKNOWLEGDE_MIS.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITWR_BOOK_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ITWR_BOOK_02_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "MIN_COB_STONE_V1_10.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "MIN_COB_STONE_V2_10.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "MIN_COB_STONE_V3_10.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_BRIDGERAMP.3DS": {
+   "static_vob": false
+  },
+  "MIN_LOB_BRIDGESTAND.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_BRIDGESTAND_02.3DS": {
+   "static_vob": false
+  },
+  "MIN_LOB_COUPLESTONES.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_COVER_4X7M.3DS": {
+   "static_vob": false
+  },
+  "MIN_LOB_HANDRAIL_3.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_PLANKS_2X3M.3DS": {
+   "static_vob": false
+  },
+  "MIN_LOB_SOLDIERSHUT.3DS": {
+   "static_vob": false
+  },
+  "MIN_LOB_STONE_V1_30.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_STONE_V2_30.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_STONE_V3_30.3DS": {
+   "cd_static": false
+  },
+  "MIN_LOB_STONE_V3_40.3DS": {
+   "cd_static": false
+  },
+  "MIN_MOB_STONE_V1_20.3DS": {
+   "cd_static": false
+  },
+  "MIN_MOB_STONE_V2_20.3DS": {
+   "cd_static": false
+  },
+  "MIN_MOB_STONE_V3_20.3DS": {
+   "cd_static": false
+  },
+  "NC_LOB_NICE.3DS": {
+   "cd_static": false
+  },
+  "NC_LOB_NICE2.3DS": {
+   "cd_static": false,
+   "static_vob": false
+  },
+  "NC_LOB_TABLE1.3DS": {
+   "cd_static": false
+  },
+  "NC_LOB_TABLE2.3DS": {
+   "static_vob": false
+  },
+  "NW_CAVEWEBS_V201.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_CITY_BEAMS_MIXSHOP_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_BEAM_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_CANDLE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_CARPET_02.3DS": {
+   "cd_dyn": false
+  },
+  "NW_CITY_CART_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_CUPBOARD_POOR_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_DECO_SHADOWHEAD_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_CITY_DECO_SHIELD_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_CITY_DECO_SWORDFISH_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_DECO_TROLLHEAD_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_CITY_DECO_WHEEL_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_DECO_WOLFHEAD_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_FIREPLACE_LARGE_011.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_KNIGHT_ARMOR_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_KNIGHT_STATUE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_MAP_WAR_CLOSED_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_CITY_MAP_WAR_OPEN_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_CITY_MARKETSTALL_ROOF_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_CITY_SHIP_01.3DS": {
+   "static_vob": false
+  },
+  "NW_CITY_TABLE_PEASANT_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_TABLE_WAR_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_WEAPON_BARREL_01.3DS": {
+   "cd_static": false
+  },
+  "NW_CITY_WINDOW_STONE_OUT_01.3DS": {
+   "cd_static": false
+  },
+  "NW_DRAGONISLE_TORTURE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_DRAGONISLE_TORTURE_02.3DS": {
+   "cd_static": false
+  },
+  "NW_DRAGONISLE_TORTURE_03.3DS": {
+   "cd_static": false
+  },
+  "NW_DRAGONISLE_TORTURE_04.3DS": {
+   "cd_static": false
+  },
+  "NW_DRAGONISLE_TORTURE_05.3DS": {
+   "cd_static": false
+  },
+  "NW_EVT_CEMENTARYCOFFIN_01.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_BARRELGROUP_02.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_CANON_01.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_CRATEBROKEN_01.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_CRATE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_FISHINGNETBIG.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_SMALL_BOAT_01.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_SMALL_BOAT_02.3DS": {
+   "cd_static": false
+  },
+  "NW_HARBOUR_SMALL_BOAT_03.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BIG_TENT_430P.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_01A.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_01B.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_01C.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_02A.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_02B.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_BOARDS_02C.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_CAVE_BOARDING_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_CHAIN_01.3DS": {
+   "cd_dyn": false
+  },
+  "NW_MISC_DECO_INNOS_LARGE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_DUMPTRUCK_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_FIELDGRAVE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_FIREPLACE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_GRAVESTONE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_HANGROPE.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_INNOS_GROUND_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_POOR_HUT_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_SKELETON_02.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_SKELETON_03.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_SPIDERWEBS_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_MISC_STRAW_02.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_STRAW_GROUP_01.3DS": {
+   "cd_static": false
+  },
+  "NW_MISC_TREASURE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTAMM_01_30P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTAMM_166P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTUMPF_02_115P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTUMPF_02_154P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTUMPF_03_174P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTUMPF_115P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BAUMSTUMPF_154P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BIGTREE_356P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_BUSH_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_BUSH_120P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_BUSH_25P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_BUSH_300P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_BUSH_56P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_BUSH_60P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_DUCKWEED_144P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_DUCKWEED_72P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_FARNTEPPICH_306P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_FARNTEPPICH_612P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_FARN_102P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_FARN_BIG_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_FARN_SMALL_102P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_FENCE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_GRASSGROUP_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_GREAT_WEED_XGROUP.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_HANGPLANTS_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_HANGPLANTS_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_HOHETANNEN_01_531P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_HOHETANNEN_02_531P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_HOHETANNE_59P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_HOHETANNE_91P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_HOHETANNE_MIDDLE_59P.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_HOHETANNE_VERYHIGH_59P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_LIANA_01_400P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_LIANA_01_87P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_LONG_BUSH_360P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_PLANT_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_PLANT_03.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_SIDEPLANT_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_SIDEPLANT_BIG_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_SIDEPLANT_CORNER_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_SMALLTREE_103P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_SMALLTREE_79P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_SMALLWEED_24P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_SMALL_ROOTS_30P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_STONE_CULT_ALTAR_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_PART_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_PART_02.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_PART_03.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_SCENE_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_STAND_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_TOP_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_CULT_TOP_02.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_STONE_MANYSTONES_01.3DS": {
+   "cd_static": false
+  },
+  "NW_NATURE_TANNE_100P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_TANNE_75P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "NW_NATURE_WATERGRASS_02_100P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_WATERGRASS_56P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "NW_NATURE_WATERLILI_RED_32P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_WATERLILI_WHITE_32P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_NATURE_WATERLILI_WHITE_64P.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "NW_SHIP_STAIRS_NAVROOM_01.3DS": {
+   "cd_static": false
+  },
+  "OC_BARRELHOLDER_V01.3DS": {
+   "cd_static": false
+  },
+  "OC_BARRELS_REIHE.3DS": {
+   "static_vob": false
+  },
+  "OC_BARRELS_STRUBBELIG.3DS": {
+   "cd_static": false
+  },
+  "OC_BARREL_V1.3DS": {
+   "cd_static": false
+  },
+  "OC_BARREL_V1_DESTROYED.3DS": {
+   "cd_static": false
+  },
+  "OC_BARREL_V2.3DS": {
+   "cd_static": false
+  },
+  "OC_BIGLIGHTER_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_CHICKENSTICK_CHICKEN_V01.3DS": {
+   "cd_static": false
+  },
+  "OC_CHICKENSTICK_V01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_CHICKENSTICK_V02.3DS": {
+   "cd_static": false
+  },
+  "OC_DECORATE_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_DECORATE_V2.3DS": {
+   "cd_static": false
+  },
+  "OC_DECORATE_V4.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_DECORATE_V5.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_DECOROOF_V2.3DS": {
+   "cd_static": false
+  },
+  "OC_DECOWALL_01.3DS": {
+   "cd_static": false
+  },
+  "OC_FIREPLACEBIG_V01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_FIREPLACE_V2.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_FIREPLACE_V5.3DS": {
+   "cd_static": false
+  },
+  "OC_FIREWOOD_V2.3DS": {
+   "cd_static": false
+  },
+  "OC_GARBAGE_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_KITCHENSTUFF_V01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_LEATHERSTAND_V01.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_CAGE.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_LOB_CHAIN.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_LOB_CHAIN_ALONE.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_LOB_FIREPLACE_HUGE.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_FLAG_SMALL.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_LOB_GATE_SMALL.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_LIGHTER_HUGE3.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_PLANKBROKEN_SMALL.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_PLANKBROKEN_SMALL2.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_PLANK_INDOOR.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_PLANK_INDOOR_BIG.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_SHELF_1.3DS": {
+   "static_vob": false
+  },
+  "OC_LOB_STAIRS_02.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_TABLE_HEAVY.3DS": {
+   "cd_static": false
+  },
+  "OC_LOB_TORCHHOLDER_FILLED.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_MOB_SHELVES_SMALL.3DS": {
+   "static_vob": false
+  },
+  "OC_MOB_TABLE_NORMAL_DEFECT.3DS": {
+   "static_vob": false
+  },
+  "OC_PICTURE_V1.3DS": {
+   "cd_static": false
+  },
+  "OC_PICTURE_V2.3DS": {
+   "cd_static": false
+  },
+  "OC_SACK_V02.3DS": {
+   "cd_static": false
+  },
+  "OC_SACK_V03.3DS": {
+   "cd_static": false
+  },
+  "OC_SAECKE_02.3DS": {
+   "cd_static": false
+  },
+  "OC_SHELF_V3.3DS": {
+   "cd_static": false
+  },
+  "OC_SHELF_V4.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_STABLE_PLANKS.3DS": {
+   "cd_static": false
+  },
+  "OC_TABLE_V1.3DS": {
+   "cd_static": false
+  },
+  "OC_TABLE_V2.3DS": {
+   "cd_static": false,
+   "static_vob": false
+  },
+  "OC_TABLE_V2_DESTROYED.3DS": {
+   "cd_static": false
+  },
+  "OC_TABLE_V3.3DS": {
+   "cd_static": false
+  },
+  "OC_THRONE_GROUND.3DS": {
+   "cd_static": false
+  },
+  "OC_WEAPON_ARMORSHOES.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OC_WEAPON_SHELF_EMPTY_V1.3DS": {
+   "cd_static": false
+  },
+  "OC_WEAPON_WALLARMOR.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OM_OREBOX_01.3DS": {
+   "cd_static": false
+  },
+  "OM_ORETABLE.3DS": {
+   "static_vob": false
+  },
+  "ORC_BED_01.3DS": {
+   "cd_static": false
+  },
+  "ORC_BODY.ASC": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "ORC_BROKENCART.3DS": {
+   "cd_static": false
+  },
+  "ORC_E_COLUMN.3DS": {
+   "cd_static": false
+  },
+  "ORC_E_DEKO_02.3DS": {
+   "static_vob": false
+  },
+  "ORC_FIREPLACE_V3.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKELETON_V1.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKELETON_V2.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKELETON_V3.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKELETON_V4.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKULLSONFLOOR.3DS": {
+   "cd_static": false
+  },
+  "ORC_SKULLSONSTAFF.3DS": {
+   "cd_static": false
+  },
+  "ORC_STANDING_LAMP_LARGE.3DS": {
+   "cd_static": false
+  },
+  "ORE_GROUND.ASC": {
+   "cd_static": false
+  },
+  "ORE_GROUND_GOLD.ASC": {
+   "static_vob": false
+  },
+  "OSTA_AXE2.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_CAVEWEBS_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "OW_CAVEWEBS_V2.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "OW_FOCUSPLATTFORM.3DS": {
+   "cd_static": false
+  },
+  "OW_FOCUS_V02.3DS": {
+   "cd_static": false,
+   "static_vob": false
+  },
+  "OW_FOREST_HANGHIM_TREE_V3.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_BUSH_REED_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V2.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V4.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V5.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V7.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_V8.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_BUSH_WATER_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_LOB_DEADTREE_04.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_DEADTREE_07.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_FENCE_V1.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_FENCE_V2.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_FENCE_V3.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREEGROUP_V3.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_DESTROYED_V2.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_ROOT_V1.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_ROOT_V2.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_V10.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_V11.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "OW_LOB_TREE_V5.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_V6.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_V8.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_TREE_V9.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_WOODPLANKS_V1.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_WOODPLANKS_V2.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_WOODPLANKS_V4.3DS": {
+   "cd_static": false
+  },
+  "OW_LOB_WOODPLANKS_V5.3DS": {
+   "cd_static": false
+  },
+  "OW_LOOKOUT.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  },
+  "OW_MISC_BURNEDHUT_01.3DS": {
+   "cd_static": false
+  },
+  "OW_MISC_BURNED_POLE_01.3DS": {
+   "cd_static": false
+  },
+  "OW_MISC_BURNED_WALL_02.3DS": {
+   "cd_static": false
+  },
+  "OW_MISC_BURNED_WALL_03.3DS": {
+   "static_vob": false
+  },
+  "OW_MISC_TENT_01.3DS": {
+   "cd_static": false
+  },
+  "OW_MISC_WALL_TORCH_01.3DS": {
+   "cd_static": false
+  },
+  "OW_MUSHROOM_V1.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_MUSHROOM_V2.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "OW_NATURE_BIG_TREE_02_380P.3DS": {
+   "cd_static": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.001
+  },
+  "OW_NATURE_BUSH_01.3DS": {
+   "cd_dyn": false
+  },
+  "OW_NATURE_BUSH_02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND2",
+   "ani_strength": 0.001
+  },
+  "OW_NATURE_OLDTREE_02.3DS": {
+   "cd_static": false
+  },
+  "OW_NATURE_SMALLTREE_01.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "ani_mode": "WIND",
+   "ani_strength": 0.0
+  },
+  "OW_ORCS_TOTEM_01_200P.3DS": {
+   "cd_static": false
+  },
+  "OW_ORCTENT_SMALL_01.3DS": {
+   "cd_static": false
+  },
+  "OW_ORETRAIL_PLANK_V01.3DS": {
+   "cd_static": false
+  },
+  "OW_O_BIGBRIDGE.3DS": {
+   "cd_static": false
+  },
+  "OW_O_BIGBRIDGEMIDDLE.3DS": {
+   "cd_static": false
+  },
+  "OW_O_LAKEHUT.3DS": {
+   "cd_static": false
+  },
+  "OW_PALISSADE.3DS": {
+   "cd_static": false
+  },
+  "OW_PLANKHUTII.3DS": {
+   "cd_static": false
+  },
+  "OW_SHIPWRECK_BUG.3DS": {
+   "cd_static": false
+  },
+  "OW_SHIPWRECK_TAIL.3DS": {
+   "cd_static": false
+  },
+  "PC_CRYSTALLIGHT_02.3DS": {
+   "cd_static": false
+  },
+  "PC_LOB_BRIDGE_PLANK_BIG.3DS": {
+   "cd_static": false
+  },
+  "PC_LOB_TABLE1.3DS": {
+   "static_vob": false
+  },
+  "PC_SHOP_V01.3DS": {
+   "static_vob": false
+  },
+  "SHEEP_BODY.ASC": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "SMOKE_WATERPIPE.MDS": {
+   "cd_static": false
+  },
+  "STALAG_V02.3DS": {
+   "cd_static": false,
+   "cd_dyn": false
+  },
+  "STALAG_V03.3DS": {
+   "cd_static": false,
+   "cd_dyn": false,
+   "static_vob": false
+  }
+ },
+ "class_visuals": {
+  "oCMOB": [
+   "NW_MISC_SIGN_01.3DS",
+   "NW_MISC_GRAVESTONE_02.3DS",
+   "NW_MISC_FIELDGRAVE_01.3DS",
+   "NW_MISC_GRAVESTONE_01.3DS",
+   "OW_FOCUSPLATTFORM.3DS",
+   "NW_CITY_SIGN_MIXSHOP_01.3DS",
+   "NW_CITY_SIGN_PUB_01.3DS",
+   "NW_CITY_SIGN_HOTEL_01.3DS",
+   "ITMI_NUGGET.3DS",
+   "NW_CITY_SIGN_SMITH_01.3DS",
+   "NW_CITY_SIGN_BOWS_01.3DS"
+  ],
+  "oCMobBed": [
+   "BEDHIGH_PSI.ASC"
+  ],
+  "oCMobContainer": [
+   "CHESTBIG_OCCHESTLARGELOCKED.MDS",
+   "CHESTBIG_NW_RICH_LOCKED.MDS",
+   "CHESTBIG_NW_NORMAL_LOCKED.MDS",
+   "CHESTSMALL_NW_POOR_LOCKED.MDS",
+   "CHESTSMALL_OCCHESTSMALLLOCKED.MDS",
+   "CHESTBIG_OCCHESTMEDIUMLOCKED.MDS",
+   "CHESTSMALL_NW_POOR_OPEN.MDS",
+   "CHESTBIG_NW_RICH_OPEN.MDS",
+   "CHESTBIG_OCCHESTMEDIUM.MDS",
+   "CHESTSMALL_OCCHESTSMALL.MDS",
+   "CHESTBIG_ADD_STONE_LOCKED.MDS",
+   "CHESTBIG_NW_NORMAL_OPEN.MDS",
+   "CHESTBIG_OCCHESTLARGE.MDS",
+   "CHESTBIG_ADD_STONE_OPEN.MDS",
+   "CHESTBIG_NW_RICH_LOCKED.ASC"
+  ],
+  "oCMobDoor": [
+   "BEDHIGH_NW_NORMAL_01.ASC",
+   "BEDHIGH_NW_MASTER_01.ASC",
+   "BEDHIGH_NW_EDEL_01.ASC",
+   "BEDHIGH_PSI.ASC",
+   "DOOR_WOODEN.MDS",
+   "DOOR_NW_POOR_01.MDS",
+   "DOOR_NW_NORMAL_01.MDS",
+   "BEDHIGH_2_OC.ASC",
+   "BEDHIGH_PC.ASC",
+   "DOOR_NW_DRAGONISLE_02.MDS",
+   "DOOR_NW_RICH_01.MDS",
+   "DOOR_NW_DRAGONISLE_01.MDS"
+  ],
+  "oCMobFire": [
+   "OC_LOB_TORCHHOLDER_FILLED.3DS",
+   "FIREPLACE_NW_LAMP_01.ASC",
+   "FIREPLACE_HIGH2.ASC",
+   "FIREPLACE_HIGH.ASC",
+   "OC_BIGLIGHTER_01.3DS",
+   "DT_FIREPLACE_V1.3DS",
+   "OC_LOB_LIGHTER_HUGE3.3DS",
+   "FIREPLACE_GROUND2.ASC"
+  ],
+  "oCMobInter": [
+   "CHAIR_NW_NORMAL_01.ASC",
+   "BOOK_NW_CITY_CUPBOARD_01.ASC",
+   "BENCH_NW_CITY_01.ASC",
+   "THRONE_NW_CITY_01.ASC",
+   "STOVE_NW_CITY_01.ASC",
+   "CHAIR_NW_EDEL_01.ASC",
+   "BENCH_NW_OW_01.ASC",
+   "LAB_PSI.ASC",
+   "LEVER_1_OC.MDS",
+   "TREASURE_ADDON_01.ASC",
+   "ORE_GROUND_GOLD.ASC",
+   "BAUMSAEGE_1.ASC",
+   "CAULDRON_OC.ASC",
+   "INNOS_NW_MISC_01.ASC",
+   "BENCH_NW_CITY_02.ASC",
+   "TOUCHPLATE_STONE.MDS",
+   "PAN_OC.MDS",
+   "ORE_GROUND.ASC",
+   "CHAIR_1_OC.ASC",
+   "REPAIR_PLANK.ASC",
+   "BSSHARP_OC.MDS",
+   "BENCH_3_OC.ASC",
+   "BOOK_ADDON_STONEPLATE_01.ASC",
+   "BSCOOL_OC.MDS",
+   "RMAKER_1.MDS",
+   "BOOK_BLUE.MDS",
+   "BENCH_1_OC.ASC",
+   "INNOS_BELIAR_ADDON_01.ASC",
+   "HERB_NW_MISC_01.ASC",
+   "BSFIRE_OC.MDS",
+   "BSANVIL_OC.MDS",
+   "SMOKE_WATERPIPE.MDS",
+   "BOOK_BLUE.ASC",
+   "BARBQ_SCAV.MDS",
+   "TURNSWITCH_BLOCK.MDS",
+   "THRONE_BIG.ASC",
+   "FIREPLACE_GROUND.ASC",
+   "BARBQ_NW_MISC_SHEEP_01.MDS",
+   "HERB_PSI.MDS",
+   "CHAIR_1_NC.ASC",
+   "SMOKE_WATERPIPE.ASC",
+   "TOUCHPLATE_SEQ_STONE_MEN_01.MDS",
+   "CHAIR_3_PC.ASC",
+   "BARBQ_SCAV.ASC",
+   "BENCH_1_NC.ASC"
+  ],
+  "oCMobLadder": [
+   "LADDER_9.ASC"
+  ],
+  "oCMobSwitch": [
+   "TOUCHPLATE_STONE.MDS",
+   "LEVER_1_OC.MDS",
+   "TOUCHPLATE_SEQ_STONE_KEY_01.MDS",
+   "TOUCHPLATE_SEQ_STONE_STORM_01.MDS",
+   "TOUCHPLATE_SEQ_STONE_MEN_01.MDS",
+   "TOUCHPLATE_SEQ_STONE_SUN_01.MDS",
+   "TOUCHPLATE_SEQ_STONE_TRAP_01.MDS"
+  ],
+  "oCMobWheel": [
+   "VWHEEL_1_OC.MDS"
+  ],
+  "zCMover": [
+   "EVT_TPL_METALTHORNS_2X2X05M.3DS",
+   "EVT_SPAWN_01.3DS",
+   "EVT_CORNERROOMS_LIFTGATEWALL_01.3DS",
+   "EVT_ADDON_LSTTEMP_PLATESSAVE_01.3DS",
+   "EVT_MAINHALL_PILLAR_01.3DS",
+   "NW_CITY_HIDDENDOOR_01.3DS",
+   "EVT_GATEROOM_WHEEL_01.3DS",
+   "EVT_CORNERROOMS_LIFT_01.3DS",
+   "EVT_CORNERROOMS_WHEELWALL_01.3DS",
+   "EVT_ADDON_LSTTEMP_DOORPLATE_02.3DS",
+   "EVT_ADDON_LSTTEMP_PLATESDEAD_01.3DS",
+   "OC_LOB_GATE_SMALL.3DS",
+   "OC_LOB_GATE_SMALL2.3DS",
+   "OC_GATE_WELL.3DS",
+   "EVT_GATE_SMALL_01.3DS",
+   "EVT_GATE_LARGE_01.3DS",
+   "NW_MISC_WINDMILL_ROTOR_01.3DS",
+   "OC_LOB_GATE_BIG.3DS",
+   "EVT_ADDON_LSTTEMP_DOORPLATE_01.3DS",
+   "NW_HARBOUR_SMALL_BOAT_01.3DS",
+   "NW_HARBOUR_SMALL_BOAT_02.3DS",
+   "EVT_GATEROOM_WHEEL_02.3DS",
+   "DT_BOOKSHELF_V2.3DS",
+   "EVT_ADDON_LSTTEMP_SPIKES_01.3DS",
+   "EVT_ADDON_LSTTEMP_DOOR_BIGHEAD_01.3DS",
+   "EVT_ADDON_LSTTEMP_FALLSPIKES_01.3DS",
+   "AW_CRATEPILE_01.3DS",
+   "EVT_TPL_METALTHORNS_4X4X4M.3DS",
+   "DT_TORCH_V1.3DS",
+   "NW_CITY_CUPBOARD_RICH_01.3DS",
+   "NW_HARBOUR_SMALL_BOAT_03.3DS",
+   "NW_CITY_OILLAMP_01.3DS",
+   "NW_DRAGONISLE_BIGDOOR_LEFT_01.3DS",
+   "NW_DRAGONISLE_BIGDOOR_HEAD_LEFT_01.3DS",
+   "NW_DRAGONISLE_BIGDOOR_RIGHT_01.3DS",
+   "NW_DRAGONISLE_BIGDOOR_HEAD_RIGHT_01.3DS",
+   "EVT_MAINHALL_DOOR_RIGHT_01.3DS",
+   "EVT_MAINHALL_DOOR_LEFT_01.3DS",
+   "EVT_MAINHALL_DOOR_CLAW_RIGHT_01.3DS",
+   "EVT_MAINHALL_DOOR_LOCK_BR_01.3DS",
+   "EVT_MAINHALL_DOOR_LOCK_TR_01.3DS",
+   "EVT_MAINHALL_RING_RIGHT_01.3DS",
+   "EVT_MAINHALL_DOOR_CLAW_LEFT_01.3DS",
+   "EVT_MAINHALL_RING_LEFT_01.3DS",
+   "EVT_MAINHALL_DOOR_LOCK_TL_01.3DS",
+   "EVT_MAINHALL_DOOR_LOCK_BL_01.3DS",
+   "ITMI_NUGGET.3DS",
+   "NW_DRAGONISLE_BIGBRIDGE_01.3DS",
+   "NW_DRAGONISLE_INVISIBLEORCWALL_01.3DS",
+   "NW_EVT_CEMENTARYSTEP_01.3DS",
+   "NW_EVT_CEMENTARYCOFFIN_01.3DS",
+   "NW_EVT_MONASTERYWALL_01.3DS",
+   "EVT_ADDON_NW_TEMPELDOOR_01.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_07.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_06.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_05.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_04.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_03.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_02.3DS",
+   "EVT_ADDON_NW_TROLLPORTAL_PORTAL_01.3DS",
+   "EVT_ADDON_LSTTEMP_DOOR_LEFT_01.3DS",
+   "EVT_ADDON_LSTTEMP_DOOR_RIGHT_01.3DS",
+   "ADDON_VALLEYPLANT_TREE_01_XL_357P.3DS"
+  ],
+  "zCVobAnimate": [
+   "WATERPLANT_1.MMS",
+   "NW_MORPH_ORC_STANDART_01.MMS",
+   "NW_MORPH_FISH_01.MMS",
+   "NW_MORPH_SKATE_01.MMS",
+   "NW_MORPH_FISH_02.MMS",
+   "ADD_PIRATEFLAG.MMS"
+  ],
+  "zCVobStartpoint": [
+   "INVISIBLE_ZCVOBSTARTPOINT.3DS"
+  ]
+ },
+ "unused_fields": {
+  "oCMOB": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "sound_material",
+   "visual_destroyed",
+   "owner",
+   "owner_guild"
+  ],
+  "oCMobBed": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "focus_override",
+   "sound_material",
+   "visual_destroyed",
+   "owner",
+   "owner_guild",
+   "state_num",
+   "trigger_target",
+   "use_with_item",
+   "condition_func",
+   "on_state_func",
+   "rewind"
+  ],
+  "oCMobContainer": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "focus_override",
+   "sound_material",
+   "visual_destroyed",
+   "state_num",
+   "use_with_item",
+   "condition_func",
+   "rewind"
+  ],
+  "oCMobDoor": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "focus_override",
+   "sound_material",
+   "visual_destroyed",
+   "owner",
+   "state_num",
+   "trigger_target",
+   "use_with_item",
+   "condition_func",
+   "rewind",
+   "picklock_str"
+  ],
+  "oCMobFire": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "focus_override",
+   "sound_material",
+   "visual_destroyed",
+   "owner",
+   "owner_guild",
+   "state_num",
+   "trigger_target",
+   "condition_func",
+   "on_state_func",
+   "rewind",
+   "fire_slot"
+  ],
+  "oCMobInter": [
+   "hitpoints",
+   "damage",
+   "moveable",
+   "takeable",
+   "focus_override",
+   "visual_destroyed",
+   "owner",
+   "owner_guild",
+   "state_num",
+   "condition_func"
+  ],
+  "oCMobSwitch": [
+   "hitpoints",
+   "damage",
+   "takeable",
+   "sound_material",
+   "visual_destroyed",
+   "owner",
+   "owner_guild",
+   "state_num",
+   "condition_func"
+  ],
+  "oCTouchDamage": [
+   "damage_blunt",
+   "damage_fire",
+   "damage_fly",
+   "damage_fall",
+   "damage_vol_down_scale",
+   "damage_coll_type"
+  ],
+  "oCTriggerScript": [
+   "trigger_start_enabled",
+   "respond_to_pc",
+   "respond_to_vob_name",
+   "retrigger_wait_sec",
+   "damage_threshold",
+   "fire_delay_sec"
+  ],
+  "oCZoneMusic": [
+   "zone_enabled",
+   "zone_volume_level",
+   "zone_loop"
+  ],
+  "zCCodeMaster": [
+   "untrigger_cancels"
+  ],
+  "zCMover": [
+   "trigger_start_enabled",
+   "react_to_on_trigger",
+   "respond_to_pc",
+   "respond_to_vob_name",
+   "retrigger_wait_sec",
+   "damage_threshold",
+   "touch_blocker_damage",
+   "mover_locked",
+   "auto_link_enabled",
+   "sfx_lock",
+   "sfx_unlock",
+   "sfx_use_locked"
+  ],
+  "zCTrigger": [
+   "respond_to_vob_name",
+   "retrigger_wait_sec"
+  ],
+  "zCTriggerList": [
+   "react_to_on_trigger",
+   "respond_to_pc",
+   "respond_to_vob_name",
+   "damage_threshold",
+   "fire_delay_sec",
+   "list_process"
+  ],
+  "zCVob": [
+   "decal_offset"
+  ],
+  "zCVobLight": [
+   "light_turned_on",
+   "light_can_move"
+  ],
+  "zCVobSound": [
+   "sound_cone_angle"
+  ],
+  "zCVobSoundDaytime": [
+   "sound_start_on",
+   "sound_cone_angle"
+  ]
+ }
+}

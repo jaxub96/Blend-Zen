@@ -252,7 +252,14 @@ class GameIndex:
         anims = _path(data, "Anims", "_compiled")
         # A model with a script (.MSB) is usable as X.MDS and, like any
         # compiled model (.MDL), as X.ASC - vanilla worlds use both.
-        models = {f"{stem}.MDS" for stem in _files_with_extension(anims, {".MSB"})}
+        # Scripts of interactive objects have their sources in Anims/mds_mobsi;
+        # the other compiled scripts are creatures and humans. Without that
+        # folder (no sources installed) all of them are listed.
+        scripts = _files_with_extension(anims, {".MSB"})
+        mob_scripts = {stem.upper() for stem in _files_with_extension(_path(data, "Anims", "mds_mobsi"), {".MDS"})}
+        if mob_scripts:
+            scripts = [stem for stem in scripts if stem.upper() in mob_scripts]
+        models = {f"{stem}.MDS" for stem in scripts}
         models |= {f"{stem}.ASC" for stem in _files_with_extension(anims, {".MDL"})}
         self.mob_models = sorted(models)
         self.morph_meshes = sorted(f"{stem}.MMS" for stem in _files_with_extension(anims, {".MMB"}))

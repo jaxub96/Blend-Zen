@@ -491,19 +491,25 @@ def field_default(vob_type, key, generic_default):
     return generic_default
 
 
-def base_default(vob_type, key):
-    """Default of a BASE_FIELDS key for this type."""
+def base_default(vob_type, key, visual=None):
+    """Default of a BASE_FIELDS key for this type. For a prop the visual
+    can have its own default (vanilla's usual collision / wind settings
+    for that mesh, see vanilla_survey)."""
+    from .vanilla_survey import visual_defaults
     spec = VOB_SPECS.get(vob_type)
     for _, _, base_key, default in BASE_FIELDS:
         if base_key == key:
+            by_visual = visual_defaults(vob_type, visual)
+            if key in by_visual:
+                return by_visual[key]
             return spec.flags.get(key, default) if spec else default
     raise KeyError(key)
 
 
-def default_for(vob_type, key):
+def default_for(vob_type, key, visual=None):
     """Default of any custom key (base or type-specific) for this type."""
     if key in BASE_KEYS:
-        return base_default(vob_type, key)
+        return base_default(vob_type, key, visual)
     for _, _, field_key, default in keyed_fields(vob_type):
         if field_key == key:
             return field_default(vob_type, key, default)
@@ -618,7 +624,8 @@ def custom_properties_from_block(vob_type, properties, visual_properties=None):
     """Inverse of the exporter for the importer: {custom key: value} from a
     parsed block's properties (strings), for every keyed field of
     `vob_type` present in the block. Base fields are only returned when
-    they differ from the type's default, so objects stay uncluttered.
+    they differ from the default (the type's, or for a prop its visual's),
+    so objects stay uncluttered.
     visual_properties are those of the block's `visual` sub-block (decal
     settings). Unknown types give {}."""
     spec = VOB_SPECS.get(vob_type)
@@ -630,7 +637,7 @@ def custom_properties_from_block(vob_type, properties, visual_properties=None):
         if archive_name not in properties:
             continue
         value = parse_value(archive_name, archive_type, properties[archive_name], default)
-        if value != base_default(vob_type, key):
+        if value != base_default(vob_type, key, properties.get("visual")):
             result[key] = value
 
     for archive_name, archive_type, key, default in spec.fields:

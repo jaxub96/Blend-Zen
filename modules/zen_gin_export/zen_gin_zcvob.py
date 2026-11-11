@@ -175,7 +175,7 @@ class ZCVob:
 
     def _print_base_field(self, entry):
         archive_name, archive_type, key, _ = entry
-        default = base_default(self._vob_type, key)
+        default = base_default(self._vob_type, key, self._visual())
         print_field(self._data_printer, archive_name, archive_type, self._custom(key, default), default)
 
     def _print_visual_block(self, object_index):
