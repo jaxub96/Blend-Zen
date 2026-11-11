@@ -7,6 +7,7 @@ equirectangular panorama (see tooling/pipeline/build_gothic_sky.py). This
 operator installs it as a Blender studio light and selects it in the current
 viewport (Material Preview / Solid shading lighting), and switches the scene to
 the Standard view transform, which is what Gothic displays (no tone mapping).
+The panorama includes the sun and fades to neutral grey below the horizon.
 """
 
 import math
@@ -20,39 +21,26 @@ SKY_HDR = os.path.join(
 )
 STUDIO_LIGHT_NAME = "gothic_sky.hdr"
 
-# The HDR is the sky as it *looks*, at strength 1, so the background matches
-# Gothic. On its own it is a weak light (a white up-facing surface gets ~0.14
-# linear) because it has no sun in it. Gothic's outdoor light is mostly the sun,
-# so add one as a real Blender Sun light for preview. It is a plain object
-# without a ZenGin prefix, so the exporter ignores it, and the HDR/background
-# stay untouched.
+# The HDR carries its own sun (a bright disc painted into the panorama), so it
+# lights a scene by itself: EEVEE turns the disc into a shadow-casting sun and
+# the rest of the sky into soft fill. Nothing is added to the scene.
 SKY_LIGHT_INTENSITY = 1.0
-SUN_OBJECT_NAME = "GothicSun_preview"
-SUN_STRENGTH = 0.8                     # sun-facing white ~0.6 + sky 0.14 linear
-SUN_COLOR = (1.0, 0.93, 0.80)          # warm daylight
-SUN_ELEVATION_DEG = 50.0
-SUN_AZIMUTH_DEG = 135.0
+# Turn the sky so the sun comes in diagonally and box sides shade differently.
+SKY_ROTATION_DEG = 40.0
+# Earlier versions lit the scene with a real Sun object of this name.
+OLD_SUN_OBJECT_NAME = "GothicSun_preview"
 
 
-def ensure_preview_sun(context):
-    """Create (or update) the preview-only Sun light. Returns the object."""
-    obj = bpy.data.objects.get(SUN_OBJECT_NAME)
-    if obj is None or obj.type != 'LIGHT':
-        data = bpy.data.lights.new(SUN_OBJECT_NAME, 'SUN')
-        obj = bpy.data.objects.new(SUN_OBJECT_NAME, data)
-        context.scene.collection.objects.link(obj)
-    elif obj.name not in context.scene.objects:
-        context.scene.collection.objects.link(obj)
+def remove_old_preview_sun():
+    """Delete the Sun object older versions added; it would double the light."""
+    obj = bpy.data.objects.get(OLD_SUN_OBJECT_NAME)
+    if obj is None or obj.type != 'LIGHT' or not obj.get("zen_preview_only"):
+        return False
     data = obj.data
-    data.type = 'SUN'
-    data.energy = SUN_STRENGTH
-    data.color = SUN_COLOR
-    data.angle = math.radians(0.5)
-    obj.rotation_mode = 'XYZ'
-    # A sun shines along its local -Z: tilt it down from straight up.
-    obj.rotation_euler = (math.radians(90.0 - SUN_ELEVATION_DEG), 0.0, math.radians(SUN_AZIMUTH_DEG))
-    obj["zen_preview_only"] = True
-    return obj
+    bpy.data.objects.remove(obj, do_unlink=True)
+    if data.users == 0:
+        bpy.data.lights.remove(data)
+    return True
 
 
 def install_studio_light():
@@ -68,8 +56,8 @@ class ZEN_OT_use_gothic_sky(bpy.types.Operator):
     bl_label = "Use Gothic Sky Lighting"
     bl_description = (
         "Install the Gothic skydome as a Blender studio light, use it in this "
-        "viewport (Material Preview, Standard view transform) and add a preview-only "
-        "Sun light (GothicSun_preview, never exported) so lit scenes look like Spacer"
+        "viewport (Material Preview, Standard view transform). The sun is part of "
+        "the sky image, so no light object is added to the scene"
     )
     bl_options = {'REGISTER'}
 
@@ -88,8 +76,10 @@ class ZEN_OT_use_gothic_sky(bpy.types.Operator):
             shading.use_scene_lights = True
             shading.studio_light = STUDIO_LIGHT_NAME
             shading.studiolight_intensity = SKY_LIGHT_INTENSITY
-        ensure_preview_sun(context)
+            shading.studiolight_rotate_z = math.radians(SKY_ROTATION_DEG)
+        removed = remove_old_preview_sun()
         context.scene.view_settings.view_transform = 'Standard'
         context.scene.view_settings.look = 'None'
-        self.report({'INFO'}, "Gothic sky studio light installed and selected")
+        note = " (old GothicSun_preview light removed)" if removed else ""
+        self.report({'INFO'}, "Gothic sky studio light installed and selected" + note)
         return {'FINISHED'}

@@ -7,7 +7,9 @@ hemisphere, colours driven per time of day) plus Skydome_Layer1..3.3ds (flat
 cloud caps with tiled planar UVs) textured with SkyDay_*_Layer*_A0.tga. This
 script parses those .3ds files, rebuilds the dome in Blender with an
 elevation colour gradient matched to a Spacer screenshot, and renders an
-equirectangular panorama from the dome centre (Cycles, emission only).
+equirectangular panorama from the dome centre (Cycles, emission only). The
+sun is then painted in as a very bright disc so the image is a complete light
+source, and the area below the horizon fades into neutral grey.
 
 Usage:
   blender --background --python tooling/pipeline/build_gothic_sky.py -- \
@@ -22,17 +24,30 @@ WIDTH = int(argv[2]) if len(argv) > 2 else 1024
 MESHES = f"{GAME}/_work/Data/Meshes/_intern"
 SKY_TEX = f"{GAME}/_work/Data/Textures/Effects/Environment/Sky/nomip"
 
-# Below the horizon Gothic shows black (the dome ends there); keep the picture
-# faithful. Brightness for lit scenes comes from the preview sun instead
-# (see zen_waypoint_tools/gothic_sky.py), not from changing this image.
-GROUND = (0, 0, 0)
+# Below the horizon the game shows nothing useful (the dome just ends), so the
+# haze fades into a neutral grey there. It reads as "no ground yet" instead of
+# a black hole, and it bounces some light back up like real terrain would.
+GROUND = (126, 129, 132)
 
-# (elevation degrees, sRGB 0-255) sampled from Spacer; below the last stop is black.
+# (elevation degrees, sRGB 0-255) sampled from Spacer down to the horizon;
+# below it the haze blends into GROUND.
 GRADIENT = [
     (90, (70, 95, 165)), (40, (70, 92, 145)), (25, (70, 90, 135)), (16, (110, 130, 170)),
-    (8, (145, 171, 194)), (4.6, (154, 172, 172)), (2.3, (152, 157, 135)), (0, (133, 124, 81)),
-    (-2, (98, 70, 33)), (-4, (48, 25, 7)), (-7, GROUND), (-90, GROUND),
+    (8, (145, 171, 194)), (4.6, (154, 172, 178)), (2.3, (152, 166, 170)), (0, (146, 156, 158)),
+    (-3, (136, 142, 145)), (-8, GROUND), (-90, GROUND),
 ]
+
+# The sun is part of the picture, so the panorama lights a scene on its own
+# (no Sun object needed). EEVEE turns the bright disc into a shadow-casting
+# sun (World > Settings > Sun threshold); the wide glow around it stays soft
+# fill light. Values are linear radiance; the numbers printed at the end of a
+# build say how bright a white surface ends up.
+SUN_ELEVATION_DEG = 50.0
+SUN_U = 0.52                      # horizontal place in the panorama, a cloud-free patch
+SUN_COLOR = (1.0, 0.92, 0.74)     # warm, so sun + blue sky add up to a near-white daylight
+SUN_DISC_DEG = 2.0                # radius of the bright core
+SUN_DISC_RADIANCE = 680.0
+SUN_GLOW = ((4.0, 3.0), (30.0, 0.32))   # (width in degrees, peak radiance) haloes
 CLOUD_STRENGTH = 0.85
 # Shift the whole gradient (except the zenith/nadir ends) down by this many
 # degrees, so the bright horizon band sits a little below eye level.
@@ -82,6 +97,7 @@ sc.view_settings.view_transform = "Standard"
 sc.render.resolution_x = WIDTH; sc.render.resolution_y = WIDTH // 2; sc.render.resolution_percentage = 100
 sc.world = bpy.data.worlds.new("black"); sc.world.use_nodes = True
 # the colour dome stops ~13 deg below the horizon; beyond it show the ground colour
+# (the gradient has already reached that colour by then, so there is no seam)
 sc.world.node_tree.nodes["Background"].inputs["Color"].default_value = (lin(GROUND[0]), lin(GROUND[1]), lin(GROUND[2]), 1)
 
 # --- colour dome -----------------------------------------------------------
@@ -132,4 +148,50 @@ cam.location = (0, 0, 0)
 sc.render.image_settings.file_format = "HDR"
 sc.render.filepath = OUT
 bpy.ops.render.render(write_still=True)
+
+# --- paint the sun into the panorama ----------------------------------------
+import numpy as np
+
+img = bpy.data.images.load(OUT)
+w, h = img.size
+px = np.empty(w * h * 4, dtype=np.float32)
+img.pixels.foreach_get(px)
+px = px.reshape(h, w, 4)                       # row 0 is the bottom of the image
+
+# Direction of every pixel, the way Blender maps an equirectangular world.
+u = (np.arange(w) + 0.5) / w
+v = (np.arange(h) + 0.5) / h
+lon = (u - 0.5) * 2 * math.pi
+lat = (v - 0.5) * math.pi
+lon, lat = np.meshgrid(lon, lat)
+dirs = np.stack([-np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)], axis=-1)
+
+s_lon = (SUN_U - 0.5) * 2 * math.pi
+s_lat = math.radians(SUN_ELEVATION_DEG)
+sun_dir = np.array([-math.cos(s_lat) * math.cos(s_lon), math.cos(s_lat) * math.sin(s_lon), math.sin(s_lat)])
+angle = np.degrees(np.arccos(np.clip(dirs @ sun_dir, -1, 1)))
+
+edge = 0.35                                    # soft rim so the disc is not aliased
+sun = SUN_DISC_RADIANCE * np.clip((SUN_DISC_DEG + edge - angle) / (2 * edge), 0, 1)
+for width, peak in SUN_GLOW:
+    sun += peak * np.exp(-((angle / width) ** 2))
+sun *= (lat > math.radians(-4))                # nothing shines through the ground
+px[..., :3] += sun[..., None] * np.array(SUN_COLOR, dtype=np.float32)
+
+img.pixels.foreach_set(px.ravel())
+img.file_format = "HDR"
+img.filepath_raw = OUT
+img.save()
+
+# How bright does a white, matte surface get under this sky? (1.0 = full white)
+solid = (np.cos(lat) * (math.pi / h) * (2 * math.pi / w))[..., None]
+def lit(normal, light=px[..., :3]):
+    cos = np.clip(dirs @ np.array(normal), 0, None)[..., None]
+    return (light * cos * solid).sum(axis=(0, 1)) / math.pi
+shade = px[..., :3] - (SUN_DISC_RADIANCE * (angle < SUN_DISC_DEG + edge))[..., None] * np.array(SUN_COLOR)
+shade = np.clip(shade, 0, None)
+print("white facing up      ", lit((0, 0, 1)).round(3))
+print("white facing the sun ", lit(tuple(sun_dir)).round(3))
+print("white up, in shadow  ", lit((0, 0, 1), shade).round(3))
+print("white wall, away     ", lit((-sun_dir[0], -sun_dir[1], 0) / np.hypot(sun_dir[0], sun_dir[1])).round(3))
 print("WROTE", OUT)

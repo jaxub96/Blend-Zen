@@ -131,10 +131,12 @@ The "ZenGin" sidebar tab has:
   Preview, Standard view transform). The HDR is Gothic's own skydome
   rendered to a panorama by `tooling/pipeline/build_gothic_sky.py`; the
   gradient colours are sampled from a Spacer screenshot.
-  The button also adds a preview-only Sun light (`GothicSun_preview`, no ZenGin
-  prefix so it is never exported): the HDR alone is a weak light because Gothic's
-  outdoor light is mostly the sun. Tune `SUN_STRENGTH` / `SUN_ELEVATION_DEG` in
-  `gothic_sky.py`.
+  The sun is painted into the panorama, so the sky lights the scene on its
+  own and no light object is added: EEVEE turns the bright disc into a
+  shadow-casting sun, the rest of the sky is soft fill. Below the horizon the
+  haze fades into neutral grey. Tune `SUN_*` and `GROUND` in the build script
+  and rebuild the HDR; the build prints how bright a white surface ends up.
+  A `GothicSun_preview` light left by an older version is removed on click.
 - **Export Uncompiled ZEN** - writes the **current scene** (objects in other
   scenes are not exported). Every export is verified for structural
   correctness (object-index contiguity vs. the header count), and the
