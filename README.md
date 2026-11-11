@@ -482,6 +482,20 @@ blender --background --python tooling/pipeline/build_feature_test_level.py -- bl
 
 The station list is in the script's docstring.
 
+**Showcase level.** `tooling/pipeline/build_showcase_level.py` builds a
+30 x 30 m forest hollow that looks like a piece of a Gothic world and uses
+every vob type Blend-Zen writes: a hermit's hut (door, bed, locked chest,
+alchemy table, torch with child vobs, music zone), a campfire, a graveyard
+(fog and view-distance zones), a shrine (script trigger, trigger list,
+code master, earthquake) and a lever-operated gate with a level change
+behind it. The blend opens with preview meshes and the Gothic sky; names
+are checked against the game files. The places are listed in the script's
+docstring.
+
+```bash
+blender --background --python tooling/pipeline/build_showcase_level.py -- blender_work_dir/showcase_level.blend [SHOWCASE MOD]
+```
+
 **Vanilla survey.** `tooling/pipeline/survey_vanilla_worlds.py "<game
 folder>"` (plain Python) reads every ASCII world under `_work/Data/Worlds`
 except `MOD` and writes `modules/zen_gin_export/vanilla_survey.json`: the
