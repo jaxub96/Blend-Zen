@@ -126,6 +126,18 @@ The "ZenGin" sidebar tab has:
   `Props.blend` / `Items_*.blend` asset libraries (they carry the right
   name and export with a real bounding box). **Reload Game Data** re-reads
   the game files after you changed scripts.
+  **Show Trigger Links** draws an orange arrow from every vob to the vobs
+  it triggers (Target, a trigger list's targets, a code master's slaves,
+  "Only Respond To"), so a lever -> mover chain is visible at a glance.
+  **Show Preview Meshes** makes vob empties draw their mesh: each empty
+  instances a small `ZenPreview:<name>` collection holding the mesh of the
+  asset-library object with the same name (linked, shared by all vobs with
+  that visual). The empties, their settings and the export stay as they
+  are, except that the bounding box is now the mesh's. Optionally visuals
+  no library has are loaded from the game's source `.3DS` with KrxImpExp.
+  Animated mob models (`.ASC` / `.MDS`) exist only compiled in the game
+  files, so they preview only if a library has them. The same dialog
+  removes the previews again.
 - **Use Gothic Sky Lighting** - installs `asset_catalog/sky/gothic_sky.hdr`
   as a Blender studio light and selects it in the viewport (Material
   Preview, Standard view transform). The HDR is Gothic's own skydome
@@ -160,7 +172,8 @@ The "ZenGin" sidebar tab has:
   `visual`/`itemInstance`/`sndName`; zones and triggers come in as boxes
   matching their bounding box; movers get one child empty per keyframe.
   Unsupported vob types (cutscene cameras) are skipped and listed in the
-  report.
+  report. With **Show Preview Meshes** (on by default in the file dialog)
+  props, items and mobs draw their mesh, see above.
   The level mesh is loaded (into a "Zen Level Mesh" collection, parented
   to the level compo and unselectable) if found next to the ZEN, in the
   sibling `_work/Data/Meshes/Level/*/` folders, or in the configured mesh
@@ -503,8 +516,10 @@ export_checks.py        pre-export scene warnings
 `empty_display_size`, `data`, `get(key, default)` for custom properties,
 and `zen_waypoint_links` for waypoints. That is all the library touches,
 which is why the tests can use small fakes (`tests/conftest.py`).
-Transforms come from `matrix_world`, so rotation mode, parents and object
-scale are all handled.
+Transforms come from `matrix_world`, so rotation mode and parents are
+handled. Scale: a vob with a visual writes its scale into the matrix (the
+engine draws the visual that size, as vanilla worlds do); for zones and
+triggers the scale is the box, and for everything else it is ignored.
 
 **One table, one writer.** `vob_fields.VOB_SPECS` has a `VobSpec` per vob
 type: the class chain as Spacer writes it (most-derived first, e.g.
@@ -560,8 +575,9 @@ the flat custom properties through get/set callbacks, so nothing is stored
 twice), `game_bridge.py` (cached `GameIndex` for the preferences' game
 folder, search callbacks), `mob_props.py` (presets), `light_props.py`,
 `panel.py`,
-`viewport_draw.py` (link lines; the connection list is cached and rebuilt
-after depsgraph updates, the handlers survive file loads),
+`viewport_draw.py` (waypoint link lines and trigger arrows; the pair lists
+are cached and rebuilt after depsgraph updates, the handlers survive file
+loads), `vob_preview.py` (preview meshes as instanced collections),
 `export_ops.py`, `quick_export.py`, `zen_import.py`, `krximpexp_bridge.py`,
 `gothic_sky.py`, `preferences.py`. `zen_gin_export` is imported lazily:
 without it the addon still enables, VOB Settings stays hidden and the
@@ -587,7 +603,8 @@ Gothic_z = -Blender_y
 The position map is a pure Y<->Z swap R (determinant -1: a handedness
 flip, not a rotation). A rotation converts as `M_gothic = R @ M_blender @
 R` (R is its own inverse), which is what the exporter does with the world
-matrix (`blender_matrix_to_gothic`, scale removed); the quaternion formula
+matrix (`blender_matrix_to_gothic`, scale removed unless the vob has a
+visual and really is scaled); the quaternion formula
 above is the same thing and is what was verified in Spacer - a test checks
 the two agree. The rotation is written as 9 little-endian floats in hex
 (`trafoOSToWSRot`), row-major. Waypoint `direction` uses the position map
@@ -659,8 +676,7 @@ Blender Light <-> `zCVobLight`; Export Level Package; pytest suite in CI.
   the bed, the alchemy table. See `TODO.md` for the checklist.
 - Cutscene cameras are not supported (skipped on import, reported).
 - Zones and triggers are re-centred on their box on import (only the box
-  matters in-game); ellipsoid sounds get the sphere's bounding box; the
-  few vobs Spacer saved with a scaled matrix come back unscaled.
+  matters in-game); ellipsoid sounds get the sphere's bounding box.
 - Repeated visuals are written out per vob rather than as Spacer's `§`
   references: valid, but larger files.
 - Only fresh archives are written - merging into an existing Spacer-made

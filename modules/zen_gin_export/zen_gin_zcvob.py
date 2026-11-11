@@ -109,6 +109,12 @@ class ZCVob:
             return ""
         return base if "." in base else base + spec.default_extension
 
+    def _keeps_scale(self):
+        """True for vobs with a visual: only those write the object's scale
+        into their matrix (a scaled zone is a bigger box, a scaled spot or
+        light is just a bigger gizmo in Blender)."""
+        return self._spec.volume is None and bool(self._visual())
+
     def _visual_block(self):
         """(class, version) of the visual sub-block, or None for `[visual % 0 0]`."""
         visual = self._visual()
@@ -153,6 +159,14 @@ class ZCVob:
         points = []
         for mesh in _own_meshes(obj):
             points += [_world_point(mesh.matrix_world, *c) for c in mesh.bound_box]
+        if not points:
+            # An empty showing a preview mesh (vob_preview): the instanced
+            # collection's meshes sit at the empty's transform.
+            collection = getattr(obj, "instance_collection", None)
+            for mesh in (collection.all_objects if collection is not None else ()):
+                if mesh.type == "MESH":
+                    matrix = obj.matrix_world @ mesh.matrix_basis
+                    points += [_world_point(matrix, *c) for c in mesh.bound_box]
         if not points:
             return f"{_format_vec3(position)} {_format_vec3(position)}"
         return _aabb(points)
@@ -234,7 +248,8 @@ class ZCVob:
 
     def print(self, object_index):
         p = self._data_printer
-        position, rotation = blender_matrix_to_gothic(self._object.matrix_world)
+        position, rotation = blender_matrix_to_gothic(
+            self._object.matrix_world, keep_scale=self._keeps_scale())
 
         p.start_object_block(type_2=self._spec.chain, triangles_limit=self._spec.version,
                              object_index=object_index)

@@ -70,6 +70,15 @@ def _format_vec3(values):
     return " ".join(str(round(v, 6) + 0.0) for v in values)
 
 
+def _custom_int(waypoint, key):
+    """A waypoint's custom property as an int; 0 when absent or not a number.
+    waterDepth / underWater are only set on waypoints imported with them."""
+    try:
+        return int(waypoint.get(key, 0))
+    except (TypeError, ValueError, AttributeError):
+        return 0
+
+
 class WayNet:
     """The zCWayNet block. Like Spacer, waypoints that are part of a way
     are written inline in the way list (first use defines them, later uses
@@ -102,8 +111,8 @@ class WayNet:
         direction = blender_direction_to_gothic(*waypoint_direction_from_matrix(m))
         p.start_object_block(type_1=type_1, type_2="zCWaypoint", object_index=object_index)
         p.print_string_property("wpName", waypoint.name[len(WAYPOINT_PREFIX):])
-        p.print_int_property("waterDepth", 0)
-        p.print_bool_property("underWater", False)
+        p.print_int_property("waterDepth", _custom_int(waypoint, "waterDepth"))
+        p.print_bool_property("underWater", bool(_custom_int(waypoint, "underWater")))
         p.print_vec3_property("position", _format_vec3(position))
         p.print_vec3_property("direction", _format_vec3(direction))
         p.end_object_block()

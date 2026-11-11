@@ -153,6 +153,18 @@ def test_world_matrix_path_matches_the_spacer_verified_quaternion_formula(w, x, 
     assert position == pytest.approx((700.0, 150.0, -200.0))
 
 
+def test_keep_scale_writes_scaled_axes_but_ignores_float_noise():
+    scaled = ((2.0, 0.0, 0.0, 0.0), (0.0, 2.0, 0.0, 0.0), (0.0, 0.0, 2.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+    _, rotation = blender_matrix_to_gothic(scaled, keep_scale=True)
+    assert [rotation[i][i] for i in range(3)] == pytest.approx([2.0, 2.0, 2.0])
+    _, rotation = blender_matrix_to_gothic(scaled)
+    assert [rotation[i][i] for i in range(3)] == pytest.approx([1.0, 1.0, 1.0])
+
+    noisy = ((1.00001, 0.0, 0.0, 0.0), (0.0, 1.0, 0.0, 0.0), (0.0, 0.0, 0.99999, 0.0), (0.0, 0.0, 0.0, 1.0))
+    _, rotation = blender_matrix_to_gothic(noisy, keep_scale=True)
+    assert [rotation[i][i] for i in range(3)] == [1.0, 1.0, 1.0]
+
+
 def test_rotation_hex_matches_a_real_spacer_value_and_round_trips():
     # Identity, as written by Spacer in blender_work_dir/G2ISLAND_WEB.ZEN.
     identity = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))

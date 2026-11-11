@@ -97,6 +97,8 @@ class ZEN_OT_reload_game_data(bpy.types.Operator):
     )
 
     def execute(self, context):
+        from . import vob_preview
+        vob_preview.reset_indexes()        # asset libraries may have changed too
         index = reload_index()
         if index is None:
             self.report({'ERROR'}, "zen_gin_export is not available")

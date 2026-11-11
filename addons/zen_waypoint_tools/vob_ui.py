@@ -61,6 +61,9 @@ def _store(obj, key, value):
             del obj[key]
     else:
         obj[key] = value
+    if "target" in key or key.startswith(("slave_", "respond_to_vob")):
+        from .viewport_draw import tag_viewports_redraw
+        tag_viewports_redraw()         # the trigger arrows follow at once
 
 
 def _apply_light_preset(obj, name):

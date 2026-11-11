@@ -194,6 +194,14 @@ def _create_waypoint_object(context, block):
     setup_waypoint_empty(obj, rotation)
     if block.get("position"):
         obj.location = gothic_position_to_blender(*parse_vec3(block.get("position")))
+    # Kept only when set (vanilla worlds leave both at 0).
+    for key in ("waterDepth", "underWater"):
+        try:
+            value = int(block.get(key, "0") or 0)
+        except ValueError:
+            value = 0
+        if value:
+            obj[key] = value
     context.scene.collection.objects.link(obj)
     return obj
 
@@ -312,8 +320,9 @@ def _import_level_mesh(context, zen_filepath, mesh_name, compo_obj, report):
 
 # -- entry point ----------------------------------------------------------------
 
-def import_zen(context, filepath):
-    """Returns a report dict: vobs_created, waypoints_created, ways_linked,
+def import_zen(context, filepath, preview_meshes=False, preview_from_game_files=False):
+    """preview_meshes: make the vob empties draw their mesh (see vob_preview).
+    Returns a report dict: previews (vob_preview.apply_previews' report or None), vobs_created, waypoints_created, ways_linked,
     ways_dropped (no free link slot on either end), skipped_types ({type: count}), level_mesh_status ('imported',
     'found_not_importable', 'not_found', or None without a level compo),
     level_mesh_path, level_mesh_error."""
@@ -330,6 +339,7 @@ def import_zen(context, filepath):
         "skipped_types": Counter(),
         "level_mesh_status": None,
         "level_mesh_path": None,
+        "previews": None,
     }
 
     vob_tree = find_block(world_block, type1="VobTree")
@@ -382,5 +392,10 @@ def import_zen(context, filepath):
                 else:
                     report["ways_dropped"] += 1
         report["ways_dropped"] += len(dropped)
+
+    if preview_meshes:
+        from .vob_preview import apply_previews
+        vobs = [obj for obj in created.values() if obj is not None]
+        report["previews"] = apply_previews(context, vobs, preview_from_game_files)
 
     return report

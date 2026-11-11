@@ -103,21 +103,33 @@ def gothic_matrix_to_blender_matrix(matrix_3x3):
     return _change_basis(matrix_3x3)
 
 
-def blender_matrix_to_gothic(matrix_world, scale=100):
+# A world matrix whose axes are this close to unit length counts as unscaled
+# (float noise from Blender's loc/rot/scale decomposition stays out of files).
+SCALE_TOLERANCE = 1e-4
+
+
+def blender_matrix_to_gothic(matrix_world, scale=100, keep_scale=False):
     """Blender 4x4 world matrix (row-indexable, e.g. `obj.matrix_world`) ->
     (Gothic position (gx, gy, gz), Gothic 3x3 rotation as row tuples).
 
     Reading the world matrix rather than `location`/`rotation_quaternion`
     makes this independent of rotation mode (Euler or quaternion) and
     includes parent transforms. Object scale is removed from the rotation
-    (each axis column is normalized). Equivalent to
-    blender_quaternion_to_gothic() for a pure rotation - see the tests.
+    (each axis column is normalized) unless keep_scale is set and the object
+    really is scaled: ZenGin draws a vob's visual with the scale that is in
+    its matrix, which is how vanilla worlds store resized props. Equivalent
+    to blender_quaternion_to_gothic() for a pure rotation - see the tests.
     """
     m = matrix_world
     position = blender_position_to_gothic(m[0][3], m[1][3], m[2][3], scale=scale)
+    raw = [(m[0][j], m[1][j], m[2][j]) for j in range(3)]
+    lengths = [sum(v * v for v in column) ** 0.5 for column in raw]
+    scaled = keep_scale and min(lengths) > 1e-6 and any(
+        abs(length - 1.0) > SCALE_TOLERANCE for length in lengths)
     columns = []
     for j in range(3):
-        column = _normalize(m[0][j], m[1][j], m[2][j]) or tuple(float(i == j) for i in range(3))
+        column = raw[j] if scaled else (
+            _normalize(*raw[j]) or tuple(float(i == j) for i in range(3)))
         columns.append(column)
     blender_rotation = tuple(tuple(columns[j][i] for j in range(3)) for i in range(3))
     return position, _change_basis(blender_rotation)

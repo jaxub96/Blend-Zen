@@ -61,6 +61,8 @@ class ZEN_PT_zen_add_vob(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         layout.operator("zen.add_vob", icon='ADD')
+        layout.prop(context.scene, "zen_show_trigger_links")
+        layout.operator("zen.load_vob_previews", icon='MESH_DATA')
         layout.operator("zen.use_gothic_sky", icon='LIGHT_SUN')
         layout.operator("zen.reload_game_data", icon='FILE_REFRESH')
 

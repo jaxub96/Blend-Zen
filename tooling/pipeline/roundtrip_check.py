@@ -17,9 +17,7 @@ anything unexpected does. Differences that are by design are not counted:
   - visual blocks Spacer wrote as `§` references to an earlier, identical
     visual; we write each one out
   - bools Spacer wrote as -1
-  - rotations of the few vobs Spacer saved with a scaled matrix (the
-    exporter always writes a pure rotation), and waypoint directions that
-    were not unit length
+  - waypoint directions that were not unit length
   - bbox3DWS of ellipsoid sounds (we write the sphere's box)
 """
 
@@ -104,6 +102,15 @@ def _is_rotation(hex_value):
         abs(sum(m[r * 3 + c] ** 2 for c in range(3)) - 1.0) < 1e-3 for r in range(3))
 
 
+def _is_sheared(hex_value):
+    m = _hex_floats(hex_value)
+    columns = [(m[c], m[3 + c], m[6 + c]) for c in range(3)]
+    def cos(a, b):
+        dot = sum(x * y for x, y in zip(a, b))
+        return abs(dot) / ((sum(x * x for x in a) * sum(y * y for y in b)) ** 0.5 or 1.0)
+    return max(cos(columns[0], columns[1]), cos(columns[0], columns[2]), cos(columns[1], columns[2])) > 1e-3
+
+
 def _expected_difference(block, name, original, exported):
     real_type = block.type2.split(":")[0]
     spec = VOB_SPECS[real_type]
@@ -114,7 +121,10 @@ def _expected_difference(block, name, original, exported):
     if name in ("trafoOSToWSPos", "trafoOSToWSRot") and spec.volume == "box":
         return True
     if name == "trafoOSToWSRot":
-        return not _is_rotation(original)
+        # Only mesh vobs keep a scaled matrix; and a sheared one cannot be
+        # held by a Blender object at all.
+        return not _is_rotation(original) and (
+            not block.get("visual", "").strip() or _is_sheared(original))
     if name == "vobName":
         return original == "" and real_type in ("zCVob", "oCItem", "zCVobSound", "zCVobSoundDaytime")
     return False
@@ -222,6 +232,10 @@ def compare_waynet(original_path, exported_path):
     if set(a_points) != set(b_points):
         problems.append(f"waypoints differ: {sorted(set(a_points) ^ set(b_points))[:5]}")
     for name in set(a_points) & set(b_points):
+        for prop in ("waterDepth", "underWater"):
+            a, b = a_points[name].get(prop, "0"), b_points[name].get(prop, "0")
+            if int(a or 0) != int(b or 0):
+                problems.append(f"{name}.{prop}: {a} -> {b}")
         for prop in ("position", "direction"):
             a, b = a_points[name].get(prop), b_points[name].get(prop)
             if prop == "direction":

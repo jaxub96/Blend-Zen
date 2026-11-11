@@ -25,18 +25,18 @@ in Spacer or played yet.
 - [x] Switch -> mover: `oCMobSwitch` (lever and touch plate presets) with a
   `zCMover` target and two keyframes; check direction of travel, speed and
   the sounds.
-- [ ] `oCTriggerScript` fires its function when the player walks in;
+- [x] `oCTriggerScript` fires its function when the player walks in;
   `oCTriggerChangeLevel` loads the other world.
 - [x] Music zone + default music zone play the chosen theme; fog and
   view-distance zones take effect.
-- [ ] Particle-effect and decal vobs show (FIRE.PFX, ZFLARE6.TGA with Face
+- [x] Particle-effect and decal vobs show (FIRE.PFX, ZFLARE6.TGA with Face
   Camera).
 - [x] Dynamic light flicker (range/colour lists) and a light preset.
-- [ ] `zCVobSoundDaytime` switches at the set hours; `zCVobSound` mode,
+- [x] `zCVobSoundDaytime` switches at the set hours; `zCVobSound` mode,
   radius, volume.
-- [ ] Fire mob presets light up with their fire tree; lever, winch,
+- [x] Fire mob presets light up with their fire tree; lever, winch,
   bookstand, sign presets.
-- [ ] A torch as a parent vob with flame, light and sound children keeps
+- [x] A torch as a parent vob with flame, light and sound children keeps
   its children in place in Spacer.
 - [ ] Lights: calibrated viewport power vs. Spacer.
 - [ ] Waypoint `direction`: NPC with `AI_AlignToWP` faces the green Y arrow.
@@ -51,20 +51,25 @@ in Spacer or played yet.
   `zCTriggerTeleport`, `zCVobScreenFX`, `zCVobStair`.
 - [ ] Ellipsoid sounds (`sndVolType=1`): Spacer stores a hand-set bounding
   box; we write the sphere's.
-- [ ] Vobs saved with a scaled rotation matrix (5 of 874 props in the
-  Xardas part-world) come back unscaled.
-- [ ] Waypoints: `waterDepth` / `underWater` always 0 (not imported).
+- [x] Vobs saved with a scaled rotation matrix round-trip; a scaled vob
+  with a visual exports its scale (2026-11-11). Not yet looked at in-game.
+- [x] Waypoints: `waterDepth` / `underWater` are kept as custom properties
+  when set (2026-11-11).
 - [ ] Shared visuals: Spacer writes repeated visuals as `§` references; we
   write a fresh visual block per vob. Valid, but larger files.
-- [ ] Viewport preview: imported props, decals and mobs are empties; load
-  their meshes (KrxImpExp) or link the matching asset-library object.
+- [x] Viewport preview: vob empties instance the matching asset-library
+  mesh, optionally the game's `.3DS` (2026-11-11). Check it in a real
+  viewport.
+- [ ] Preview for mob models (`.ASC` / `.MDS`: only compiled `.MDL`/`.MDM`
+  in the game files, no importer) and for decals.
 
 ## P3 - Features
 
 - [ ] Game bridge: read `.vdf` archives so installs without an unpacked
   `_work/Data` get dropdowns too; item names/descriptions as dropdown hints.
 - [ ] "Add Level Compo" operator (Export Level Package covers the main path).
-- [ ] Draw trigger-target links in the viewport (like waypoint links).
+- [x] Draw trigger-target links in the viewport (2026-11-11). Check it in
+  a real viewport.
 
 ## P4 - Cleanup / tooling
 
