@@ -1,162 +1,59 @@
 """
-Custom (ID) property schema for vobs with per-instance settings: the
-oCMOB family (chests, doors, beds, switches, ladders, wheels, fire
-sources) and zCVobSound.
+Ready-made setups for interactive objects, and small helpers around the
+vob settings stored as flat custom (ID) properties (obj["key"]).
 
-These are plain flat custom properties on the object (obj["key"]), not a
-PropertyGroup: zen_gin_export reads them with obj.get() (see its
-vob_fields.py, which maps each key to an archive property), so the
-exporter keeps working from plain Python. This module only adds the keys
-with defaults and UI descriptions; tests/test_mob_props.py checks the
-keys and defaults match vob_fields.py.
+The settings themselves - which type has which key, defaults, archive
+mapping - are defined once in zen_gin_export.vob_fields; the sidebar reads
+and writes them through vob_ui.py. A key that is absent means "the type's
+default", so objects only carry what was changed.
 
 No bpy import, so it is testable outside Blender.
 """
 
-_INTER = (
-    'oCMobInter', 'oCMobContainer', 'oCMobDoor', 'oCMobBed',
-    'oCMobSwitch', 'oCMobLadder', 'oCMobWheel', 'oCMobFire',
-)
-_LOCKABLE = ('oCMobContainer', 'oCMobDoor')
-_SOUND = ('zCVobSound',)
 
-# key -> (default_value, ui_description, vob_types_it_applies_to)
-MOB_PROPERTIES = {
-    "visual_name": (
-        "", "The game model this object uses, e.g. 'CHESTBIG_NW_NORMAL_LOCKED' "
-        "(.MDS assumed) or 'BEDHIGH_NW_NORMAL_01.ASC' (other extensions are "
-        "kept). Must exist in the game - Spacer crashes on a missing one. "
-        "Use Apply Preset for vanilla models.",
-        _INTER,
-    ),
-    "focus_name": (
-        "", "Name shown when the player focuses it: a script string constant "
-        "such as MOBNAME_CHEST (Text.d), or plain text.", _INTER,
-    ),
-    "hitpoints": (
-        10, "Hitpoints (vanilla worlds use 10 for every interactive object).", _INTER,
-    ),
-    "damage": (
-        0, "Damage dealt by the object when used (traps/weapons only - "
-        "leave 0 for furniture).", _INTER,
-    ),
-    "moveable": (
-        False, "Can the player pick this object up and reposition it?", _INTER,
-    ),
-    "takeable": (
-        False, "Can the player carry this object in their inventory?", _INTER,
-    ),
-    "sound_material": (
-        "WOOD", "Impact sound material - one of WOOD, STONE, METAL, "
-        "LEATHER, CLAY, GLAS.", _INTER,
-    ),
-    "owner": (
-        "", "Script instance name of the NPC who owns this object "
-        "(affects theft detection).", _INTER,
-    ),
-    "owner_guild": (
-        "", "Guild that owns this object (affects theft detection).", _INTER,
-    ),
-    "trigger_target": (
-        "", "vobName of another VOB to send an OnTrigger event to when "
-        "this object is used.", _INTER,
-    ),
-    "use_with_item": (
-        "", "Script instance name of the item required in inventory to "
-        "interact with this object.", _INTER,
-    ),
-    "condition_func": (
-        "", "Daedalus function deciding whether the object can "
-        "currently be used.", _INTER,
-    ),
-    "on_state_func": (
-        "", "Script function the engine calls as <name>_S1 when the object is "
-        "used, e.g. SLEEPABIT (bed: sleep dialog), POTIONALCHEMY, MAKERUNE, "
-        "PrayShrine.", _INTER,
-    ),
-    "state_num": (
-        1, "Number of states the object's model script defines. Vanilla "
-        "worlds use 1 for nearly every object.", _INTER,
-    ),
-    "rewind": (
-        False, "Fire the trigger every time the object is used, instead "
-        "of only the first time.", _INTER,
-    ),
-    "locked": (
-        False, "Locked. Needs a Key Instance and/or a Picklock Str, otherwise "
-        "it can never be opened.", _LOCKABLE,
-    ),
-    "key_instance": (
-        "", "Script instance name of the key item that unlocks this.", _LOCKABLE,
-    ),
-    "picklock_str": (
-        "", "Picklock combination, e.g. 'RRLRL' (R/L per pick attempt). "
-        "Empty means it can't be picked at all.", _LOCKABLE,
-    ),
-    "contains": (
-        "", "Comma-separated 'ITEM_INSTANCE:count' list, e.g. "
-        "'ITFO_APPLE:3,ITMW_1H_SHORTSWORD1' (':count' is optional, "
-        "defaults to 1).", ('oCMobContainer',),
-    ),
-    "fire_slot": (
-        "", "Bone name on the rigged model to attach the fire effect to.",
-        ('oCMobFire',),
-    ),
-    "fire_vobtree_name": (
-        "", "Fire effect template ZEN, e.g. 'FIRETREE_MEDIUM.ZEN'.",
-        ('oCMobFire',),
-    ),
-    "sound_volume": (
-        100.0, "Volume, 0-100.", _SOUND,
-    ),
-    "sound_mode": (
-        "LOOP", "LOOP (continuous), ONCE, or RANDOM (repeats after a random "
-        "delay).", _SOUND,
-    ),
-    "sound_random_delay": (
-        5.0, "Seconds between repeats in RANDOM mode.", _SOUND,
-    ),
-    "sound_start_on": (
-        True, "Playing from the start (otherwise it waits for a trigger).", _SOUND,
-    ),
-    "sound_ambient_3d": (
-        False, "Ambient 3D sound.", _SOUND,
-    ),
-    "sound_radius": (
-        1500.0, "Audible radius in cm (Gothic units).", _SOUND,
-    ),
-}
+def _vob_fields():
+    from zen_gin_export import vob_fields
+    return vob_fields
 
-# Per-type defaults; must match zen_gin_export.vob_fields.TYPE_DEFAULTS
-# (checked by tests/test_mob_props.py). visual_name defaults are vanilla
-# models known to load in Spacer and work in-game.
-TYPE_DEFAULTS = {
-    "oCMobContainer": {"focus_name": "MOBNAME_CHEST"},
-    "oCMobDoor": {"focus_name": "MOBNAME_DOOR"},
-    "oCMobBed": {"focus_name": "MOBNAME_BED", "on_state_func": "SLEEPABIT"},
-    "oCMobSwitch": {"focus_name": "MOBNAME_SWITCH"},
-    "oCMobWheel": {"focus_name": "MOBNAME_WHEEL"},
-}
+
+# Vanilla models known to load in Spacer and work in-game, used when a mob
+# has no Visual of its own (new mobs get them explicitly).
 VISUAL_DEFAULTS = {
     "oCMobContainer": "CHESTBIG_NW_NORMAL_LOCKED",
     "oCMobDoor": "DOOR_NW_NORMAL_01",
     "oCMobBed": "BEDHIGH_NW_NORMAL_01.ASC",
     "oCMobLadder": "LADDER_3.ASC",
+    "oCMobSwitch": "LEVER_1_OC.MDS",
+    "oCMobWheel": "VWHEEL_1_OC.MDS",
+    "oCMobFire": "FIREPLACE_HIGH2.ASC",
+    "oCMOB": "NW_MISC_SIGN_01.3DS",
 }
 
 # Ready-made setups copied from vanilla Gothic II worlds (model, focus name,
 # script function, required item). id -> (label, vob type, values).
 MOB_PRESETS = {
     "CHEST_BIG": ("Big chest", "oCMobContainer", {"visual_name": "CHESTBIG_NW_NORMAL_LOCKED"}),
+    "CHEST_BIG_OPEN": ("Big chest, unlocked look", "oCMobContainer", {"visual_name": "CHESTBIG_NW_NORMAL_OPEN"}),
     "CHEST_BIG_RICH": ("Big chest, rich", "oCMobContainer", {"visual_name": "CHESTBIG_NW_RICH_OPEN"}),
     "CHEST_SMALL": ("Small chest", "oCMobContainer", {"visual_name": "CHESTSMALL_NW_POOR_LOCKED"}),
-    "CHEST_SMALL_OPEN": ("Small chest, open", "oCMobContainer", {"visual_name": "CHESTSMALL_NW_POOR_OPEN"}),
+    "CHEST_SMALL_OPEN": ("Small chest, unlocked look", "oCMobContainer", {"visual_name": "CHESTSMALL_NW_POOR_OPEN"}),
     "DOOR_NORMAL": ("Door", "oCMobDoor", {"visual_name": "DOOR_NW_NORMAL_01"}),
     "DOOR_POOR": ("Door, poor", "oCMobDoor", {"visual_name": "DOOR_NW_POOR_01"}),
     "BED_NORMAL": ("Bed", "oCMobBed", {"visual_name": "BEDHIGH_NW_NORMAL_01.ASC"}),
     "BED_PSI": ("Bed, swamp camp", "oCMobBed", {"visual_name": "BEDHIGH_PSI.ASC"}),
     "BED_PC": ("Bed, player's", "oCMobBed", {"visual_name": "BEDHIGH_PC.ASC"}),
     "LADDER": ("Ladder", "oCMobLadder", {"visual_name": "LADDER_3.ASC"}),
+    "LEVER": ("Lever", "oCMobSwitch", {"visual_name": "LEVER_1_OC.MDS"}),
+    "TOUCHPLATE": ("Touch plate", "oCMobSwitch", {
+        "visual_name": "TOUCHPLATE_STONE.MDS", "focus_name": "", "cd_dyn": False,
+        "cd_static": False, "static_vob": False}),
+    "WHEEL": ("Winch", "oCMobWheel", {"visual_name": "VWHEEL_1_OC.MDS"}),
+    "FIRE_LAMP": ("Standing lamp", "oCMobFire", {
+        "visual_name": "FIREPLACE_NW_LAMP_01.ASC", "fire_vobtree_name": "FIRETREE_LAMP.ZEN"}),
+    "FIRE_HIGH": ("Fire bowl on a stand", "oCMobFire", {
+        "visual_name": "FIREPLACE_HIGH2.ASC", "fire_vobtree_name": "FIRETREE_MEDIUM.ZEN"}),
+    "TORCH_HOLDER": ("Wall torch holder", "oCMobFire", {
+        "visual_name": "OC_LOB_TORCHHOLDER_FILLED.3DS", "fire_vobtree_name": "FIRETREE_LARGE.ZEN"}),
     "LAB": ("Alchemy table", "oCMobInter", {
         "visual_name": "LAB_PSI.ASC", "focus_name": "MOBNAME_LAB",
         "on_state_func": "POTIONALCHEMY", "use_with_item": "ITMI_FLASK"}),
@@ -166,6 +63,8 @@ MOB_PRESETS = {
     "SHRINE": ("Innos shrine", "oCMobInter", {
         "visual_name": "INNOS_NW_MISC_01.ASC", "focus_name": "MOBNAME_INNOS",
         "on_state_func": "PrayShrine"}),
+    "BOOKSTAND": ("Bookstand", "oCMobInter", {
+        "visual_name": "BOOK_NW_CITY_CUPBOARD_01.ASC", "focus_name": "MOBNAME_BOOKSBOARD"}),
     "CAULDRON": ("Cauldron", "oCMobInter", {
         "visual_name": "CAULDRON_OC.ASC", "focus_name": "MOBNAME_CAULDRON",
         "use_with_item": "ITMI_SCOOP"}),
@@ -182,14 +81,43 @@ MOB_PRESETS = {
         "visual_name": "SMOKE_WATERPIPE.MDS", "focus_name": "MOBNAME_WATERPIPE"}),
     "BENCH": ("Bench", "oCMobInter", {"visual_name": "BENCH_NW_CITY_01.ASC", "focus_name": "MOBNAME_BENCH"}),
     "CHAIR": ("Chair", "oCMobInter", {"visual_name": "CHAIR_NW_NORMAL_01.ASC", "focus_name": "MOBNAME_CHAIR"}),
+    "THRONE": ("Armchair", "oCMobInter", {"visual_name": "THRONE_NW_CITY_01.ASC", "focus_name": "MOBNAME_ARMCHAIR"}),
+    "SIGN": ("Sign", "oCMOB", {"visual_name": "NW_MISC_SIGN_01.3DS", "focus_name": "MOBNAME_GENERIC"}),
+    "GRAVESTONE": ("Gravestone", "oCMOB", {"visual_name": "NW_MISC_GRAVESTONE_01.3DS", "focus_name": "MOBNAME_GRAVE_01"}),
 }
+
+# Metres a preset's model is raised above the 3D cursor when it is added:
+# these models have their origin at hand height, not at their base, so on
+# the floor they would sit in the ground (seen in-game, 2026-11-10).
+PRESET_HEIGHTS = {"LEVER": 1.0, "BOOKSTAND": 1.0}
+
+# Fields a preset resets to the type's default when it doesn't name them,
+# so switching e.g. from the alchemy table to a bench clears the function.
+_PRESET_RESET_KEYS = ("focus_name", "on_state_func", "use_with_item", "condition_func")
+
+
+def vob_type_of(obj):
+    """The vob type an object's name prefix names, or None."""
+    if obj is None:
+        return None
+    try:
+        prefix, sep, _ = obj.name.partition(":")
+    except ReferenceError:
+        return None
+    return prefix if sep and prefix in _vob_fields().VOB_SPECS else None
+
+
+def fields_for(vob_type):
+    """Ordered custom-property keys of this vob type's own settings
+    (archive order; base vob flags not included)."""
+    return [key for _, _, key, _ in _vob_fields().keyed_fields(vob_type)]
 
 
 def default_for(vob_type, key):
-    """The default value of a field for this type."""
-    if key == "visual_name" and vob_type in VISUAL_DEFAULTS:
-        return VISUAL_DEFAULTS[vob_type]
-    return TYPE_DEFAULTS.get(vob_type, {}).get(key, MOB_PROPERTIES[key][0])
+    """The default value of a setting for this type."""
+    if key == "visual_name":
+        return VISUAL_DEFAULTS.get(vob_type, "")
+    return _vob_fields().default_for(vob_type, key)
 
 
 def presets_for(vob_type):
@@ -198,48 +126,23 @@ def presets_for(vob_type):
 
 
 def apply_preset(obj, preset_id):
-    """Set a preset's values (and its type's defaults for the fields it
-    doesn't name, so switching e.g. from the alchemy table to a bench
-    clears the script function)."""
+    """Set a preset's values, and the type's defaults for the fields it
+    doesn't name."""
     _, vob_type, values = MOB_PRESETS[preset_id]
     for key in fields_for(vob_type):
         if key in values:
             obj[key] = values[key]
-        elif key in ("focus_name", "on_state_func", "use_with_item", "condition_func"):
+        elif key in _PRESET_RESET_KEYS:
             obj[key] = default_for(vob_type, key)
+    for key in _vob_fields().BASE_KEYS:
+        if key in values:
+            obj[key] = values[key]
+        elif key in obj.keys():
+            del obj[key]
 
 
-_KNOWN_MOB_TYPES = frozenset(t for _, _, types in MOB_PROPERTIES.values() for t in types)
-
-
-def fields_for(vob_type):
-    """Ordered list of custom-property keys relevant to this VOB type
-    (insertion order of MOB_PROPERTIES, which mirrors the archive
-    struct field order)."""
-    return [key for key, (_, _, types) in MOB_PROPERTIES.items() if vob_type in types]
-
-
-def mob_type_of(obj):
-    """The vob type prefix of an object's name if that type has settings
-    here (oCMOB family, zCVobSound), else None."""
-    if obj is None:
-        return None
-    prefix, sep, _ = obj.name.partition(":")
-    return prefix if sep and prefix in _KNOWN_MOB_TYPES else None
-
-
-def missing_fields(obj, vob_type):
-    """Keys this type needs that obj doesn't have yet."""
-    return [key for key in fields_for(vob_type) if key not in obj.keys()]
-
-
-def init_mob_properties(obj, vob_type, fields=None):
-    """Add every custom property this type needs, with its default and a
-    UI description - only keys that don't exist yet, so values already
-    tuned by hand are never overwritten."""
-    for key in fields if fields is not None else fields_for(vob_type):
-        if key in obj.keys():
-            continue
-        _, description, _ = MOB_PROPERTIES[key]
-        obj[key] = default_for(vob_type, key)
-        obj.id_properties_ui(key).update(description=description)
+def init_new_vob(obj, vob_type):
+    """What a freshly added vob needs beyond the type's defaults: a model
+    that exists in the game, so it loads in Spacer straight away."""
+    if vob_type in VISUAL_DEFAULTS and "visual_name" not in obj.keys():
+        obj["visual_name"] = VISUAL_DEFAULTS[vob_type]

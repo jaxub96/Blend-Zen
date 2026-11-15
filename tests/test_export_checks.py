@@ -32,10 +32,28 @@ def test_light_values_come_from_the_blender_light():
         ZCVobLight, FakeObject("zCVobLight:L", type="LIGHT", data=data, light_static=False))
 
     assert props["lightType"] == "enum:1"
-    assert props["range"] == "float:550.0"
+    assert props["range"] == "float:550"
     assert float(props["spotConeAngle"].split(":")[1]) == pytest.approx(40)
     assert props["color"] == "color:255 128 0 255"
     assert props["lightStatic"] == "bool:0"
+    assert props["bbox3DWS"] == "rawFloat:-550.0 -550.0 -550.0 550.0 550.0 550.0"
+
+
+def test_static_lights_omit_the_flicker_fields_dynamic_ones_write_them():
+    """As the engine does: turnedOn...canMove only exist for lightStatic=0."""
+    static = exported_properties(ZCVobLight, FakeObject(
+        "zCVobLight:S", light_preset="NW_STANDART_DARKBLUE", light_quality="MEDIUM"))
+    assert static["lightPresetInUse"] == "string:NW_STANDART_DARKBLUE"
+    assert static["lightQuality"] == "enum:1"
+    assert "turnedOn" not in static and "colorAniList" not in static
+
+    dynamic = exported_properties(ZCVobLight, FakeObject(
+        "zCVobLight:D", light_static=False, color_ani_list="(255 80 0) (200 50 0)",
+        color_ani_fps=2, range_ani_scale="1.0 0.9", range_ani_fps=4))
+    assert dynamic["colorAniList"] == "string:(255 80 0) (200 50 0)"
+    assert dynamic["colorAniFPS"] == "float:2" and dynamic["rangeAniFPS"] == "float:4"
+    assert list(dynamic)[-8:] == ["turnedOn", "rangeAniScale", "rangeAniFPS", "rangeAniSmooth",
+                                  "colorAniList", "colorAniFPS", "colorAniSmooth", "canMove"]
 
 
 def test_clean_scene_has_no_warnings():
@@ -77,6 +95,24 @@ def test_warnings_for_mobs_that_load_or_work_wrong_in_game():
         FakeObject("oCMobContainer:CHEST", visual_name="X", locked=True),    # "can't be opened"
         FakeObject("oCMobBed:BED", visual_name="X", on_state_func=""),        # no sleep dialog
     ]))
-    assert "No Visual Name" in text and "oCMobDoor:NO_MODEL" in text
+    assert "No Visual, model" in text and "oCMobDoor:NO_MODEL" in text
     assert "can never be opened: oCMobContainer:CHEST" in text
     assert "no sleep dialog: oCMobBed:BED" in text
+
+
+def test_warnings_for_triggers_music_zones_and_movers():
+    mover = FakeObject("zCMover:GATE")
+    FakeObject("MoverKey1", parent=mover, zen_mover_key=0)
+    text = "\n".join(scene_warnings([
+        FakeObject("zCVobLevelCompo:L"),
+        FakeObject("oCMobSwitch:LEVER", visual_name="LEVER_1_OC", trigger_target="GATE"),   # fine
+        FakeObject("oCTriggerScript:T", script_func="F"),
+        FakeObject("zCTriggerList:LIST", list_target_0="GATE", list_target_1="NOWHERE"),
+        FakeObject("zCTrigger:NULLED", trigger_target="NULL"),                          # vanilla "none"
+        FakeObject("oCZoneMusic:NOTHEME"), FakeObject("oCZoneMusic:CAMP_XAR"),
+        mover,
+    ]))
+    assert "zCTriggerList:LIST -> NOWHERE" in text
+    assert "LEVER -> GATE" not in text and "NULLED" not in text
+    assert "oCZoneMusic:NOTHEME" in text and "oCZoneMusic:CAMP_XAR" not in text
+    assert "single keyframe never moves: zCMover:GATE" in text

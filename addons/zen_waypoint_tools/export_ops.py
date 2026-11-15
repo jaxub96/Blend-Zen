@@ -84,6 +84,17 @@ class ZEN_OT_import_zen(bpy.types.Operator, ImportHelper):
 
     filename_ext = ".ZEN"
     filter_glob: bpy.props.StringProperty(default="*.ZEN;*.zen", options={'HIDDEN'})
+    preview_meshes: bpy.props.BoolProperty(
+        name="Show Preview Meshes",
+        description="Make props, items and mobs draw their mesh, taken from the asset "
+                    "library object with the same name. They stay empties and export "
+                    "exactly the same",
+        default=True)
+    preview_from_game_files: bpy.props.BoolProperty(
+        name="Also Load From Game Files",
+        description="For visuals no asset library has, import the game's source .3DS "
+                    "with KrxImpExp (slower)",
+        default=False)
 
     def execute(self, context):
         try:
@@ -92,7 +103,8 @@ class ZEN_OT_import_zen(bpy.types.Operator, ImportHelper):
             self.report({'ERROR'}, _MISSING_LIBRARY.format(e))
             return {'CANCELLED'}
         try:
-            report = zen_import.import_zen(context, self.filepath)
+            report = zen_import.import_zen(
+                context, self.filepath, self.preview_meshes, self.preview_from_game_files)
         except Exception as e:
             self.report({'ERROR'}, f"Import failed: {e}")
             return {'CANCELLED'}
@@ -113,6 +125,10 @@ class ZEN_OT_import_zen(bpy.types.Operator, ImportHelper):
                         f"imported: {report.get('level_mesh_error')}")
         elif status == "not_found":
             message += " - referenced level mesh not found"
+
+        if report.get("previews"):
+            from .vob_preview import summary
+            message += " - " + summary(report["previews"])
 
         warn = report["skipped_types"] or report["ways_dropped"]
         self.report({'WARNING' if warn else 'INFO'}, message)

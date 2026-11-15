@@ -12,7 +12,7 @@ with plain pytest.
 
 KNOWN LIMITATION: block shapes that always print index 0 as a structural
 placeholder (VobTree, WayNet, ai, the empty "visual" sub-block used by
-NoVisualObjectVob, EndMarker) are recognized by an explicit list of
+vobs without a visual, EndMarker) are recognized by an explicit list of
 (type1, type2) pairs below, not inferred generically. A future vob type
 that introduces a new kind of always-zero wrapper block would need a
 matching entry added here, or it will be (harmlessly, but confusingly)

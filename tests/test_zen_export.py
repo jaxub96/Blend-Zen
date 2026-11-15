@@ -45,7 +45,7 @@ def test_full_scene_export_produces_a_structurally_valid_archive(tmp_path):
 
 def test_unlinked_waypoints_are_exported_in_the_waypoint_list(tmp_path):
     """Spacer writes waypoints that belong to no way as waypointN blocks
-    before the ways (see blender_work_dir/DieGestrandeten.zen); they used
+    before the ways (as in Spacer-saved worlds); they used
     to be dropped entirely."""
     wp_1, wp_2 = FakeObject("zCWaypoint:WP1"), FakeObject("zCWaypoint:WP2")
     orphan = FakeObject("zCWaypoint:ORPHAN", location=(1, 2, 3))

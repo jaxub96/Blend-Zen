@@ -1,4 +1,5 @@
-from .zen_gin_zcvob import NoVisualObjectVob
+from .zen_gin_zcvob import ZCVob, _format_vec3
+from .vob_fields import LIGHT_DYNAMIC_FIELDS, format_float, print_field, print_fields
 from .light_conversion import (
     blender_distance_to_gothic_range,
     blender_spot_size_to_gothic_cone_angle,
@@ -6,99 +7,66 @@ from .light_conversion import (
 )
 
 
-class ZCVobLight(NoVisualObjectVob):
+class ZCVobLight(ZCVob):
     """
-    Represents an in-game light source (zCVobLight).
+    An in-game light source. Archive order (vanilla worlds):
 
-    Property names/order match the real archive struct (source: ZenGin
-    format issue tracker, cross-referenced with zk.gothickit.dev):
+        lightPresetInUse, lightType, range, color, spotConeAngle,
+        lightStatic, lightQuality, lensflareFX
+        and, only for dynamic lights (lightStatic=0):
+        turnedOn, rangeAniScale, rangeAniFPS, rangeAniSmooth,
+        colorAniList, colorAniFPS, colorAniSmooth, canMove
 
-        string lightPresetInUse; enum lightType; float range; color color;
-        float spotConeAngle; bool lightStatic; enum lightQuality;
-        string lensflareFX; bool turnedOn; string rangeAniScale;
-        float rangeAniFPS; bool rangeAniSmooth; string colorAniList;
-        float colorAniFPS; bool colorAniSmooth; bool canMove;  # Gothic II only
+    lightType (0 point, 1 spot), range, spotConeAngle and color are read
+    from the Blender light itself (light.type, cutoff_distance, spot_size,
+    color), so the viewport and the export can't disagree. Everything
+    Blender has no equivalent for is a custom property (vob_fields
+    LIGHT_FIELDS / LIGHT_DYNAMIC_FIELDS; color_a is the colour's alpha).
 
-    NOTE: lightType/lightQuality enum ORDINALS are not independently
-    confirmed - only the option names are documented. POINT=0/SPOT=1 and
-    HIGH=0/MEDIUM=1/LOW_FASTEST=2 are assumed from listed order. If a
-    compiled light doesn't behave as expected in Spacer, this is the
-    first thing to double check.
-
-    As of the second version of this class, the corresponding Blender
-    object is a real Light (created by zen.add_vob / the ZEN importer -
-    see zen_waypoint_tools/light_props.py), not an Empty. lightType,
-    range, spotConeAngle and color are read directly from the object's
-    native Blender light data (light.type, light.cutoff_distance,
-    light.spot_size, light.color) - editing the light normally in
-    Blender's own Light Properties tab is what drives these values, so
-    the viewport appearance and the exported values can't disagree.
-
-    light_static and the color's alpha channel have no native Blender
-    light equivalent and stay as Custom Properties on the object
-    (light_static: bool, default True; color_a: int 0-255, default 255).
-
-    Backward compatibility: if the object is NOT a Light (an older
-    Empty-based light predating this change), all values fall back to
-    reading Custom Properties exactly as the first version of this class
-    did (light_type, range, spot_cone_angle, color_r/g/b).
+    An object that is not a Light (an Empty from an old version) falls back
+    to the custom properties light_type, range, spot_cone_angle,
+    color_r/g/b.
     """
 
-    _type_name = "zCVobLight:zCVob"
-    _class_version = 39168
-    _static = False
-    _collision = False
+    _vob_type = "zCVobLight"
 
     _LIGHT_TYPE_ORDINALS = {"POINT": 0, "SPOT": 1}
-    _LIGHT_QUALITY_ORDINALS = {"HIGH": 0, "MEDIUM": 1, "LOW_FASTEST": 2}
-    # Anything else (POINT/SUN/AREA) -> POINT; export_checks warns about SUN/AREA.
-    _BLENDER_TYPE_TO_LIGHT_TYPE = {"SPOT": "SPOT"}
     _DEFAULT_RANGE = 1000.0
 
-    def __light_values(self):
-        """Returns (light_type, range_cm, spot_cone_angle_deg, (r, g, b))."""
+    def _light_values(self):
+        """(light type, range in cm, spot cone angle in degrees, (r, g, b))."""
         obj = self._object
-        if obj is not None and obj.type == 'LIGHT':
+        if getattr(obj, "type", None) == 'LIGHT':
             data = obj.data
-            light_type = self._BLENDER_TYPE_TO_LIGHT_TYPE.get(data.type, "POINT")
-            range_cm = (
-                blender_distance_to_gothic_range(data.cutoff_distance)
-                if data.use_custom_distance else self._DEFAULT_RANGE
-            )
-            spot_cone_angle = (
-                blender_spot_size_to_gothic_cone_angle(data.spot_size)
-                if data.type == 'SPOT' else 0.0
-            )
-            r, g, b = blender_color_to_gothic(data.color)
-            return light_type, range_cm, spot_cone_angle, (r, g, b)
+            light_type = "SPOT" if data.type == 'SPOT' else "POINT"
+            range_cm = (blender_distance_to_gothic_range(data.cutoff_distance)
+                        if data.use_custom_distance else self._DEFAULT_RANGE)
+            spot = blender_spot_size_to_gothic_cone_angle(data.spot_size) if data.type == 'SPOT' else 0.0
+            return light_type, range_cm, spot, blender_color_to_gothic(data.color)
 
-        light_type = str(self._custom("light_type", "POINT")).upper()
-        range_cm = float(self._custom("range", self._DEFAULT_RANGE))
-        spot_cone_angle = float(self._custom("spot_cone_angle", 0.0))
-        r = int(self._custom("color_r", 255))
-        g = int(self._custom("color_g", 255))
-        b = int(self._custom("color_b", 255))
-        return light_type, range_cm, spot_cone_angle, (r, g, b)
+        return (
+            str(self._custom("light_type", "POINT")).upper(),
+            float(self._custom("range", self._DEFAULT_RANGE)),
+            float(self._custom("spot_cone_angle", 0.0)),
+            tuple(int(self._custom(f"color_{c}", 255)) for c in "rgb"),
+        )
+
+    def _bounding_box(self, position):
+        radius = self._light_values()[1]
+        return _format_vec3([p - radius for p in position] + [p + radius for p in position])
 
     def _print_additional_data(self):
-        light_type, range_value, spot_cone_angle, (r, g, b) = self.__light_values()
-        light_type_ordinal = self._LIGHT_TYPE_ORDINALS.get(light_type, 0)
-        light_static = bool(self._custom("light_static", True))
-        a = int(self._custom("color_a", 255))
+        p = self._data_printer
+        light_type, range_cm, spot_cone_angle, (r, g, b) = self._light_values()
+        static = bool(self._custom("light_static", True))
 
-        self._data_printer.print_string_property("lightPresetInUse", "")
-        self._data_printer.print_enum_property("lightType", light_type_ordinal)
-        self._data_printer.print_float_property("range", range_value)
-        self._data_printer.print_color_property("color", "{r} {g} {b} {a}".format(r=r, g=g, b=b, a=a))
-        self._data_printer.print_float_property("spotConeAngle", spot_cone_angle)
-        self._data_printer.print_bool_property("lightStatic", light_static)
-        self._data_printer.print_enum_property("lightQuality", self._LIGHT_QUALITY_ORDINALS["LOW_FASTEST"])
-        self._data_printer.print_string_property("lensflareFX", "")
-        self._data_printer.print_bool_property("turnedOn", True)
-        self._data_printer.print_string_property("rangeAniScale", "")
-        self._data_printer.print_float_property("rangeAniFPS", 0.0)
-        self._data_printer.print_bool_property("rangeAniSmooth", True)
-        self._data_printer.print_string_property("colorAniList", "")
-        self._data_printer.print_float_property("colorAniFPS", 0.0)
-        self._data_printer.print_bool_property("colorAniSmooth", True)
-        self._data_printer.print_bool_property("canMove", False)
+        p.print_string_property("lightPresetInUse", self._custom("light_preset", ""))
+        p.print_enum_property("lightType", self._LIGHT_TYPE_ORDINALS.get(light_type, 0))
+        p.print_property("range", "float", format_float(range_cm))
+        p.print_color_property("color", f"{r} {g} {b} {int(self._custom('color_a', 255))}")
+        p.print_property("spotConeAngle", "float", format_float(spot_cone_angle))
+        p.print_bool_property("lightStatic", static)
+        print_field(p, "lightQuality", "enum", self._custom("light_quality", "LOW"), "LOW")
+        p.print_string_property("lensflareFX", self._custom("lensflare_fx", ""))
+        if not static:
+            print_fields(p, LIGHT_DYNAMIC_FIELDS, self._custom, self._vob_type)

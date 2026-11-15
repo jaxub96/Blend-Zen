@@ -2,16 +2,18 @@
 
 A Blender addon and Python export/import library for building Gothic II
 levels in Blender instead of placing every VOB and waypoint by hand in
-Spacer. It covers waypoint and VOB authoring, native lights, sound and
-interactive-object settings, export to an uncompiled ZEN, and importing a
-ZEN back into Blender.
+Spacer. It covers waypoints, freepoints, native lights, sounds, interactive
+objects, zones (music, fog, view distance), triggers and movers, decals and
+particle effects - each with a typed settings panel whose dropdowns are
+read from your game files - plus export to an uncompiled ZEN and importing
+a ZEN back into Blender.
 
 This README is the single documentation file for the repo (open work is
 tracked in `TODO.md`).
 
 **Contents:** [Repo layout](#whats-in-this-repo) - [Setup](#setup) -
 [Using the addon](#using-the-addon) - [Naming conventions](#scene-naming-conventions) -
-[Interactive objects & sounds](#interactive-objects-and-sounds) -
+[Game files bridge](#game-files-bridge) - [Interactive objects & sounds](#interactive-objects-and-sounds) -
 [VOB types](#vob-types) - [Blender -> Spacer workflow](#blender---spacer-workflow) -
 [End-to-end test plan](#end-to-end-test-plan) - [Architecture](#architecture) -
 [Coordinate transform](#coordinate-transform) - [Testing](#testing) -
@@ -47,19 +49,16 @@ tracked in `TODO.md`).
   machine: `export_headless.py`, `check_waypoint_direction.py`,
   `build_compass_test_level.py`, `build_gothic_sky.py`,
   `deploy_and_launch.ps1`.
-- **`blender_work_dir/`** - sample scenes (`G2ISLAND_WEB`,
-  `compass_test_level`, room scenes), two real Spacer-saved worlds used as
-  format references and test fixtures (`G2ISLAND_WEB.ZEN`,
-  `DieGestrandeten.zen`), and `select_material_boundary.py`. The folder is
-  in `.gitignore` so scratch files stay out; the tracked files stay tracked.
+- **`blender_work_dir/`** - local scratch folder for scenes and worlds (the
+  level builders write their `.blend` here). It is in `.gitignore`; only
+  `select_material_boundary.py` is tracked.
 
 ### Related project: KIT
 
 The Gothic modular building kit lives in its own repo, `KIT`
 (`https://github.com/jaxub96/KIT`). It expects to be checked out as a
-sibling of this repo and reads `asset_catalog/materials_levels.blend` and
-`blender_work_dir/G2ISLAND_WEB.blend`. Keep those paths stable, or update
-KIT's README and `kit_lib.py` if they move.
+sibling of this repo and reads `asset_catalog/materials_levels.blend`.
+Keep that path stable, or update KIT's README and `kit_lib.py` if it moves.
 
 ## Setup
 
@@ -73,8 +72,10 @@ KIT's README and `kit_lib.py` if they move.
 4. Install and enable **KrxImpExp** (used for the level mesh `.3DS` export
    and for loading meshes on import).
 5. Optional, in Preferences > Add-ons > Zen Waypoint Tools:
-   - **Gothic Game Folder** - Export Level Package then writes straight into
-     its `_work/Data` instead of `export/` next to the `.blend`.
+   - **Gothic Game Folder** - the dropdowns in VOB Settings are filled from
+     its scripts and assets (see [Game files bridge](#game-files-bridge)),
+     and Export Level Package writes straight into its `_work/Data` instead
+     of `export/` next to the `.blend`.
    - **gothic Command** - the `gothic`/`gothic-wine` launcher used by
      *Open in Spacer*.
    - **Mesh directories** - extra folders the importer searches for the
@@ -103,34 +104,69 @@ The "ZenGin" sidebar tab has:
   [Waypoint direction](#waypoint-direction). With a waypoint active, the
   panel shows its three link slots (drag objects in) and everything it is
   connected to.
-- **Settings box for the active object** - for `oCMob*` and `zCVobSound`
-  vobs, their per-instance settings (see
-  [Interactive objects & sounds](#interactive-objects-and-sounds)). Objects
-  renamed by hand or made with an older version get an **Add Missing
-  Properties** button.
-- **Add Other VOBs** - creates a level compo, startpoint, freepoint, light,
-  sound or any interactive `oCMob*` type at the 3D cursor; interactive
-  objects start from a working vanilla preset. Props (`zCVob`)
-  and items (`oCItem`) are not in this dialog: drag real assets in from the
-  `Props.blend` / `Items_*.blend` asset libraries (they export with a real
-  bounding box), or name an Empty yourself (see the naming table).
+- **VOB Settings** - appears when the active object is a vob (also for
+  props and items dragged in from the asset libraries). Real widgets, not
+  raw custom properties: checkboxes, dropdowns for enums, a colour picker,
+  and text fields that suggest names from the game files as you type.
+  Only what is relevant shows (key and picklock only when Locked, random
+  delay only in Random mode, flicker only for dynamic lights, decal
+  settings only for a `.TGA` visual). Values that are the same on
+  practically every vanilla vob (hitpoints, z-bias, far-clip scale, ...)
+  sit in a collapsed **Advanced** section, which says how many of them you
+  changed. So do the fields no vanilla world ever changes for that class
+  (a chest's hitpoints, a mover's lock sounds) and a mover's own Target;
+  a field you did set moves back up. A setting left at its default is not
+  stored on the object at all.
+  **Defaults by visual.** A prop's collision and wind defaults come from
+  what vanilla does with that mesh: `NW_NATURE_GRASSGROUP_01` dropped into
+  a scene sways (Wind 2) and does not block the player, a barrel collides.
+  A mesh vanilla never uses gets the plain prop defaults (collides, no
+  wind). Set a value on the object to override it.
+  **Visual dropdown by class.** Chests, doors, switches and wheels list
+  only their model scripts (`.MDS`, which carry the open/close
+  animations), beds, ladders and fireplaces their models, generic
+  interactives (chair, bench, anvil, ...) what is left, with the visuals
+  vanilla uses for the class first. Any name can still be typed.
+- **Add Other VOBs** - **Add ZenGin VOB** creates any of the types in
+  [VOB types](#vob-types) at the 3D cursor, set up to work as it is:
+  interactive objects start from a vanilla preset, zones and triggers are
+  boxes you scale, a mover comes with two keyframes. Props (`zCVob`) and
+  items (`oCItem`) are not in this dialog: drag real assets in from the
+  `Props.blend` / `Items_*.blend` asset libraries (they carry the right
+  name and export with a real bounding box). **Reload Game Data** re-reads
+  the game files after you changed scripts.
+  **Show Trigger Links** draws an orange arrow from every vob to the vobs
+  it triggers (Target, a trigger list's targets, a code master's slaves,
+  "Only Respond To"), so a lever -> mover chain is visible at a glance.
+  **Show Preview Meshes** makes vob empties draw their mesh: each empty
+  instances a small `ZenPreview:<name>` collection holding the mesh of the
+  asset-library object with the same name (linked, shared by all vobs with
+  that visual). The empties, their settings and the export stay as they
+  are, except that the bounding box is now the mesh's. Optionally visuals
+  no library has are loaded from the game's source `.3DS` with KrxImpExp.
+  Animated mob models (`.ASC` / `.MDS`) exist only compiled in the game
+  files, so they preview only if a library has them. The same dialog
+  removes the previews again.
 - **Use Gothic Sky Lighting** - installs `asset_catalog/sky/gothic_sky.hdr`
   as a Blender studio light and selects it in the viewport (Material
   Preview, Standard view transform). The HDR is Gothic's own skydome
   rendered to a panorama by `tooling/pipeline/build_gothic_sky.py`; the
   gradient colours are sampled from a Spacer screenshot.
-  The button also adds a preview-only Sun light (`GothicSun_preview`, no ZenGin
-  prefix so it is never exported): the HDR alone is a weak light because Gothic's
-  outdoor light is mostly the sun. Tune `SUN_STRENGTH` / `SUN_ELEVATION_DEG` in
-  `gothic_sky.py`.
+  The sun is painted into the panorama, so the sky lights the scene on its
+  own and no light object is added: EEVEE turns the bright disc into a
+  shadow-casting sun, the rest of the sky is soft fill. Below the horizon the
+  haze fades into neutral grey. Tune `SUN_*` and `GROUND` in the build script
+  and rebuild the HDR; the build prints how bright a white surface ends up.
+  A `GothicSun_preview` light left by an older version is removed on click.
 - **Export Uncompiled ZEN** - writes the **current scene** (objects in other
   scenes are not exported). Every export is verified for structural
   correctness (object-index contiguity vs. the header count), and the
   report also warns about likely mistakes: unknown type prefixes (typos),
   duplicate names where names must be unique (freepoints, startpoints,
-  named mobs), mobs without a model, locks nothing can open, beds without
-  `SLEEPABIT`, sun/area lights (exported as point lights) and a missing
-  `zCVobLevelCompo`. A failed export writes nothing and leaves an existing
+  named mobs, triggers, movers), trigger targets that name no vob, mobs
+  without a model, locks nothing can open, beds without `SLEEPABIT`, music
+  zones without a theme, movers with a single keyframe, sun/area lights
+  (exported as point lights) and a missing `zCVobLevelCompo`. A failed export writes nothing and leaves an existing
   file untouched.
 - **Export Level Package** - with the level mesh selected: writes
   `_work/Data/Meshes/Level/<mod>/<level>.3DS` (via KrxImpExp, world space)
@@ -139,11 +175,14 @@ The "ZenGin" sidebar tab has:
   compos out of the ZEN. With **Open in Spacer** (needs Gothic Game Folder)
   it then runs `gothic spacernet <mod>/<level>`; the log goes to
   `~/Library/Logs/gothic-spacernet.log` on macOS, the temp folder elsewhere.
-- **Import Uncompiled ZEN** - rebuilds vobs (with their light/mob/sound
-  settings), waypoints with their facing direction, and links. Also reads
-  Spacer-saved worlds: unnamed vobs take their name from `visual`/
-  `itemInstance`/`sndName`, unsupported vob types (zones, triggers, ...)
-  are skipped and listed in the report, the vob hierarchy is flattened.
+- **Import Uncompiled ZEN** - rebuilds vobs with all their settings and
+  their parent/child hierarchy, waypoints with their facing direction, and
+  links. Also reads Spacer-saved worlds: unnamed vobs take their name from
+  `visual`/`itemInstance`/`sndName`; zones and triggers come in as boxes
+  matching their bounding box; movers get one child empty per keyframe.
+  Unsupported vob types (cutscene cameras) are skipped and listed in the
+  report. With **Show Preview Meshes** (on by default in the file dialog)
+  props, items and mobs draw their mesh, see above.
   The level mesh is loaded (into a "Zen Level Mesh" collection, parented
   to the level compo and unselectable) if found next to the ZEN, in the
   sibling `_work/Data/Meshes/Level/*/` folders, or in the configured mesh
@@ -211,9 +250,55 @@ is reported in the export message.
 | `zCVobStartpoint:` | Start position name | One per playable world |
 | `zCVobLevelCompo:` | World mesh filename, no extension | Reference to the `.3DS` Spacer compiles in |
 | `zCWaypoint:` | Waypoint name | Links are edited via the link slots, not by name. A `.001` suffix is kept in `wpName` (waypoint names must be unique) |
-| `zCVobLight:` | Light name | A real Blender Light - edit type/range/cone/color in Blender's Light Properties |
-| `zCVobSound:` | The sound's script instance name | Written as `sndName`; volume/mode/radius in the sidebar |
-| `oCMobContainer:`, `oCMobDoor:`, `oCMobBed:`, `oCMobSwitch:`, `oCMobLadder:`, `oCMobWheel:`, `oCMobFire:`, `oCMobInter:` | This instance's in-game name (`vobName`) | **Not** a mesh name - the model is the **Visual Name** setting. May be empty (many vanilla mobs are unnamed); otherwise must be unique |
+| `zCVobLight:` | Light name | A real Blender Light - type/range/cone/colour are the light's own; preset, static, quality and flicker in VOB Settings |
+| `zCVobSound:`, `zCVobSoundDaytime:` | The vob's name | The sound is the **Sound** setting (blank = the vob's name, how older scenes store it) |
+| `oCMobContainer:`, `oCMobDoor:`, `oCMobBed:`, `oCMobSwitch:`, `oCMobLadder:`, `oCMobWheel:`, `oCMobFire:`, `oCMobInter:`, `oCMOB:` | This instance's in-game name (`vobName`) | **Not** a mesh name - the model is the **Visual** setting. May be empty (many vanilla mobs are unnamed); otherwise must be unique |
+| `oCZoneMusic:`, `oCZoneMusicDefault:` | `<PLACE>_<THEME>` | The part after the first underscore is the music theme (`CAMP_XAR` plays `XAR_Day_Std`, ...); the **Theme** dropdown sets it |
+| triggers, movers, other zones, effects | The vob's name | What `Trigger Target` fields refer to; must be unique |
+
+A `zCVob:` whose **Visual** setting is filled in uses that instead of its
+name: `FIRE.PFX` makes it a particle effect, `ZFLARE6.TGA` a decal,
+`X.ASC` a static model.
+
+**Hierarchy.** Blender parenting is the vob hierarchy: a vob parented to
+another vob is written as its child (a torch with its flame, light and
+sound), and comes back parented on import. Objects that are not vobs (the
+level mesh, mover keyframes, your own helper empties) can sit in between.
+
+**Boxes.** Zones, triggers and touch-damage vobs are cube empties: move and
+scale the cube, it is written as the vob's bounding box (rotation is
+locked, the box is axis-aligned in-game). Sounds and lights write the box
+of their radius/range.
+
+## Game files bridge
+
+With **Gothic Game Folder** set in the add-on preferences, every field
+below has a dropdown button (the arrow next to it): a searchable list of
+what actually exists in your game. The field itself is a normal text
+field, so any name can still be typed by hand, and everything works
+without a game folder:
+
+| Field | Read from (`_work/Data/...`) |
+|---|---|
+| Sound, Night Sound, mover sounds | `Scripts/System/SFX/*.d` (`C_SFX_DEF` instances) |
+| Particle effect visual, PFX trigger effect | `Scripts/System/PFX/*.d` (`C_PARTICLEFX`) |
+| Music zone Theme | `Scripts/System/Music/*.d` (`XXX_Day_Std` -> `XXX`) |
+| Needs Item, Key, Add Item to Container, item instance | `Scripts/Content/**/*.d` (`C_Item`) |
+| Focus Name, Owner, Owner Guild | `MOBNAME_*` constants, `C_Npc` instances, `GIL_*` |
+| Script Function (mobs / script triggers) | functions ending in `_S1` / starting with `EVT_` |
+| Light Preset (picking one applies range, colour, flicker) | `Presets/LightPresets.zen` |
+| Lensflare | `Presets/Lensflare.zen` |
+| Visual: meshes, mob models, morph meshes, decal textures | `Meshes/_compiled`, `Anims/_compiled`, `Textures/_compiled` |
+| Fire Effect, change-level Level | `Worlds/*.ZEN`, `Worlds/**/*.ZEN` |
+| Trigger Target, list targets, code master slaves | the names of the vobs in the current scene |
+
+The Daedalus sources are read (not the compiled `.DAT`), so your mod's own
+sounds, items and functions show up as soon as they are written - press
+**Reload Game Data** after editing scripts. The index is built on first
+use (a few tenths of a second) by
+`modules/zen_gin_export/game_data.py`, which has no Blender dependency. A
+game folder with only `.vdf` archives and no unpacked `_work/Data` gives
+empty lists.
 
 ## Interactive objects and sounds
 
@@ -228,7 +313,7 @@ don't:**
 1. The name is the object's in-game identity (`vobName`) - what a
    trigger's `triggerTarget` addresses. It may stay empty (many vanilla
    mobs are unnamed); otherwise it must be unique.
-2. The model is a **shared game asset** named in **Visual Name**: an
+2. The model is a **shared game asset** named in **Visual**: an
    animated `.MDS` (extension optional, e.g. `CHESTBIG_NW_NORMAL_LOCKED`),
    an `.ASC` model (`BEDHIGH_NW_NORMAL_01.ASC`) or a static `.3DS` mesh -
    give the extension for anything but `.MDS`. **The model must exist in
@@ -236,136 +321,109 @@ don't:**
    (`oCMobInter::Reset` access violation). Blend-Zen can't create or
    preview these models; you place an Empty.
 3. What happens on use is **script-driven**: the engine calls the
-   **On State Func** with `_S1` appended. A bed needs `SLEEPABIT`
+   **Script Function** with `_S1` appended. A bed needs `SLEEPABIT`
    (`SLEEPABIT_S1` opens the sleep dialog), an alchemy table
    `POTIONALCHEMY`, a rune table `MAKERUNE`, a shrine `PrayShrine` (see
-   `Story/Dialog_Mobsis/` in the scripts). **Use With Item** is the item
+   `Story/Dialog_Mobsis/` in the scripts). **Needs Item** is the item
    the player must carry (e.g. `ITMI_FLASK` for alchemy). **Focus Name**
-   is a script text constant such as `MOBNAME_CHEST`.
-4. **Locked** chests and doors need a **Key Instance** and/or a
-   **Picklock Str** (e.g. `RLRRLL`); locked with neither shows "can't be
+   must be a script text constant such as `MOBNAME_CHEST` (Text.d); plain
+   text shows nothing in-game.
+4. **Locked** chests and doors need a **Key** and/or a
+   **Picklock** (e.g. `RLRRLL`); locked with neither shows "can't be
    opened" in-game.
 
 **Presets.** Add VOB fills in a working vanilla setup for each type
 (chest `CHESTBIG_NW_NORMAL_LOCKED`, door `DOOR_NW_NORMAL_01`, bed
-`BEDHIGH_NW_NORMAL_01.ASC` + `SLEEPABIT`, ladder `LADDER_3.ASC`) and has a
-**Preset** dropdown; the sidebar box has **Apply Preset** for existing
-objects. Presets are copied from vanilla worlds: big/small chests, two
-doors, three beds, ladder, alchemy table, rune table, Innos shrine,
-cauldron, stove, campfire pan, tree saw, water pipe, bench, chair (the
-generic ones are "Interactive: Generic" / `oCMobInter`). Switch, wheel and
-fire have no vanilla model on record yet - set Visual Name yourself.
+`BEDHIGH_NW_NORMAL_01.ASC` + `SLEEPABIT`, ladder `LADDER_3.ASC`, lever
+`LEVER_1_OC.MDS`, winch `VWHEEL_1_OC.MDS`, fire bowl `FIREPLACE_HIGH2.ASC`)
+and has a **Preset** dropdown; VOB Settings has **Apply Preset** for
+existing objects. Presets are copied from vanilla worlds: chests, doors,
+beds, ladder, lever, touch plate, winch, three fires (with the fire tree
+each uses in vanilla), alchemy table, rune table, Innos shrine, bookstand,
+cauldron, stove, campfire pan, tree saw, water pipe, bench, chair,
+armchair, sign and gravestone.
 
-**Export warnings** catch the three silent failures above: a mob without
-Visual Name, a lock nothing can open, and a bed without `SLEEPABIT`.
+**Switch -> mover (a gate, a secret door).** Add a Mover, give it a mesh in
+**Visual**, and place its two keyframe empties (closed, open). Add a
+Switch and pick the mover's name in **Trigger Target**. That is the setup
+of the secret door in Xardas' tower (`TOUCHPLATE_STONE.MDS` ->
+`EVT_XARDAS_SECRET_01`).
+
+**Export warnings** catch the silent failures above: a mob without
+Visual, a lock nothing can open, a bed without `SLEEPABIT`, and a Trigger
+Target that names no vob in the scene.
 
 **Verified in Spacer and in-game (2026-11-09):** doors, lockable chests,
 the bed's sleep dialog and the alchemy table. NPC sleeping schedules are
 separate (the NPC's `TA_Sleep` routine).
 
-### Field reference
+### Settings reference
 
-Plain custom (ID) properties, edited in the sidebar box (or Object
-Properties > Custom Properties). Descriptions live in `mob_props.py`; the
-mapping to archive properties in `modules/zen_gin_export/vob_fields.py`
-(a test keeps the two in sync).
+Every setting is a plain custom (ID) property on the object; VOB Settings
+edits it through typed widgets, and a setting at its type's default is not
+stored. Labels and tooltips live in `vob_ui_schema.py`; the mapping to
+archive properties, the defaults and the per-type flags in
+`modules/zen_gin_export/vob_fields.py` (a test keeps the two in sync).
+Hover a field for its tooltip. The ones that decide whether something
+works:
 
-| Field | Applies to | Meaning |
+| Setting | Applies to | Meaning |
 |---|---|---|
-| Visual Name | all mobs | Game model: `NAME` (= `NAME.MDS`) or `NAME.ASC` / `NAME.3DS`. Must exist |
-| Focus Name | all mobs | Text shown when the player looks at it; usually a `MOBNAME_*` constant |
-| Hitpoints / Damage | all mobs | Vanilla uses 10 / 0 |
-| Moveable / Takeable | all mobs | Can the player drag / pick it up |
-| Sound Material | all mobs | WOOD, STONE, METAL, LEATHER, CLAY, GLAS |
-| Owner / Owner Guild | all mobs | Script instance/guild that owns it, for theft detection |
-| Trigger Target | all mobs | Vob name to send OnTrigger to when used (e.g. switch -> door) |
-| Use With Item | all mobs | Item instance the player must carry to use it |
-| Condition Func / On State Func | all mobs | Script functions; On State Func is called as `<name>_S1` on use (bed: `SLEEPABIT`) |
-| State Num | all mobs | Default 1, as in vanilla worlds (108 of 109 mobs) |
-| Rewind | all mobs | Fire the trigger every use, not only the first |
-| Locked / Key Instance / Picklock Str | Chest, Door | Locked needs a key and/or a picklock combination (e.g. `RRLRL`), or it never opens |
-| Contains | Chest | `ITEM_INSTANCE:count` comma list, e.g. `ITFO_APPLE:3,ITMW_1H_SHORTSWORD1` |
-| Fire Slot / Fire Vobtree Name | Fire | Bone name for the flame, and fire-effect template ZEN (e.g. `FIRETREE_MEDIUM.ZEN`) |
-| Sound Volume / Mode / Random Delay | Sound | 0-100; LOOP, ONCE or RANDOM; seconds between RANDOM repeats |
-| Sound Start On / Ambient 3D | Sound | Playing from the start; ambient 3D sound |
-| Sound Radius | Sound | Audible radius in cm (default 1500, as in vanilla) |
+| Visual | mobs, movers, props | Game model: `NAME` (default extension per type) or `NAME.ASC` / `.3DS` / `.MDS` / `.PFX` / `.TGA`. Must exist |
+| Collision / Collide With World | everything with a visual | `cdDyn` / `cdStatic`, per object. Props default to on; turn off for plants you can walk through |
+| Wind Sway (+ Strength) | props | `visualAniMode` for plants and trees |
+| Focus Name | mobs | Text shown when the player looks at it: a `MOBNAME_*` constant from Text.d (plain text shows nothing) |
+| Trigger Target | mobs, triggers | Vob name that is triggered when used (switch -> mover) |
+| Needs Item / Script Function | mobs | Item the player must carry; function called as `<name>_S1` on use (bed: `SLEEPABIT`) |
+| Locked / Key / Picklock | chest, door | Locked needs a key and/or a combination (e.g. `LRRLR`), or it never opens |
+| Contains | chest | `ITEM:count` comma list; the + button adds items from the game's scripts |
+| Fire Effect | fire | Vob tree placed at the fire bone when lit (`FIRETREE_MEDIUM.ZEN`) |
+| Sound / Volume / Radius / Mode | sound | Instance from `SfxInst.d`; 0-100; cm; Loop, Once or Random (+ delay) |
+| Start / End Hour, Night Sound | day/night sound | Sound plays between the hours, Night Sound otherwise |
+| Preset / Static / Quality / flicker lists | light | Static lights are baked; dynamic ones can flicker (range and colour lists + FPS) |
+| Theme / Priority | music zone | Theme prefix from `MusicInst.d`; the higher priority wins where zones overlap |
+| React To Touch / Trigger, Respond To Player / NPCs | triggers | What sets the trigger off (the packed `flags` / `filterFlags` bytes) |
+| Script Function | script trigger | Daedalus function that is called |
+| Level / Arrive At | change-level trigger | World to load and the startpoint to arrive at |
+| Behaviour, Speed, Path, Easing, sounds | mover | How it moves between its keyframes |
+| Size, Blending, Opacity | decal | The `zCDecal` visual's settings |
 
 ## VOB types
 
 Researched from ZenKit's docs (`zk.gothickit.dev`), the OpenGothic VOB
-reference, and checked against the two real Spacer-saved worlds in
-`blender_work_dir/` (class chains, class versions, field order).
+reference, and checked against real Spacer-saved worlds (class chains, class versions, field order).
 
 ### Implemented
 
-| VOB | Definition | In-game application |
-|---|---|---|
-| `zCVob` | Generic base, a static mesh instance | Decoration: rocks, furniture, crates, barrels |
-| `oCItem` | Pickupable item tied to a Daedalus instance | Loot placed in the world |
-| `zCVobSpot` | Named position/orientation marker | NPC routine targets, guard posts |
-| `zCVobStartpoint` | Named spawn transform | Where the player appears |
-| `zCVobLevelCompo` | Reference to the level mesh | Needed for Spacer to compile the world |
-| `zCWaypoint` (+ `zCWayNet`) | Navigation graph node linked by ways | NPC pathing |
-| `zCVobLight` | Static/dynamic point/spot light | Torches, lamps |
-| `zCVobSound` | Ambient sound emitter (name, volume, mode, radius) | Environmental audio |
-| `oCMobInter` | Generic interactive object | Custom "use" objects |
-| `oCMobContainer` | Lootable container, contents, optional lock | Chests, barrels |
-| `oCMobDoor` | Door with lock, key, picklock | Doors, gates |
-| `oCMobBed` | Sleepable bed | Player rest, NPC sleep |
-| `oCMobSwitch` | Lever/switch | Puzzles, gate releases |
-| `oCMobLadder` | Climbable ladder | Vertical connections |
-| `oCMobWheel` | Rotating wheel | Winches |
-| `oCMobFire` | Usable fire with NPC slots | Campfires, forges |
+Class chains, versions, property order and default flags are those of the
+ASCII part-worlds shipped with Gothic II (NewWorld, Addon, OldWorld -
+about 43,000 vobs, surveyed property by property).
+
+| VOB | What it is for |
+|---|---|
+| `zCVob` | Static prop; with a `.PFX` visual a particle effect, with a `.TGA` a decal (flares, cobwebs), with `.ASC`/`.MDS` a model |
+| `oCItem` | Item lying in the world |
+| `zCVobSpot`, `zCVobStartpoint`, `zCVobLevelCompo` | Freepoint, player start, level mesh reference |
+| `zCWaypoint` (+ `zCWayNet`) | NPC navigation graph |
+| `zCVobLight` | Static or dynamic point/spot light with preset, quality, range and colour flicker |
+| `zCVobSound`, `zCVobSoundDaytime` | Ambient sound; day/night sound pair |
+| `oCMOB` | Focusable static object: signs, gravestones |
+| `oCMobInter`, `oCMobContainer`, `oCMobDoor`, `oCMobBed`, `oCMobSwitch`, `oCMobLadder`, `oCMobWheel`, `oCMobFire` | Interactive objects |
+| `oCZoneMusic`, `oCZoneMusicDefault` | Music by area / everywhere else |
+| `zCZoneZFog`, `zCZoneZFogDefault` | Fog by area / everywhere else |
+| `zCZoneVobFarPlane`, `zCZoneVobFarPlaneDefault` | Vob view distance by area / everywhere else |
+| `zCTrigger`, `oCTriggerScript`, `oCTriggerChangeLevel` | Trigger another vob / call a script function / load another world |
+| `zCTriggerList`, `zCMessageFilter`, `zCCodeMaster`, `zCTriggerWorldStart`, `zCTriggerUntouch` | Trigger logic: fan-out with delays, message conversion, combinations, on world load, on leaving |
+| `zCMover` | Mesh moving between keyframes: gates, secret doors, lifts |
+| `oCTouchDamage` | Box that hurts on touch |
+| `zCPFXControler`, `zCVobAnimate`, `zCVobLensFlare`, `zCEarthquake` | Triggered particle effect, morph-mesh animation, lens flare, screen shake |
 
 ### Not yet implemented
 
-**Triggers / level logic:** `zCTrigger`, `zCTriggerList`, `zCCodeMaster`,
-`zCMover` (+ `zCMoverController`), `oCTriggerScript`,
-`oCTriggerChangeLevel`, `zCTriggerWorldStart`, `zCTriggerUntouch`,
-`zCTriggerTeleport`, `zCMessageFilter`, `zCTouchDamage`/`oCTouchDamage`.
-
-**Zones / atmosphere:** `oCZoneMusic(Default)`, `zCZoneZFog(Default)`,
-`zCZoneVobFarPlane(Default)` (all three appear in `G2ISLAND_WEB.ZEN`, so
-that file is a ready format reference).
-
-**Cinematics & effects:** `zCCSCamera` (+ `zCCamTrj_KeyFrame`),
-`zCPFXController`, `zCVobAnimate`, `zCVobLensFlare`, `zCEarthquake`,
-`zCVobScreenFX`, decals (`zCDecal` visuals). **Sound variant:**
-`zCVobSoundDaytime`. **NPC:** `oCNpc` (spawned by scripts, a weak fit).
-
-## Blender -> Spacer workflow
-
-### Compiled vs. uncompiled ZEN
-
-* **Compiled ZEN** - game-ready: baked world mesh, BSP tree, lightmaps,
-  VOB tree, waynet.
-* **Uncompiled ZEN** - the VOB tree and waynet plus (via
-  `zCVobLevelCompo`) a *reference* to the `.3DS` mesh to compile in.
-
-The exporter only writes the **uncompiled** kind, and that is the intended
-handoff: Spacer's "Compile World" resolves the referenced mesh, bakes the
-geometry and merges it with the VOB tree and waynet already in the file.
-Nobody outside Piranha Bytes has published a way to write baked BSP/
-lightmap data, so compiling always happens in Spacer.
-
-### Manual path to a playable level
-
-1. **Model the level mesh** in Blender (no prefix).
-2. **Export the mesh to `.3DS`** with KrxImpExp into
-   `<Gothic II>\_work\Data\Meshes\...`.
-3. Add a `zCVobLevelCompo:<meshname>` (matching the `.3DS` name), your
-   waypoints, a `zCVobStartpoint:` and other vobs. (**Export Level
-   Package** automates steps 2-4.)
-4. **Export** the uncompiled ZEN, e.g. into `_work\Data\Worlds\`.
-5. **Spacer -> File -> Open** the uncompiled ZEN (not "Import mesh").
-6. **World -> Compile World** (Outdoor/Indoor), Editor mode **off**.
-7. **World -> Compile Light.**
-8. **File -> Save as** a compiled ZEN into `_work\Data\Worlds\`.
-9. Point the mod's startup world at it and launch Gothic II.
-
-Gothic triangle limits apply (keep submeshes under ~50k; split and use
-Spacer's macros to join). Whether Spacer's compile step can be scripted is
-unknown.
+`zCCSCamera` (+ `zCCamTrj_KeyFrame`) cutscene cameras, `zCMoverControler`,
+`zCTriggerTeleport`, `zCVobScreenFX`, `zCVobStair`, `oCNpc` (spawned by
+scripts, a weak fit). Unsupported types are skipped on import and listed
+in the report.
 
 ## End-to-end test plan
 
@@ -383,8 +441,9 @@ transforms, bounding boxes or the archive format.
 2. **VOBs.** Place at least one `zCVobStartpoint:`; a `zCVob:` via an Empty
    and one dragged from `Props.blend`; an `oCItem:` both ways; a
    `zCVobSpot:`; a `zCVobLight:` with real type/range/color; each `oCMob*`
-   with a real Visual Name (smoke: just a bed); a `zCVobSound:`. Check the
-   sidebar box shows the right fields and values persist.
+   with a real Visual (smoke: just a bed); a `zCVobSound:`; a music zone;
+   a switch with a mover as its Trigger Target; a script trigger. Check
+   VOB Settings shows the right fields and values persist.
 3. **Waynet.** Chain waypoints, link/unlink a pair, leave one unlinked,
    toggle link display and orbit.
 4. **Export Level Package** with the level mesh selected. The report must
@@ -401,7 +460,72 @@ transforms, bounding boxes or the archive format.
    errors.
 9. **In-game.** Walk the waynet; use every `oCMob*` (chest contents, door,
    bed, switch trigger target, ladder, wheel, fire); pick up the item and
-   check its name; check lights and sounds; confirm prop collision.
+   check its name; check lights (static and flickering) and sounds; confirm
+   prop collision; pull the switch and watch the mover; walk into the
+   script trigger and the music/fog zones.
+
+**Feature test level.** `tooling/pipeline/build_feature_test_level.py`
+builds a level with one station per item of `TODO.md` "Verify in Spacer /
+in-game" (switch -> mover, triggers, zones, lights, effects, sounds, mobs,
+props, items), each with a sign whose focus name says what to do, saves it
+as a `.blend` and can run Export Level Package in the same step. With a
+level name it also writes the signs' `MOBNAME_FT_*` texts into the game's
+`Story/Text.d` (between marker comments; rebuild the scripts afterwards):
+
+```bash
+blender --background --python tooling/pipeline/build_feature_test_level.py -- blender_work_dir/feature_test_level.blend FEATURE_TEST MOD
+```
+
+The station list is in the script's docstring.
+
+**Showcase level.** `tooling/pipeline/build_showcase_level.py` builds a
+30 x 30 m forest hollow that looks like a piece of a Gothic world and uses
+every vob type Blend-Zen writes: a hermit's hut (door, bed, locked chest,
+alchemy table, torch with child vobs, music zone), a campfire, a graveyard
+(fog and view-distance zones), a shrine (script trigger, trigger list,
+code master, earthquake) and a lever-operated gate with a level change
+behind it. The blend opens with preview meshes and the Gothic sky; names
+are checked against the game files. The places are listed in the script's
+docstring.
+
+```bash
+blender --background --python tooling/pipeline/build_showcase_level.py -- blender_work_dir/showcase_level.blend [SHOWCASE MOD]
+```
+
+**Check level.** `tooling/pipeline/build_check_level.py` builds one
+station for each thing that can only be judged by eye: the world opens in
+Spacer (plus a PASS/FAIL check of the file itself), three static lights
+with barrels standing exactly where each light must end, four men who must
+each face the barrel their waypoint points at, the same barrel at four
+scales next to posts of the expected height, and a lane of dropped-in
+plants with a sign saying which must sway and which must stop you. With a
+level name it also writes the signs' texts, the four test NPCs and the
+level's startup functions into the game scripts, and it renders
+`<name>_lights_reference.png` next to the blend. The stations are listed
+in the script's docstring.
+
+```bash
+blender --background --python tooling/pipeline/build_check_level.py -- blender_work_dir/bz_check.blend BZ_CHECK MOD
+```
+
+**Vanilla survey.** `tooling/pipeline/survey_vanilla_worlds.py "<game
+folder>"` (plain Python) reads every ASCII world under `_work/Data/Worlds`
+except `MOD` and writes `modules/zen_gin_export/vanilla_survey.json`: the
+per-visual prop defaults, the visuals used per class and the fields never
+changed per class. Re-run it to include more worlds. A visual sways by
+default when at least 30% of its vanilla instances do (`WIND_SHARE`).
+
+**Round-trip check.** `tooling/pipeline/roundtrip_check.py` imports a
+ZEN, exports it again and compares every property of every vob and
+waypoint with the original:
+
+```bash
+blender --background --factory-startup --python tooling/pipeline/roundtrip_check.py -- path/to/world.zen
+```
+
+On the vob list of `NewWorld_Part_Xardas_01` (1,430 vobs, 152 waypoints,
+161 ways) it reports no differences beyond the by-design ones listed at
+the top of the script.
 
 **Automation.** `tooling/pipeline/export_headless.py` runs the export
 operators via `blender --background`; `deploy_and_launch.ps1` copies
@@ -416,17 +540,16 @@ https://zk.gothickit.dev/engine/overview/
 
 ```
 ZenArchive  (zen_gin_zen_archive.py)  header + one oCWorld block
-  |-- OCVobTree (zen_gin_ocvobtree.py)  name prefix -> vob class, sorted flat list
-  |     |-- ZCVob and simple subtypes   (zen_gin_zcvob.py)
-  |     |-- ZCVobLight                  (zen_gin_zcvob_light.py)
-  |     |-- ZCVobSound                  (zen_gin_zcvob_sound.py)
-  |     |-- OCMobInter and subtypes     (zen_gin_zcvob_ocmob.py)
-  |-- WayNet    (zen_gin_waynet.py)     free waypoints + ways
+  |-- OCVobTree (zen_gin_ocvobtree.py)  name prefix -> vob class; Blender parenting -> vob hierarchy
+  |     |-- ZCVob                       (zen_gin_zcvob.py)   the writer for every vob type
+  |     |-- ZCVobLight                  (zen_gin_zcvob_light.py)  reads the Blender light
+  |-- WayNet    (zen_gin_waynet.py)     free waypoints + ways; orient_ways() for the importer
 ZenGinDataPrinter (zen_gin_data_printer.py)  [type1 type2 version index] ... [] / name=type:value
 Printer / ConsolePrinter / FilePrinter (printer.py)
 
-vob_fields.py           custom property <-> archive field tables (mobs, sound)
-coordinate_transform.py Blender <-> Gothic positions/rotations/directions, raw hex
+vob_fields.py           THE table: every vob type (chain, version, flags, visual, volume) and its fields
+game_data.py            GameIndex: names read from a game folder's scripts, presets and assets
+coordinate_transform.py Blender <-> Gothic positions/rotations/directions, raw hex, mover keyframes
 light_conversion.py     Blender light <-> zCVobLight range/color/cone
 archive_parser.py       ASCII archive -> block tree (importer, tests)
 archive_verifier.py     object-index check run after every export
@@ -434,57 +557,78 @@ export_checks.py        pre-export scene warnings
 ```
 
 **Input objects.** Anything with `name`, `matrix_world` (4x4, indexable as
-`m[row][col]`), and optionally `type`, `children`, `bound_box`, `data`,
-`get(key, default)` for custom properties, and `zen_waypoint_links` for
-waypoints. That is all the library touches, which is why the tests can use
-small fakes (`tests/conftest.py`). Transforms come from `matrix_world`, so
-rotation mode, parents and object scale are all handled.
+`m[row][col]`), and optionally `type`, `parent`, `children`, `bound_box`,
+`empty_display_size`, `data`, `get(key, default)` for custom properties,
+and `zen_waypoint_links` for waypoints. That is all the library touches,
+which is why the tests can use small fakes (`tests/conftest.py`).
+Transforms come from `matrix_world`, so rotation mode and parents are
+handled. Scale: a vob with a visual writes its scale into the matrix, which keeps
+vanilla worlds' matrices intact on a round trip - but the game does not
+draw the visual any bigger or smaller (checked in-game), so scaling a
+prop in Blender changes nothing you can see there; for zones and
+triggers the scale is the box, and for everything else it is ignored.
 
-**`ZCVob`** writes the base block (`pack`, `bbox3DWS`, `trafoOSToWSRot`,
-`trafoOSToWSPos`, `vobName`, `visual`, flags), a `visual` sub-block, an
-empty `ai` sub-block, then `_print_additional_data()`. Subclasses set:
+**One table, one writer.** `vob_fields.VOB_SPECS` has a `VobSpec` per vob
+type: the class chain as Spacer writes it (most-derived first, e.g.
+`oCMobDoor:oCMobInter:oCMOB:zCVob`; abstract bases such as `oCMobLockable`
+are not part of it), the class version, where the visual comes from, what
+volume the bounding box describes, the type's default base flags, and its
+fields as `(archive name, archive type, custom key, default)`. `ZCVob`
+writes any of them: the base block (`pack`, `presetName`, `bbox3DWS`,
+`trafoOSToWSRot/Pos`, `vobName`, `visual`, then the per-instance flags), a
+`visual` sub-block chosen by the visual's extension (`zCProgMeshProto`,
+`zCModel`, `zCMorphMesh`, `zCParticleFX`, `zCDecal` with its settings, or
+`[visual % 0 0]`), an empty `ai` sub-block, then the type's fields. A few
+archive types are composite: the packed trigger `flags`/`filterFlags`
+bytes, counted lists (trigger list targets, code master slaves) and mover
+keyframes. The importer runs the same table in reverse
+(`custom_properties_from_block`), and the addon builds its settings
+widgets from it. Only `ZCVobLight` has code of its own (it reads the
+Blender light).
 
-* `_type_name` - the class chain as Spacer writes it, most-derived first,
-  e.g. `"oCMobDoor:oCMobInter:oCMOB:zCVob"` (abstract bases such as
-  `oCMobLockable` and `oCVob` are not part of it).
-* `_class_version` - the number after the chain in the block header (e.g.
-  52224 for `zCVob`, 64513 for `oCMobContainer`); `_visual_type` /
-  `_visual_version` for the visual sub-block.
-* `_visual()`, `_printed_vob_name()`, `_static`, `_show_visual`,
-  `_collision`, `_print_additional_data()`.
-
-`NoVisualObjectVob` is the base for vobs without a mesh (`[visual % 0 0]`,
-one index slot). Per-instance data is read with `self._custom(key,
-default)` (flat custom properties, never addon PropertyGroups), keeping the
-library addon-independent. For mobs and sounds the fields are tables in
-`vob_fields.py`, which the importer also uses in reverse.
+Per-instance data is read with `self._custom(key, default)` (flat custom
+properties, never addon PropertyGroups), keeping the library
+addon-independent.
 
 **The object-index thread.** Every object block needs a unique sequential
-index. Each vob claims `_objects_count` slots (2 with a visual, 1
-without), `OCVobTree` and `WayNet` continue the count, and `ZenArchive`
-writes the total in the header. A subclass that writes a different number
-of indexed blocks than `_objects_count` shifts every later index - the
-verifier catches that on every export.
+index. Each vob claims `_objects_count` slots (2 with a real visual block,
+1 without), `OCVobTree` and `WayNet` continue the count, and `ZenArchive`
+writes the total in the header. The verifier checks it on every export.
 
-**Adding a VOB type:** subclass `ZCVob` / `NoVisualObjectVob`, set the
-chain and version from a real Spacer-saved world if you can find one,
-register the prefix in `VOB_CLASSES` (`zen_gin_ocvobtree.py`), and add it
-to `vob_types.py` (Add VOB dialog) and `SUPPORTED_TYPES` in
-`zen_import.py`. For settings, add a field table to `vob_fields.py` and
-matching descriptions to `mob_props.py`.
+**Vob hierarchy.** The `VobTree` block is a flat pre-order list:
+`childsN=int:count` after node N-1 says how many of the following vobs are
+its children (node 0 is the implicit root). `OCVobTree` builds it from
+Blender parenting (nearest exported vob ancestor), siblings grouped by
+type.
 
-**Bounding boxes.** The world-space AABB of the object itself if it is a
-mesh plus every mesh in its children, converted to Gothic space. With no
-mesh (an Empty, a freepoint) it is a single point at the vob.
+**Adding a VOB type:** add a `VobSpec` (and a field tuple) to
+`vob_fields.py` with the chain, version and property order from a real
+world, then its labels/tooltips to `FIELD_UI` and a menu entry to
+`VOB_TYPE_INFO` in `vob_ui_schema.py`. Exporter, importer, sidebar and Add
+VOB pick it up; the tests fail until the UI entries exist.
+
+**Bounding boxes.** Zones and triggers: the object's own cube. Sounds and
+lights: a cube of the radius/range around the vob. Otherwise the
+world-space AABB of the object itself if it is a mesh plus the meshes
+among its children (not those of child vobs), converted to Gothic space;
+with no mesh (an Empty, a freepoint) a single point at the vob.
 
 **Addon side** (`addons/zen_waypoint_tools/`): `waypoint_links.py` (link
 slots, auto-aim), `waypoint_ops.py`, `vob_ops.py` / `vob_types.py` (Add VOB),
-`mob_props.py` (settings schema), `light_props.py`, `panel.py`,
-`viewport_draw.py` (link lines; the connection list is cached and rebuilt
-after depsgraph updates, the handlers survive file loads),
+`vob_ui_schema.py` (labels, tooltips, visibility rules, dropdown sources -
+pure data), `vob_ui.py` (the VOB Settings panel: `Object.zen_vob`, a
+PropertyGroup generated from `vob_fields` whose properties read and write
+the flat custom properties through get/set callbacks, so nothing is stored
+twice), `game_bridge.py` (cached `GameIndex` for the preferences' game
+folder, search callbacks), `mob_props.py` (presets), `light_props.py`,
+`panel.py`,
+`viewport_draw.py` (waypoint link lines and trigger arrows; the pair lists
+are cached and rebuilt after depsgraph updates, the handlers survive file
+loads), `vob_preview.py` (preview meshes as instanced collections),
 `export_ops.py`, `quick_export.py`, `zen_import.py`, `krximpexp_bridge.py`,
-`gothic_sky.py`, `preferences.py`. Only the export/import operators and
-the light creation need `zen_gin_export`; they import it lazily.
+`gothic_sky.py`, `preferences.py`. `zen_gin_export` is imported lazily:
+without it the addon still enables, VOB Settings stays hidden and the
+export/import buttons say what is missing.
 
 ## Coordinate transform
 
@@ -506,7 +650,8 @@ Gothic_z = -Blender_y
 The position map is a pure Y<->Z swap R (determinant -1: a handedness
 flip, not a rotation). A rotation converts as `M_gothic = R @ M_blender @
 R` (R is its own inverse), which is what the exporter does with the world
-matrix (`blender_matrix_to_gothic`, scale removed); the quaternion formula
+matrix (`blender_matrix_to_gothic`, scale removed unless the vob has a
+visual and really is scaled); the quaternion formula
 above is the same thing and is what was verified in Spacer - a test checks
 the two agree. The rotation is written as 9 little-endian floats in hex
 (`trafoOSToWSRot`), row-major. Waypoint `direction` uses the position map
@@ -541,10 +686,13 @@ Runs from the repo root without Blender, and in GitHub Actions
 `main`. Covers coordinate conversion (incl. the matrix path vs. the
 Spacer-verified quaternion formula), full-scene exports through the
 verifier, the waynet (free waypoints, dedup, world-space positions),
-bounding boxes, class headers and field order against the real Spacer
-worlds, light/mob/sound fields and their export -> parse -> custom
-property round trip, export warnings, failed-export safety, the addon's
-property schema vs. the exporter's tables, and parsing the sample worlds.
+bounding boxes and volumes, class headers and field order against the
+vanilla worlds, every vob type's settings through an export -> parse ->
+custom property round trip, trigger flag bytes, list slots, mover
+keyframes (against the reference world's secret door), decals, the vob
+hierarchy, way-link orientation, export warnings, failed-export safety,
+the game-files reader on a miniature game folder, the UI schema vs. the
+exporter's tables, and parsing the sample worlds.
 
 In Blender (addon enabled), `tooling/pipeline/check_waypoint_direction.py`
 adds waypoints with the real operators, rotates them, exports, checks
@@ -557,36 +705,35 @@ bpy==5.2.*` on Python 3.13), registering it via `sys.path` +
 
 ## Status, limitations and roadmap
 
-**Built and verified:** export of 16 VOB types; coordinate transform
-verified in Spacer (two real bugs found and fixed that way); automatic
-structural check on every export plus scene warnings; ZEN import of our
-own and Spacer-saved worlds (vobs with settings, waynet, level mesh);
-native Blender Light <-> `zCVobLight`; Export Level Package; pytest suite
-in CI.
+**Built and verified:** export and import of 40 VOB types with
+per-instance settings and the vob hierarchy; a round trip of a vanilla
+part-world (`NewWorld_Part_Xardas_01`) with no property differences;
+coordinate transform verified in Spacer (two real bugs found and fixed
+that way); automatic structural check on every export plus scene
+warnings; settings panel with dropdowns read from the game files; native
+Blender Light <-> `zCVobLight`; Export Level Package; pytest suite in CI.
 
 **Known limitations**
 
 - **No compiled-ZEN writing** - Spacer is required for compiling.
-- **Not yet confirmed in-game:** the presets not listed as verified above,
-  switches/wheels/fires; `zCVobSound` settings;
-  `zCVobLight` `lightType`/`lightQuality` ordinals; waypoint `direction`
-  with `AI_AlignToWP`. Class versions for `oCMobSwitch`/`oCMobWheel`/
-  `oCMobFire` are not in the sample worlds and use `oCMobInter`'s.
-- Some vanilla content can't be round-tripped yet (zones, decals,
-  particle effects, light presets/flicker, per-instance flags) - see
-  `TODO.md` "Gaps found in the reference worlds".
-- Output is one flat vob list (no nested hierarchies); imports of nested
-  Spacer worlds are flattened. Only fresh archives are written - merging
-  into an existing Spacer-made ZEN isn't supported.
-- A waypoint has three link slots; links are stored on one end, so a node
-  can have more than three connections in total, but importing a Spacer
-  world where both ends are full drops that link (reported).
+- **Verified by round trip against vanilla data, not yet in Spacer /
+  in-game:** everything added with the 3.0 table (zones, triggers, movers,
+  decals, particle effects, day/night sounds, light presets and flicker,
+  per-instance flags, hierarchy). Verified in-game earlier: doors, chests,
+  the bed, the alchemy table. See `TODO.md` for the checklist.
+- Cutscene cameras are not supported (skipped on import, reported).
+- Zones and triggers are re-centred on their box on import (only the box
+  matters in-game); ellipsoid sounds get the sphere's bounding box.
+- Repeated visuals are written out per vob rather than as Spacer's `§`
+  references: valid, but larger files.
+- Only fresh archives are written - merging into an existing Spacer-made
+  ZEN isn't supported.
 - The KrxImpExp Mac/Linux `.TGA` case-sensitivity fix lives in the
   installed addon's files (lost on reinstall) and isn't reported upstream.
 
-**Potential directions:** more VOB types (triggers, zones, cameras) -
-`G2ISLAND_WEB.ZEN` has examples of zones; verify the unconfirmed items
-above with a Spacer/in-game round trip; report the KrxImpExp `.TGA` bug.
+**Potential directions:** cutscene cameras; previewing vob visuals in the
+viewport (meshes for props placed as empties, decal quads); verify the
+unconfirmed items above with a Spacer/in-game round trip.
 
 ## Cross-machine git checklist
 

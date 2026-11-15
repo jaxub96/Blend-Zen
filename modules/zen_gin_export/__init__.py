@@ -14,7 +14,8 @@ from .coordinate_transform import (
     waypoint_yaw_towards,
 )
 from .archive_parser import parse_archive, find_block, parse_vec3, read_archive_text, ArchiveBlock
-from .vob_fields import custom_properties_from_block
+from .vob_fields import custom_properties_from_block, VOB_SPECS
+from .game_data import GameIndex
 from .light_conversion import (
     gothic_range_to_blender_distance,
     gothic_range_to_blender_power,
@@ -24,3 +25,4 @@ from .light_conversion import (
     gothic_color_to_blender,
     blender_color_to_gothic,
 )
+from .zen_gin_waynet import orient_ways
