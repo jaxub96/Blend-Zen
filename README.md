@@ -562,8 +562,10 @@ export_checks.py        pre-export scene warnings
 and `zen_waypoint_links` for waypoints. That is all the library touches,
 which is why the tests can use small fakes (`tests/conftest.py`).
 Transforms come from `matrix_world`, so rotation mode and parents are
-handled. Scale: a vob with a visual writes its scale into the matrix (the
-engine draws the visual that size, as vanilla worlds do); for zones and
+handled. Scale: a vob with a visual writes its scale into the matrix, which keeps
+vanilla worlds' matrices intact on a round trip - but the game does not
+draw the visual any bigger or smaller (checked in-game), so scaling a
+prop in Blender changes nothing you can see there; for zones and
 triggers the scale is the box, and for everything else it is ignored.
 
 **One table, one writer.** `vob_fields.VOB_SPECS` has a `VobSpec` per vob

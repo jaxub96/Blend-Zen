@@ -22,7 +22,7 @@ The open items below each have a station in the check level
 Everything below round-trips against vanilla data but has not been loaded
 in Spacer or played yet.
 
-- [ ] Open a 3.0 export in Spacer: static lights now omit the dynamic
+- [x] Open a 3.0 export in Spacer: static lights now omit the dynamic
   fields (as vanilla does), freepoints write `zbias=1`, floats are written
   without a trailing `.0`.
 - [x] Switch -> mover: `oCMobSwitch` (lever and touch plate presets) with a
@@ -41,8 +41,10 @@ in Spacer or played yet.
   bookstand, sign presets.
 - [x] A torch as a parent vob with flame, light and sound children keeps
   its children in place in Spacer.
-- [ ] Lights: calibrated viewport power vs. Spacer.
-- [ ] Waypoint `direction`: NPC with `AI_AlignToWP` faces the green Y arrow.
+- [x] Lights: calibrated viewport power vs. Spacer (2026-11-16, check level).
+  Reach and brightness match. On the 1 m test floor the edge of a light
+  shows a sawtooth: Gothic lights outdoor geometry per vertex.
+- [x] Waypoint `direction`: NPC with `AI_AlignToWP` faces the green Y arrow.
 - [x] Spacer loads lockable mobs with real models; `DOOR_NW_NORMAL_01`
   opens in-game; bed (`SLEEPABIT`), lockable chest/door and the alchemy
   table work in-game (2026-11-09).
@@ -55,7 +57,11 @@ in Spacer or played yet.
 - [ ] Ellipsoid sounds (`sndVolType=1`): Spacer stores a hand-set bounding
   box; we write the sphere's.
 - [x] Vobs saved with a scaled rotation matrix round-trip; a scaled vob
-  with a visual exports its scale (2026-11-11). Not yet looked at in-game.
+  with a visual exports its scale (2026-11-11). In-game (2026-11-16) the
+  engine does not draw the visual any bigger: scale in the matrix has no
+  visible effect, so do not rely on it.
+- [x] Dropped-in plants take the vanilla wind / collision defaults in-game
+  (2026-11-16, check level).
 - [x] Waypoints: `waterDepth` / `underWater` are kept as custom properties
   when set (2026-11-11).
 - [ ] Shared visuals: Spacer writes repeated visuals as `§` references; we
