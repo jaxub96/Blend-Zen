@@ -77,7 +77,7 @@ def test_fire_adds_fire_slot_and_vobtree():
 
 
 def test_class_headers_match_real_spacer_worlds():
-    """From blender_work_dir/G2ISLAND_WEB.ZEN: oCMobLockable is not in the
+    """From a Spacer-saved world: oCMobLockable is not in the
     persisted chain, the class versions differ per type, and the zCModel
     visual block has version 0."""
     assert print_vob(OCMobContainer, FakeObject("oCMobContainer:C"), 5)[0] == \
@@ -150,7 +150,7 @@ def test_spacer_minus_one_is_a_true_bool():
 
 def test_mob_visual_keeps_an_explicit_extension():
     """Vanilla mobs also use .ASC models and static .3DS meshes
-    (G2ISLAND_WEB.ZEN: BEDHIGH_NW_NORMAL_01.ASC); a .3DS gets a
+    (a Spacer-saved world: BEDHIGH_NW_NORMAL_01.ASC); a .3DS gets a
     zCProgMeshProto visual block."""
     asc = exported_properties(OCMobBed, FakeObject("oCMobBed:B", visual_name="BEDHIGH_NW_NORMAL_01.ASC"))
     assert asc["visual"] == "string:BEDHIGH_NW_NORMAL_01.ASC"

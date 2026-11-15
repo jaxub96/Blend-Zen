@@ -166,7 +166,7 @@ def test_keep_scale_writes_scaled_axes_but_ignores_float_noise():
 
 
 def test_rotation_hex_matches_a_real_spacer_value_and_round_trips():
-    # Identity, as written by Spacer in blender_work_dir/G2ISLAND_WEB.ZEN.
+    # Identity, as written by Spacer in a saved world.
     identity = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
     encoded = encode_rotation_matrix_hex(identity)
     assert encoded.startswith("0000803f0000000000000000000000000000803f")

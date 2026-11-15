@@ -9,3 +9,6 @@ __pycache__/
 .venv/
 .pytest_cache/
 blender_work_dir/
+
+# Original game files used as reference data: keep local
+reference/

@@ -49,19 +49,16 @@ tracked in `TODO.md`).
   machine: `export_headless.py`, `check_waypoint_direction.py`,
   `build_compass_test_level.py`, `build_gothic_sky.py`,
   `deploy_and_launch.ps1`.
-- **`blender_work_dir/`** - sample scenes (`G2ISLAND_WEB`,
-  `compass_test_level`, room scenes), two real Spacer-saved worlds used as
-  format references and test fixtures (`G2ISLAND_WEB.ZEN`,
-  `DieGestrandeten.zen`), and `select_material_boundary.py`. The folder is
-  in `.gitignore` so scratch files stay out; the tracked files stay tracked.
+- **`blender_work_dir/`** - local scratch folder for scenes and worlds (the
+  level builders write their `.blend` here). It is in `.gitignore`; only
+  `select_material_boundary.py` is tracked.
 
 ### Related project: KIT
 
 The Gothic modular building kit lives in its own repo, `KIT`
 (`https://github.com/jaxub96/KIT`). It expects to be checked out as a
-sibling of this repo and reads `asset_catalog/materials_levels.blend` and
-`blender_work_dir/G2ISLAND_WEB.blend`. Keep those paths stable, or update
-KIT's README and `kit_lib.py` if they move.
+sibling of this repo and reads `asset_catalog/materials_levels.blend`.
+Keep that path stable, or update KIT's README and `kit_lib.py` if it moves.
 
 ## Setup
 
@@ -394,8 +391,7 @@ works:
 ## VOB types
 
 Researched from ZenKit's docs (`zk.gothickit.dev`), the OpenGothic VOB
-reference, and checked against the two real Spacer-saved worlds in
-`blender_work_dir/` (class chains, class versions, field order).
+reference, and checked against real Spacer-saved worlds (class chains, class versions, field order).
 
 ### Implemented
 
