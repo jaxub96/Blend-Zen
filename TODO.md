@@ -16,6 +16,9 @@ widgets, relevance rules and an Advanced section; the game-files bridge
 
 ## P1 - Verify in Spacer / in-game
 
+The open items below each have a station in the check level
+(`tooling/pipeline/build_check_level.py`, exported as `MOD/BZ_CHECK`).
+
 Everything below round-trips against vanilla data but has not been loaded
 in Spacer or played yet.
 

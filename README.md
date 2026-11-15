@@ -492,6 +492,22 @@ docstring.
 blender --background --python tooling/pipeline/build_showcase_level.py -- blender_work_dir/showcase_level.blend [SHOWCASE MOD]
 ```
 
+**Check level.** `tooling/pipeline/build_check_level.py` builds one
+station for each thing that can only be judged by eye: the world opens in
+Spacer (plus a PASS/FAIL check of the file itself), three static lights
+with barrels standing exactly where each light must end, four men who must
+each face the barrel their waypoint points at, the same barrel at four
+scales next to posts of the expected height, and a lane of dropped-in
+plants with a sign saying which must sway and which must stop you. With a
+level name it also writes the signs' texts, the four test NPCs and the
+level's startup functions into the game scripts, and it renders
+`<name>_lights_reference.png` next to the blend. The stations are listed
+in the script's docstring.
+
+```bash
+blender --background --python tooling/pipeline/build_check_level.py -- blender_work_dir/bz_check.blend BZ_CHECK MOD
+```
+
 **Vanilla survey.** `tooling/pipeline/survey_vanilla_worlds.py "<game
 folder>"` (plain Python) reads every ASCII world under `_work/Data/Worlds`
 except `MOD` and writes `modules/zen_gin_export/vanilla_survey.json`: the
